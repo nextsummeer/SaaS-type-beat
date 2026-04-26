@@ -1,0 +1,38 @@
+# Mapa de Documentacao — BeatPost
+
+> Indice navegavel. Consultar SEMPRE antes de buscar ou criar docs.
+> Atualizar ao criar/modificar/arquivar qualquer doc.
+
+## Contexto
+- `contexto/visao-mvp.md` — Resumo Nivel 2, escopo, beta privado [ativo]
+- `contexto/publico-alvo.md` — ICP beatmaker underground, dores, comportamento [ativo]
+- `contexto/recorte-mvp.md` — O que esta FORA (multi-canal, billing, metricas) [ativo]
+
+## Decisoes
+- `decisoes/_template-decisao.md` — Template para novas decisoes (ADR)
+- `decisoes/2026-04-25-stack.md` — Next.js + FastAPI + Supabase + QStash [ativo]
+- `decisoes/2026-04-25-multitenancy-rls.md` — RLS Supabase desde dia 1 [ativo]
+- `decisoes/2026-04-25-3-variacoes-abc.md` — A/B/C no mesmo canal vs multi-canal [ativo]
+- `decisoes/2026-04-25-capa-manual.md` — Capa upload pelo user no MVP [ativo]
+- `decisoes/2026-04-25-gemini-vs-cyanite.md` — Gemini Audio vence Cyanite no MVP [ativo]
+- `decisoes/2026-04-25-cobranca-na-unha.md` — Pix manual ate 10 pagantes [ativo]
+
+## Arquitetura
+- `arquitetura/pipeline-upload-postagem.md` — Fluxo ponta-a-ponta + state machine [ativo]
+- `arquitetura/schema-supabase.md` — SQL completo + RLS policies (3 migrations) [ativo]
+- `arquitetura/fluxo-oauth-youtube.md` — OAuth + refresh token + multi-canal V2 [ativo]
+- `arquitetura/workers-qstash.md` — Como QStash dispara endpoints + idempotencia [ativo]
+
+## Referencias
+- `referencias/nextjs.md` — Next.js 15 App Router, middleware, Server Components/Actions [ativo]
+- `referencias/fastapi.md` — Routes, deps, async, lifespan, config pydantic-settings [ativo]
+- `referencias/supabase-auth.md` — Auth UI, Google provider, JWT, helpers Next.js [ativo]
+- `referencias/supabase-storage.md` — Buckets, signed URLs, policies, paths [ativo]
+- `referencias/gemini-audio.md` — google-genai SDK, audio understanding + grounded search [ativo]
+- `referencias/youtube-data-api-v3.md` — Upload, OAuth, quota 10k/dia, thumbnails [ativo]
+- `referencias/ffmpeg.md` — Conversao MP3 320 + loudnorm + audio→video [ativo]
+- `referencias/upstash-qstash.md` — Publisher + receiver + idempotencia [ativo]
+- `referencias/shadcn-ui.md` — CLI install, componentes do MVP, theming [ativo]
+
+## Sessoes
+- `sessoes/2026-04-25-1500-brainstorm-mvp.md` — Sessao fundadora (resumo) [ativo]

@@ -1,0 +1,60 @@
+# Variaveis de ambiente
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Credenciais
+credentials/
+*.pem
+*.key
+service-account*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+.turbo/
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+
+# IDEs
+.vscode/settings.json
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Uploads temporarios (nao deveria existir, mas por garantia)
+uploads/
+tmp/
+
+# Headless task runner
+.claude/logs/
