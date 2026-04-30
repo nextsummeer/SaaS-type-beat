@@ -6,7 +6,7 @@
 
 ## ICP detalhado
 
-Beatmaker underground brasileiro ou latino, 17-28 anos, produzindo type beat de trap/drill/hyperpop/plug, com:
+Produtor de type beat underground, qualquer pais, 17-28 anos, produzindo trap/drill/hyperpop/plug, com:
 
 - Canal YouTube ativo: 1-10 canais, 0-10k subs (medio: 1k)
 - Volume atual: 0-3 beats postados/semana
@@ -40,7 +40,7 @@ Beatmaker underground brasileiro ou latino, 17-28 anos, produzindo type beat de 
 - Nao e produtor profissional (esses tem time, nao usam saas)
 - Nao e MC/artista (esses sao clientes dele)
 - Nao e beatmaker iniciante absoluto (que ainda nao entende type beat)
-- Nao e americano com $1000/mes pra gastar em ferramentas
+- Nao e produtor com budget alto pra contratar assistente ou equipe de marketing
 
 ## Dores principais (em ordem)
 
@@ -59,15 +59,15 @@ Beatmaker underground brasileiro ou latino, 17-28 anos, produzindo type beat de 
 ## Padroes de pricing que ele aceita
 
 - $0 (free tier ou pirateado)
-- $5-15/mes (BeatStars Pro tier)
+- $5-15/mes (BeatStars Pro tier — referencia do mercado)
 - $25-40/mes (limite onde "vale a pena se usar muito")
-- $50+/mes — virtualmente ninguem na faixa underground
+- $50+/mes — virtualmente ninguem na faixa underground topa
 
-Pricing alvo MVP: $25-40/mes com limite generoso (60 beats/mes). Beta R$50 (~$10) na unha.
+**Obs:** planos e precos da plataforma ainda sendo definidos. A faixa aceitavel pelo ICP e $0-$40/mes.
 
-## Como o BeatPost se posiciona
+## Como o [NOME] se posiciona
 
-Nao tentar ser "tudo pra todo beatmaker". E ferramenta pra **beatmaker que JA POSTA** mas quer:
+Nao tentar ser "tudo pra todo produtor". Na Fase 1 e plataforma pra **produtor que JA POSTA** mas quer:
 - Postar 3x mais (A/B/C automatico)
 - Sem gastar 1h por beat editando descricao/tags
 

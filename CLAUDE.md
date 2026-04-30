@@ -1,12 +1,24 @@
-# BeatPost
+# [NOME]
 
 IMPORTANTE - COMUNIQUE-SE SEMPRE EM PORTUGUES BRASIL.
 
-SaaS web multitenant para beatmakers automatizarem postagem de type beats no YouTube com 3 variacoes A/B/C por beat (titulo, descricao e tags variando, mesma capa, mesmo canal, datas escalonadas).
+Producer Hub SaaS B2C para produtores de type beats que publicam no YouTube. A plataforma automatiza o trabalho repetitivo (upload, geracao de video, SEO, publicacao), entrega analytics do canal, curadoria de conteudo e conexao com a comunidade de produtores.
+
+**Foco atual:** Fase 1 — MVP de automacao de upload e publicacao no YouTube.
+**Meta:** beta fechado ate setembro de 2026.
 
 **Stack:** Next.js 15 + TypeScript (`web/`) | Python 3.11 + FastAPI (`api/`) | Supabase (Auth + Postgres + Storage + RLS) | Upstash QStash (worker async) | Gemini 2.0 Flash + Anthropic Claude + ffmpeg + YouTube Data API v3
-**Repo:** github.com/HENRIQUE4345/beatpost (private)
+**Repo:** github.com/nextsummeer/SaaS-type-beat
 **Owner:** Henrique (arquiteto + entrega Fase 0) → Gustavo (executa Fases 1-6)
+
+## Fases do Produto
+
+| Fase | Foco | Status |
+|------|------|--------|
+| **Fase 1 — MVP** | Upload MP3 + IA gera titulo/desc/tags + MP4 + publicacao YouTube | Em execucao |
+| **Fase 2 — Analytics** | Painel YouTube Analytics + oportunidades por IA + gamificacao | Planejada |
+| **Fase 3 — Conteudo** | Biblioteca de tutoriais curados + Drum Kits/Sample Packs para assinantes | Planejada |
+| **Fase 4 — Comunidade** | Competicoes mensais de beat + marketplace produtor-artista | Planejada |
 
 ## IDs Importantes
 
@@ -57,7 +69,7 @@ DASHBOARD mostra status + links YouTube
 5. **usage_tracker chama em CADA chamada paga** — Gemini, Claude, YouTube upload. Sem isso nao sabemos custo por usuario.
 6. **Capa manual no MVP** — beatmaker faz upload da capa. Geracao IA fica pra V2.
 7. **1 canal YouTube por usuario** no MVP. Multi-canal fica pra V2.
-8. **Sem Stripe ate o 10o pagante.** Cobranca na unha (Pix manual).
+8. **Planos de assinatura e precos: a definir.** Billing nao entra no MVP.
 9. **Nao quebrar testes existentes** antes de commitar.
 10. **Sem task no `_tasks-mvp.md` = sem codigo.** Seguir workflow em `.claude/rules/workflow.md`.
 

@@ -1,8 +1,8 @@
-# BeatPost
+# [NOME]
 
-SaaS web pra beatmakers automatizarem postagem de type beats no YouTube com 3 variacoes A/B/C por beat.
+Producer Hub SaaS para produtores de type beats que publicam no YouTube. Automatiza upload, geracao de video, SEO e publicacao — e evolui para analytics, curadoria de conteudo e comunidade.
 
-> **Status:** scaffolding em andamento (Fase 0). Ainda nao roda.
+> **Status:** Fase 1 em execucao (MVP de automacao). Beta fechado previsto para setembro de 2026.
 
 ## Quickstart
 
@@ -17,8 +17,8 @@ SaaS web pra beatmakers automatizarem postagem de type beats no YouTube com 3 va
 
 ```bash
 # 1. Clonar
-git clone git@github.com:HENRIQUE4345/beatpost.git
-cd beatpost
+git clone https://github.com/nextsummeer/SaaS-type-beat.git
+cd SaaS-type-beat
 
 # 2. Variaveis de ambiente
 cp .env.example api/.env          # preencher chaves do backend

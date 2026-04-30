@@ -1,4 +1,4 @@
-# Cobranca na unha (Pix manual) ate o 10o pagante
+# Cobranca na unha (Pix manual) no beta — planos a definir
 
 **Data:** 2026-04-25
 **Status:** aceita
@@ -26,11 +26,11 @@ Modelo: Nivel 2 do plano fundador — beta privado, 5-10 beatmakers convidados.
 
 ## Decisao
 
-**Veredito: Opcao 1 — Cobranca na unha ate 10o pagante.**
+**Veredito: Cobranca na unha no beta — planos e precos finais a definir.**
 
-Apos os primeiros 5 beatmakers usando ativamente, cobrar Pix R$50/mes na unha (equivalente ~$10 no MVP, abaixo do alvo de $25 final). Quando 10 pagantes consecutivos toparam, ai sim implementar Stripe.
+No beta fechado, cobranca manual (Pix) para validar disposicao a pagar antes de implementar billing automatico. Valor exato e estrutura de planos ainda sendo decididos.
 
-Razao: o 11.4 do brief e suficientemente alarmante pra precisar saber CEDO se beatmaker paga. Stripe atrasa esse aprendizado em 6-8 semanas. Pix manual responde em 5 minutos.
+Razao: Stripe atrasa o aprendizado sobre disposicao a pagar em 6-8 semanas de implementacao. Pix manual responde em 5 minutos. Quando planos estiverem definidos e houver pagantes consistentes, ai implementar billing automatico.
 
 ### Politica de gratuidade no beta privado
 

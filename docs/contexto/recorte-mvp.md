@@ -1,72 +1,87 @@
-# Recorte do MVP — O que esta FORA
+# Recorte — O que esta FORA da Fase 1 (MVP)
 
 **Criado:** 2026-04-25
+**Atualizado:** 2026-04-29
 **Status:** ativo
 **Tags:** contexto, escopo, mvp
 
 ## Filosofia
 
-MVP nao e produto. MVP e **menor experimento que valida hipotese**. Tudo que nao for essencial pra responder "beatmaker paga R$50/mes pra automatizar postagem com A/B/C?" fica fora.
+A Fase 1 valida uma unica hipotese: o produtor consegue publicar beats no YouTube de forma automatizada, com SEO gerado por IA, sem perder 2-3h por upload?
 
-## Fora do MVP — V2
+Tudo que nao for essencial pra responder isso fica fora da Fase 1. As fases seguintes (2, 3 e 4) ja estao planejadas — nao sao "talvez", sao proximos passos.
 
-### Multi-canal YouTube
-**Por que fora:** Beatmaker iniciante tem 1-2 canais. Multi-canal complica OAuth (N tokens), UI (dropdown de canal por publicacao), e limite de quota.
+## Fora da Fase 1 — entra na Fase 2
 
-**Quando volta:** Quando >40% dos pagantes pedirem ou quando entrarem beatmakers com 5+ canais ativos.
+### Analytics do YouTube
+**Por que fora:** Precisa OAuth scope adicional, estrutura de cache, dashboard. Sem videos publicados por pelo menos 7 dias, nao tem dados pra mostrar.
 
-### Geracao de capa por IA (padrao por artista)
-**Por que fora:** Custo $0.20/capa, latencia, risco de copyright, beatmaker tem opiniao forte sobre visual. Capa manual reduz variaveis no MVP.
+### Gamificacao (rank, badges, metas)
+**Por que fora:** Depende de base de usuarios ativa para ter sentido competitivo.
 
-**Quando volta:** V2 com toggle "Usar capa IA" e disclaimer de copyright.
+### Geracao de capa por IA
+**Por que fora:** Custo por chamada, latencia, risco de copyright. Capa manual reduz variaveis no MVP.
 
-### Metricas YouTube Analytics
-**Por que fora:** Precisa OAuth scope adicional (analytics.readonly), estrutura de cache, dashboard de visualizacao. Sem dados reais (precisa do video ja com 7+ dias), nao tem o que mostrar pros primeiros 10 users.
-
-**Quando volta:** V2 quando primeiros pagantes tiverem 10+ videos publicados.
-
-### Banco proprio de tags trending
-**Por que fora:** Curadoria continua exige horas/semana que nao temos. Gemini grounded search resolve com qualidade aceitavel.
-
-**Quando volta:** V3 se Gemini grounded falhar em qualidade (sinal: usuarios reclamarem que tags geradas nao estao no YouTube).
+**Quando volta:** Fase 2 com toggle "Usar capa IA" e disclaimer.
 
 ### Thumbnail por padrao de artista
-**Por que fora:** Mesmas razoes da capa IA + risco de copyright especifico (gerar "Weeknd thumbnail" pode pisar em direito autoral).
+**Por que fora:** Risco de copyright especifico (gerar "Weeknd thumbnail"). V2 com estilos genericos (dark, melodic, hard).
 
-**Quando volta:** V2 com curadoria de "estilos" genericos (dark, melodic, hard) sem referenciar artista.
+## Fora da Fase 1 — entra na Fase 3
 
-## Fora do MVP — V3
+### Biblioteca de tutoriais curados
+**Por que fora:** Requer producao de conteudo editorial, fora do escopo tecnico da Fase 1.
 
-### Multi-tenant workspace (time)
-**Por que fora:** Gerente de beatmakers, label com varios produtores. Caso ainda nao validado.
+### Drum Kits e Sample Packs para assinantes
+**Por que fora:** Requer curadoria, licenciamento e estrutura de entrega de arquivos.
+
+## Fora da Fase 1 — entra na Fase 4
+
+### Competicoes mensais de beat
+**Por que fora:** Requer base de usuarios suficiente para ter competicao relevante.
+
+### Marketplace produtor-artista
+**Por que fora:** Requer dois lados do marketplace (produtores e artistas), pagamentos, contratos. Escopo separado.
+
+## Fora da Fase 1 — decisao tecnica (V2+)
+
+### Multi-canal YouTube
+**Por que fora:** Complica OAuth (N tokens por user), UI e quota. 1 canal por usuario no MVP.
+
+**Quando volta:** Quando >40% dos pagantes pedirem.
+
+### Banco proprio de tags trending
+**Por que fora:** Curadoria continua exige horas/semana. Gemini grounded search resolve com qualidade aceitavel.
+
+**Quando volta:** V3 se Gemini grounded falhar (sinal: usuarios reclamarem das tags).
+
+### Multi-tenant workspace (time / label)
+**Por que fora:** Caso de uso de label com varios produtores. Ainda nao validado.
 
 ### Importacao de catalogo existente
-**Por que fora:** Beatmaker que ja tem 100 beats no canal querer trazer pra dashboard. Caso de uso secundario.
+**Por que fora:** Caso de uso secundario — beatmaker com 100 beats no canal. Entra depois de validar fluxo novo.
+
+### Billing / Stripe
+**Por que fora:** Planos e precos ainda sendo definidos. Nao entra no MVP.
+
+## Fora do projeto — permanente
 
 ### Cross-posting (TikTok / Instagram)
-**Por que fora:** Cada plataforma tem rules, OAuth, formato distintos. Aumenta superficie 3x sem evidencia de demanda.
+Dinamica, audiencia e formato diferentes. Se virar produto core, e outro produto.
 
-### Mobile app
-**Por que fora:** Beatmaker faz beat no DAW desktop. Upload ja roda no browser. App mobile nao agrega ate ter 100+ users.
-
-## Fora do MVP — Permanente (nunca neste projeto)
-
-### Sociaisr alem de YouTube
-TikTok e Instagram tem dinamica diferente, audiencia diferente, formato diferente. Se virar produto core, e outro produto. Manter foco.
-
-### Marketplace de beats (concorrer com BeatStars)
-Saindo do escopo. Eles tem 10M users, network effects.
-
-### Producao de beats (geracao musical IA)
+### Producao de beats por IA (geracao musical)
 Negocio diferente, parceria diferente.
 
-### CRM de beatmaker (gestao de leads, contratos)
+### CRM de beatmaker (leads, contratos)
 Nao e o problema do ICP definido.
+
+### Mobile app
+Beatmaker faz beat no DAW desktop. Web responsiva resolve. App mobile nao agrega ate ter 100+ usuarios ativos.
 
 ## Como decidir se algo entra ou sai
 
-Pergunta: **"Sem isso o beatmaker piloto nao consegue validar a hipotese?"**
+Pergunta: **"Sem isso o produtor piloto nao consegue validar que a Fase 1 funciona?"**
 
 - Sim → entra
-- Nao → fora (V2/V3)
+- Nao → fora (define em qual fase futura)
 - Talvez → fora ate alguem pedir explicitamente

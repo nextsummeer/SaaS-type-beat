@@ -1,7 +1,8 @@
-# _tasks — BeatPost MVP @gustavo ate 30 dias
+# _tasks — [NOME] Fase 1 (MVP) @gustavo
 
 **Criado:** 2026-04-25
-**Outcome:** Beatmaker convidado faz login, conecta canal YouTube, sobe um beat (qualquer formato) + capa, recebe 3 variacoes A/B/C de titulo+descricao+tags geradas pela IA, edita o que quiser, confirma agendamento, e ve 3 videos publicados/agendados no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Cobranca na unha pelos primeiros 10 pagantes.
+**Atualizado:** 2026-04-29
+**Outcome:** Produtor convidado faz login, conecta canal YouTube, sobe um beat (qualquer formato) + capa, recebe 3 variacoes A/B/C de titulo+descricao+tags geradas pela IA, edita o que quiser, confirma agendamento, e ve 3 videos publicados/agendados no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Meta: beta fechado setembro 2026.
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
@@ -10,7 +11,7 @@
 
 ## Contexto
 
-Gustavo (cunhado, irmao da Marcella, comecando programacao) ja tem um fluxo n8n que automatiza postagem de type beats no YouTube. Vamos formalizar em SaaS web seguindo a stack default do Henrique (Python + Next.js) com Supabase pra acelerar auth+db+storage.
+Gustavo (executor das Fases 1-6) esta construindo o MVP de um Producer Hub SaaS para produtores de type beat. O produto e 100% cloud-native — tudo roda na nuvem, sem ambiente local. Stack: Next.js + FastAPI + Supabase + QStash (conforme definido por Henrique na Fase 0).
 
 Sessao fundadora: `MEU-CEREBRO/sessoes/2026-04-25-1500-brainstorm-gustavo-startup-beatmakers.md`
 Plano original: `~/.claude/plans/bom-na-verdade-vamos-sorted-lamport.md`
@@ -24,7 +25,7 @@ Plano original: `~/.claude/plans/bom-na-verdade-vamos-sorted-lamport.md`
 ## Recorte (o que esta FORA)
 
 - Multi-canal YouTube (V2)
-- Billing Stripe (apos 10o pagante)
+- Billing / Stripe (planos e precos a definir, nao entra no MVP)
 - Metricas YouTube Analytics (V2)
 - Banco proprio de tags trending (V3 — se Gemini grounded falhar)
 - Geracao de capa por IA (V2)
