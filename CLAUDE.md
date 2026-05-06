@@ -9,7 +9,7 @@ Producer Hub SaaS B2C para produtores de type beats que publicam no YouTube. A p
 
 **Stack:** Next.js 15 + TypeScript (`web/`) | Python 3.11 + FastAPI (`api/`) | Supabase (Auth + Postgres + Storage + RLS) | Upstash QStash (worker async) | Gemini 2.0 Flash + Anthropic Claude + ffmpeg + YouTube Data API v3
 **Repo:** github.com/nextsummeer/SaaS-type-beat
-**Owner:** Henrique (arquiteto + entrega Fase 0) → Gustavo (executa Fases 1-6)
+**Time:** Henrique (arquiteto + Fase 0) | Gustavo (produto/dev/IA, Fases 1-6) | Rary / Pedro Ferrari (lancamento, conteudo, parcerias, comunicacao)
 
 ## Fases do Produto
 

@@ -7,6 +7,7 @@
 - `contexto/visao-mvp.md` — Resumo Nivel 2, escopo, beta privado [ativo]
 - `contexto/publico-alvo.md` — ICP beatmaker underground, dores, comportamento [ativo]
 - `contexto/recorte-mvp.md` — O que esta FORA (multi-canal, billing, metricas) [ativo]
+- `contexto/time.md` — Composicao do time: Henrique, Gustavo, Rary [ativo]
 
 ## Decisoes
 - `decisoes/_template-decisao.md` — Template para novas decisoes (ADR)
