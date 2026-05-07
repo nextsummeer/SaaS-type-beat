@@ -8,6 +8,9 @@
 - `contexto/publico-alvo.md` — ICP beatmaker underground, dores, comportamento [ativo]
 - `contexto/recorte-mvp.md` — O que esta FORA (multi-canal, billing, metricas) [ativo]
 - `contexto/time.md` — Composicao do time: Henrique, Gustavo, Rary [ativo]
+- `contexto/concorrentes/_index.md` — Panorama de concorrentes e ferramentas similares [ativo]
+- `contexto/concorrentes/beatvalet.md` — Concorrente direto, SaaS desktop FL Studio + BeatStars + YouTube [ativo]
+- `contexto/concorrentes/beatstars-upload-github.md` — Script open source de uso pessoal, nao concorrente [ativo]
 
 ## Decisoes
 - `decisoes/_template-decisao.md` — Template para novas decisoes (ADR)
@@ -23,6 +26,7 @@
 - `arquitetura/schema-supabase.md` — SQL completo + RLS policies (3 migrations) [ativo]
 - `arquitetura/fluxo-oauth-youtube.md` — OAuth + refresh token + multi-canal V2 [ativo]
 - `arquitetura/workers-qstash.md` — Como QStash dispara endpoints + idempotencia [ativo]
+- `arquitetura/integracao-beatstars-futura.md` — 3 caminhos tecnicos pra cobrir BeatStars na nuvem (V1.5+) [planejamento]
 
 ## Referencias
 - `referencias/nextjs.md` — Next.js 15 App Router, middleware, Server Components/Actions [ativo]
@@ -37,3 +41,4 @@
 
 ## Sessoes
 - `sessoes/2026-04-25-1500-brainstorm-mvp.md` — Sessao fundadora (resumo) [ativo]
+- `sessoes/2026-05-07-concorrentes-e-stack.md` — Analise BeatValet, decisao de cobrir BeatStars na V1.5 [ativo]
