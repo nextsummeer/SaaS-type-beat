@@ -17,9 +17,11 @@
 - `decisoes/2026-04-25-stack.md` — Next.js + FastAPI + Supabase + QStash [ativo]
 - `decisoes/2026-04-25-multitenancy-rls.md` — RLS Supabase desde dia 1 [ativo]
 - `decisoes/2026-04-25-3-variacoes-abc.md` — A/B/C no mesmo canal vs multi-canal [ativo]
-- `decisoes/2026-04-25-capa-manual.md` — Capa upload pelo user no MVP [ativo]
+- `decisoes/2026-04-25-capa-manual.md` — Capa upload pelo user no MVP [parcialmente superseded em 2026-05-07]
 - `decisoes/2026-04-25-gemini-vs-cyanite.md` — Gemini Audio vence Cyanite no MVP [ativo]
 - `decisoes/2026-04-25-cobranca-na-unha.md` — Pix manual ate 10 pagantes [ativo]
+- `decisoes/2026-05-07-fluxo-upload-e-inputs-do-produtor.md` — Artista informado + mood + lista controlada + Spotify API [ativo]
+- `decisoes/2026-05-07-geracao-de-capa-mvp.md` — Capa IA por estilo+mood entra no MVP, fal.ai $0.05/imagem [ativo]
 
 ## Arquitetura
 - `arquitetura/pipeline-upload-postagem.md` — Fluxo ponta-a-ponta + state machine [ativo]
@@ -42,3 +44,4 @@
 ## Sessoes
 - `sessoes/2026-04-25-1500-brainstorm-mvp.md` — Sessao fundadora (resumo) [ativo]
 - `sessoes/2026-05-07-concorrentes-e-stack.md` — Analise BeatValet, decisao de cobrir BeatStars na V1.5 [ativo]
+- `sessoes/2026-05-07-brainstorm-jornada-cliente.md` — Inputs do upload (artista, mood) + capa por IA entra no MVP [ativo, importante]

@@ -67,7 +67,7 @@ DASHBOARD mostra status + links YouTube
 3. **Workers sao idempotentes** — checa `status` da row antes de re-executar. QStash faz retry automatico.
 4. **State machine nos workers** — uploaded → converting → converted → analyzing → analyzed → generating → ready_for_review → publishing → published | failed. Worker so avanca se status anterior bate.
 5. **usage_tracker chama em CADA chamada paga** — Gemini, Claude, YouTube upload. Sem isso nao sabemos custo por usuario.
-6. **Capa manual no MVP** — beatmaker faz upload da capa. Geracao IA fica pra V2.
+6. **Capa pode ser gerada por IA ou enviada manualmente.** Geracao usa estilo visual escolhido pelo produtor (perfil) + mood do beat (upload). Sem nome de artista no prompt (likeness). Provider: fal.ai gpt-image-2 ($0.05/imagem). Upload manual disponivel em todos os tiers. Toda geracao registra em `api_usage`. Detalhes em `docs/decisoes/2026-05-07-geracao-de-capa-mvp.md`.
 7. **1 canal YouTube por usuario** no MVP. Multi-canal fica pra V2.
 8. **Planos de assinatura e precos: a definir.** Billing nao entra no MVP.
 9. **Nao quebrar testes existentes** antes de commitar.

@@ -1,8 +1,8 @@
 # _tasks — [NOME] Fase 1 (MVP) @gustavo
 
 **Criado:** 2026-04-25
-**Atualizado:** 2026-04-29
-**Outcome:** Produtor convidado faz login, conecta canal YouTube, sobe um beat (qualquer formato) + capa, recebe 3 variacoes A/B/C de titulo+descricao+tags geradas pela IA, edita o que quiser, confirma agendamento, e ve 3 videos publicados/agendados no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Meta: beta fechado setembro 2026.
+**Atualizado:** 2026-05-07
+**Outcome:** Produtor convidado faz login, escolhe estilo visual padrao (onboarding), conecta canal YouTube, sobe um beat (qualquer formato) informando artista de referencia (lista controlada + Spotify) e mood (cards visuais), opcionalmente envia capa propria, recebe capa gerada por IA + 3 variacoes A/B/C de titulo+descricao+tags geradas pela IA (com nomes inspirados em hits do artista via Spotify), edita o que quiser, confirma agendamento, e ve 3 videos publicados/agendados no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Meta: beta fechado setembro 2026.
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
@@ -25,11 +25,13 @@ Plano original: `~/.claude/plans/bom-na-verdade-vamos-sorted-lamport.md`
 ## Recorte (o que esta FORA)
 
 - Multi-canal YouTube (V2)
-- Billing / Stripe (planos e precos a definir, nao entra no MVP)
+- Billing / Stripe (planos e precos a definir, nao entra no MVP — limites de capa IA so registrados em api_usage)
 - Metricas YouTube Analytics (V2)
 - Banco proprio de tags trending (V3 — se Gemini grounded falhar)
-- Geracao de capa por IA (V2)
-- Thumbnail por padrao de artista (V2)
+- Thumbnail gerada baseada em padrao de artista (V2 — capa IA do MVP usa estilo+mood, nao artista)
+- A/B/C de capas por upload (V2 — MVP gera 1 capa, regeneracao consome quota)
+- Validacao automatica de qualidade da imagem (V2 — confiar na IA por enquanto)
+- Drag-and-drop multi-arquivo BeatStars-style (V1.5 — quando entrar BeatStars na nuvem)
 - Multi-tenant workspace / time (V3)
 - TikTok / Instagram (nunca neste projeto)
 - Mobile app (nunca neste projeto)
@@ -42,9 +44,11 @@ Plano original: `~/.claude/plans/bom-na-verdade-vamos-sorted-lamport.md`
 | **3 postagens** | A/B/C no mesmo canal (mesmo MP3, titulos/tags/agenda diferentes) | `2026-04-25-3-variacoes-abc.md` |
 | **Multi-canal** | Fora do MVP. 1 canal por user. V2 expande. | `2026-04-25-3-variacoes-abc.md` |
 | **Multitenancy** | Supabase RLS desde dia 1 em TODAS as tabelas com `user_id` | `2026-04-25-multitenancy-rls.md` |
-| **Capa** | Manual (user faz upload). Geracao IA fica pra V2. | `2026-04-25-capa-manual.md` |
+| **Capa** | IA por estilo+mood (fal.ai gpt-image-2 $0.05) **OU** upload manual em todos os tiers. Sem texto, sem nome de artista. | `2026-05-07-geracao-de-capa-mvp.md` (revisa `2026-04-25-capa-manual.md`) |
 | **Vibe + tags** | Gemini 2.0 Audio + Google Search grounding. Sem Cyanite, sem banco proprio. | `2026-04-25-gemini-vs-cyanite.md` |
-| **Nome do beat** | IA sugere 3 (formato `[Artista] Type Beat - [Mood]`), user escolhe ou edita | `2026-04-25-3-variacoes-abc.md` |
+| **Nome do beat** | IA sugere 3 (formato `[Artista] Type Beat - [Mood]`) com nomes inspirados nos top hits do artista via Spotify API. User escolhe ou edita. | `2026-04-25-3-variacoes-abc.md` + `2026-05-07-fluxo-upload-e-inputs-do-produtor.md` |
+| **Input do upload** | Producer informa artista (lista controlada + Spotify normaliza custom) + mood (cards visuais 6 opcoes). IA NAO adivinha. | `2026-05-07-fluxo-upload-e-inputs-do-produtor.md` |
+| **Estilo visual** | Producer escolhe 1 dos 6-7 estilos no onboarding (default do canal). Pode trocar por upload. | `2026-05-07-geracao-de-capa-mvp.md` |
 | **Cobranca** | Pix na unha ate o 10o pagante. Stripe so depois. | `2026-04-25-cobranca-na-unha.md` |
 | **Worker async** | Upstash QStash (HTTP-based, $0 idle) — nao Celery | `2026-04-25-stack.md` |
 | **Repo** | Monorepo com `web/`, `api/`, `supabase/` | `2026-04-25-stack.md` |
@@ -188,6 +192,17 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** `pnpm test:e2e` passa
 - **Dependencia:** T1.4
 
+#### `[ ]` T1.7 — Onboarding pos-cadastro: galeria de selecao de estilo visual padrao
+
+- **Arquivos:**
+  - `web/app/(app)/onboarding/page.tsx`
+  - `web/components/SeletorDeEstilo.tsx`
+  - `web/lib/estilos-visuais.ts` (constantes dos 6-7 estilos)
+- **O que fazer:** Apos primeiro login, redireciona pra `/onboarding` antes do dashboard. Mostra galeria de cards (1 por estilo visual) com 3 capas exemplo cada, nome criativo + emoji + descricao curta. Producer clica → salva `default_visual_style` na tabela `users` (ou `user_settings`). Skip permitido (default `ghost_mode`). Producer pode mudar depois em `/configuracoes`.
+- **Criterio de pronto:** Novo user logado ve onboarding antes do dashboard. Selecao salva no DB. Apos salvar, redirect pra `/dashboard`. Re-login direto vai pro dashboard (nao reabre onboarding).
+- **Dependencia:** T1.4 (dashboard), T4.6 (estilos curados — pode comecar com placeholders), T2.6 (migration com `default_visual_style`)
+- **Nota de UX:** Formato exato da galeria fica em aberto, Gustavo vai propor versao mais criativa que possa funcionar como gancho de retencao (ver sessao 2026-05-07-brainstorm-jornada-cliente.md).
+
 ---
 
 ### Fase 2 — Upload + conversao MP3 (Gustavo executa)
@@ -228,6 +243,73 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **O que fazer:** Pytest com 4 fixtures de audio (wav, flac, m4a, mp3). Cada um vira mp3 320kbps validavel via `ffprobe`.
 - **Criterio de pronto:** `pytest -m slow tests/workers/test_convert.py` passa pros 4 formatos
 - **Dependencia:** T2.3
+
+#### `[ ]` T2.6 — Migration: novos campos de input (mood, estilo, artistas)
+
+- **Arquivos:** `supabase/migrations/004_inputs_produtor.sql`
+- **O que fazer:**
+  - Tabela `artistas_referencia` (id, nome_canonico, spotify_id, popularity, ativo, criado_em). Seed inicial preenchido em T2.7.
+  - Tabela `beat_artistas` (beat_id, artista_id, role: 'main' | 'collab') — relacao N:N.
+  - Em `beats`: adicionar colunas `mood` (enum sad/aggressive/romantic/dark/energetic/atmospheric, NOT NULL), `cover_source` (enum 'ai' | 'manual', default 'ai'), `visual_style` (text, FK soft pra biblioteca de estilos, nullable — usa default do user se nulo).
+  - Em `users` (ou nova `user_settings`): adicionar `default_visual_style` (text, default 'ghost_mode').
+  - RLS ligado em `beat_artistas` (via beat → user_id). `artistas_referencia` e leitura publica.
+- **Criterio de pronto:** Migration roda limpa. `select * from artistas_referencia` retorna seed. Insert em `beats` exige mood.
+- **Dependencia:** T0.5
+
+#### `[ ]` T2.7 — Curadoria inicial: lista de ~80-100 artistas type beat trending
+
+- **Arquivos:** `supabase/seeds/artistas_referencia.sql`
+- **O que fazer:** Gustavo cura manualmente lista de 80-100 artistas mais usados em type beats (Drake, Travis Scott, Kendrick, Don Toliver, Future, Carti, Yeat, Lil Baby, Nettspend, Lucy Bedroque, Fakemink, Bladee, Yung Lean, Pop Smoke, Central Cee, Tems, Burna Boy, etc.). Pra cada um: nome canonico + spotify_id (pode ser preenchido via batch script chamando Spotify API).
+- **Criterio de pronto:** SQL seed com 80-100 rows valida. Spotify_id preenchido pra >= 90% (alguns artistas underground podem nao ter).
+- **Dependencia:** T2.6, T2.8 (precisa do spotify_service pra preencher IDs)
+
+#### `[ ]` T2.8 — Service: spotify_service.py (auth + search + top tracks)
+
+- **Arquivos:** `api/app/services/spotify_service.py`
+- **O que fazer:**
+  - Client Credentials Flow (env: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`)
+  - `search_artist(query: str) -> {name, id, popularity} | None` — primeira correspondencia ou None
+  - `get_top_tracks(artist_id: str, market='US') -> list[str]` — titulos das top 10 musicas
+  - Cache via Upstash Redis (TTL 7 dias) pra evitar chamadas duplicadas
+  - Erro graceful: timeout, rate limit, sem resultado
+- **Criterio de pronto:** `search_artist("drake")` retorna nome canonico "Drake". `get_top_tracks("drake_id")` retorna 10 titulos reais.
+- **Dependencia:** T0.4 (referencia spotify a criar)
+
+#### `[ ]` T2.9 — UI upload: campo artista com autocomplete + custom + validacao Spotify
+
+- **Arquivos:**
+  - `web/components/SeletorDeArtista.tsx`
+  - `web/app/api/artistas/search/route.ts`
+  - `web/app/api/artistas/validate/route.ts`
+- **O que fazer:**
+  - Combobox shadcn que busca em `artistas_referencia` por nome (debounced 200ms)
+  - Suporta multi-select (artista principal + colaboradores)
+  - Se digitado nao bate nada na lista: oferece "Usar 'XYZ' como custom"
+  - Custom passa por `POST /api/artistas/validate` que chama spotify_service.search_artist → confirma com producer "Voce quis dizer X?"
+  - Apos confirmar, custom validado pode virar row em `artistas_referencia` (ou ficar como custom local — definir em design)
+- **Criterio de pronto:** Producer digita "drake" → autocomplete lista Drake. Producer digita "FAKEMINK" custom → Spotify normaliza pra "Fakemink" e confirma.
+- **Dependencia:** T2.6, T2.7, T2.8
+
+#### `[ ]` T2.10 — UI upload: cards visuais de mood (6 opcoes)
+
+- **Arquivos:** `web/components/SeletorDeMood.tsx`
+- **O que fazer:** Grid de 6 cards (sad/aggressive/romantic/dark/energetic/atmospheric). Cada card com cor de fundo + emoji grande + nome. Selecao single, obrigatoria. Estado armazenado no form.
+- **Criterio de pronto:** Form de upload nao envia sem mood selecionado. Click visual claro. Mobile-friendly.
+- **Dependencia:** T2.1
+
+#### `[ ]` T2.11 — UI upload: opcao "usar minha propria capa" (toggle)
+
+- **Arquivos:** `web/components/UploadForm.tsx` (atualiza T2.1)
+- **O que fazer:** Toggle/radio no form: "Capa: [Gerar com IA] [Enviar minha]". Se "Enviar minha", aparece input file (jpg/png, max 5MB). Se "Gerar com IA", nao aparece input — capa sera gerada no worker. Default = "Gerar com IA".
+- **Criterio de pronto:** Toggle alterna corretamente. Upload com cover_source=manual salva capa no storage. Upload com cover_source=ai nao exige capa.
+- **Dependencia:** T2.1, T2.6
+
+#### `[ ]` T2.12 — Endpoint POST /beats atualizado: aceitar artistas + mood + cover_source + visual_style override
+
+- **Arquivos:** `api/app/routes/beats.py` (atualiza T2.2)
+- **O que fazer:** Atualizar o endpoint da T2.2 para receber `{audio_path, cover_path?, artista_principal_id, colaboradores_ids?, mood, cover_source, visual_style?}`. Validar mood obrigatorio. Validar consistencia cover_source/cover_path. Inserir em `beats` + `beat_artistas`.
+- **Criterio de pronto:** POST com todos campos cria row + relacoes corretamente. POST sem mood retorna 400.
+- **Dependencia:** T2.2, T2.6
 
 ---
 
@@ -279,12 +361,12 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 #### `[ ]` T4.1 — Service: anthropic_service.generate_3_variants
 
 - **Arquivo:** `api/app/services/anthropic_service.py`
-- **O que fazer:** Funcao recebe `(beat_metadata)` e retorna 3 pacotes `{titulo, descricao, tags[]}`. Prompt forca angulos distintos:
-  - **A:** angulo `[Artista 1] Type Beat - [Mood]`
+- **O que fazer:** Funcao recebe `(beat_metadata)` e retorna 3 pacotes `{titulo, descricao, tags[]}`. Inputs incluem: artista principal + colaboradores (do form), mood (do form, cards visuais), BPM/key/vibe (do analyze.py), tags trending (do analyze.py), e **top 10 musicas do artista via Spotify API** (para alimentar nomes inspirados). Prompt forca angulos distintos:
+  - **A:** angulo `[Artista 1] Type Beat - [Mood]` com nome inspirado no estilo lexical dos hits do artista (ex: Drake → "GOD PLAN", "FEELINGS"). Importante: **inspirado em, nao copia literal** — evita problema de copyright.
   - **B:** angulo `[BPM] BPM [Genero] Type Beat - [Tom]`
-  - **C:** angulo `[Artista 2] x [Artista 3] Type Beat - [Vibe]`
-- **Criterio de pronto:** 3 titulos disjuntos (>50% palavras diferentes), tags com >50% disjuncao entre as 3 variacoes
-- **Dependencia:** T0.4 (referencia Claude)
+  - **C:** angulo `[Artista 2] x [Artista 3] Type Beat - [Vibe]` (usa colaboradores se houver, senao usa artistas similares do analyze)
+- **Criterio de pronto:** 3 titulos disjuntos (>50% palavras diferentes), tags com >50% disjuncao entre as 3 variacoes. Pra "Drake" + mood "sad", pelo menos 1 dos 3 titulos tem palavra-chave inspirada em hit real (testavel comparando com top tracks Spotify).
+- **Dependencia:** T0.4 (referencia Claude), T2.8 (spotify_service)
 
 #### `[ ]` T4.2 — Worker generate.py cria 3 rows em posts
 
@@ -313,6 +395,71 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **O que fazer:** Gera 3 variacoes pra um beat, valida disjuncao titulos + tags
 - **Criterio de pronto:** `pytest -m slow` passa
 - **Dependencia:** T4.1
+
+#### `[ ]` T4.6 — Curadoria visual: 6-7 prompts mestres de estilo + 3 capas exemplo cada
+
+- **Arquivos:**
+  - `api/app/services/estilos_visuais.py` (constantes com prompts mestres)
+  - `web/lib/estilos-visuais.ts` (espelho frontend pra galeria)
+  - Storage: `public/estilos-exemplo/{slug}/{1,2,3}.jpg` (3 capas exemplo por estilo)
+- **O que fazer:** Gustavo cura iterativamente 6-7 estilos visuais (sugestao inicial: Ghost Mode, Midnight Drive, Burn It Down, Nightmare Mode, Golden Hour, VHS Tape, Trap Dreams). Pra cada estilo:
+  1. Escreve prompt mestre com sintaxe de variacao (`rotate between scenes`, `alternate palettes`)
+  2. Define modificadores por mood (sad/aggressive/etc — ver tabela em `2026-05-07-fluxo-upload-e-inputs-do-produtor.md`)
+  3. Gera 5-10 capas de teste com prompt + mood combinations
+  4. Valida visualmente (precisa parecer capa real de underground type beat, nao IA-slop)
+  5. Salva 3 melhores no storage como exemplo pro onboarding
+- **Criterio de pronto:** 6-7 estilos com prompt validado + 3 capas exemplo cada. Documentado em `docs/referencias/estilos-visuais.md` (criar) com nome + slug + descricao + casos de uso.
+- **Dependencia:** T4.7 (precisa do fal_service rodando)
+- **Estimativa:** 1-2 semanas de trabalho de curadoria visual. **Bloqueante pra fechar Fase 4**.
+- **Nota:** NAO tentar gerar prompts mestres via Claude sem validacao visual humana. Capa IA-slop arruina diferencial.
+
+#### `[ ]` T4.7 — Service: fal_service.py (integracao fal.ai gpt-image-2)
+
+- **Arquivos:** `api/app/services/fal_service.py`
+- **O que fazer:**
+  - SDK `fal-client` Python
+  - Funcao `generate_cover(prompt: str, output_path: str) -> {url, cost_usd}` que chama `fal-ai/gpt-image-2`
+  - Aspecto 1:1 (capa quadrada YouTube). Resolucao alta (1536x1536+).
+  - Retorno inclui custo registrado ($0.05/imagem).
+  - Erro graceful: timeout, rate limit, conteudo bloqueado.
+- **Criterio de pronto:** Funcao com prompt teste retorna URL valida. Imagem baixada bate aspecto e resolucao.
+- **Dependencia:** T0.4 (referencia fal.ai a criar)
+
+#### `[ ]` T4.8 — Worker cover.py: gera capa via IA
+
+- **Arquivos:** `api/app/workers/cover.py`
+- **O que fazer:** Endpoint `/internal/beats/{id}/generate_cover`. State machine:
+  - Checa `beats.cover_source`. Se `manual`, marca `cover_status='ready'` e retorna (idempotente).
+  - Carrega beat + user data. Determina estilo: `beats.visual_style` (override por upload) ou `users.default_visual_style`.
+  - Carrega prompt mestre do estilo + modificador do mood.
+  - Monta prompt final (com variacao de cena, paleta, etc).
+  - Chama `fal_service.generate_cover()`.
+  - Salva imagem em `covers/{user_id}/{beat_id}/cover.jpg` (Supabase Storage).
+  - Atualiza `beats.cover_url` e `cover_status='ready'`.
+  - Chama `usage_tracker.track(user_id, 'cover_generation', cost_usd=0.05)`.
+- **Criterio de pronto:** Beat com mood=sad + estilo=ghost_mode → capa gerada salva em storage. `api_usage` registra custo. Idempotente: re-execucao nao gera nova capa se ja existe.
+- **Dependencia:** T4.6, T4.7, T2.6
+
+#### `[ ]` T4.9 — Worker generate.py dispara cover.py em paralelo
+
+- **Arquivos:** `api/app/workers/generate.py` (atualiza T4.2)
+- **O que fazer:** Apos generate.py criar 3 posts e marcar `status=ready_for_review`, **se `cover_source='ai'`**, dispara QStash → `cover.py`. Em paralelo, nao bloqueante. UI mostra placeholder "Gerando capa..." enquanto isso.
+- **Criterio de pronto:** Apos generate, se cover_source=ai, job aparece no QStash apontando pra cover.py. Se cover_source=manual, nao dispara.
+- **Dependencia:** T4.2, T4.8
+
+#### `[ ]` T4.10 — UI: preview da capa + botao "regerar"
+
+- **Arquivos:** `web/components/CapaPreview.tsx`, atualiza `web/app/(app)/beats/[id]/page.tsx`
+- **O que fazer:** Na tela de review, mostra capa gerada (ou placeholder loading se ainda processando). Botao "Regenerar capa" (icone refresh) chama `POST /api/beats/{id}/regenerate-cover`. Endpoint dispara cover.py de novo (cost: $0.05 + 1 da quota futura). Atualiza preview ao vivo via Supabase Realtime.
+- **Criterio de pronto:** Tela de review mostra capa quando pronta. Click em regenerar gera nova capa em ~10s. usage_tracker registra cada regeneracao.
+- **Dependencia:** T4.8, T4.3
+
+#### `[ ]` T4.11 — Test: pipeline com capa IA ponta-a-ponta
+
+- **Arquivos:** `api/tests/integration/test_cover_pipeline.py` (marker `@slow`)
+- **O que fazer:** Cria user fake, sobe beat sem capa custom, mood=dark, estilo=midnight_drive. Valida que: capa foi gerada, salva no storage, `api_usage` tem row, `beats.cover_status='ready'`.
+- **Criterio de pronto:** Test `@slow` passa.
+- **Dependencia:** T4.8
 
 ---
 
@@ -418,3 +565,4 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **2026-04-25 17:00** — T0.2 fechada. Este `_tasks-mvp.md` criado.
 - **2026-04-25 17:30** — T0.3 fechada. 14 docs em `docs/` (6 ADRs + 3 contexto + 4 arquitetura + 1 sessao).
 - **2026-04-25 18:00** — T0.4 fechada. 9 docs em `docs/referencias/` (Context7 pra Next.js/Gemini/QStash; conhecimento solido pras outras 6). Proximo: T0.5 (Supabase, requer login Henrique).
+- **2026-05-07** — Sessao de produto com Gustavo (`docs/sessoes/2026-05-07-brainstorm-jornada-cliente.md`). Definidos inputs do upload (artista via lista controlada + Spotify, mood via cards visuais) e geracao de capa por IA entra no MVP (fal.ai gpt-image-2, $0.05/imagem, estilo do perfil + mood do beat). 2 ADRs criadas (`2026-05-07-fluxo-upload-e-inputs-do-produtor.md`, `2026-05-07-geracao-de-capa-mvp.md`). Tasks novas adicionadas: T1.7 (onboarding), T2.6-T2.12 (inputs do upload + Spotify), T4.6-T4.11 (curadoria de estilos + capa IA). Regra 6 do CLAUDE.md atualizada.

@@ -1,8 +1,10 @@
 # Capa upload manual no MVP (vs geracao por IA)
 
 **Data:** 2026-04-25
-**Status:** aceita
-**Tags:** decisao, produto, mvp, escopo, ia
+**Status:** parcialmente superseded em 2026-05-07
+**Tags:** decisao, produto, mvp, escopo, ia, superseded-parcial
+
+> ⚠️ **Atualizacao 2026-05-07:** Esta decisao foi parcialmente revisada. Capa manual continua disponivel em todos os tiers como fallback obrigatorio, mas geracao por IA tambem entra no MVP (via estilo do perfil + mood do beat, nao por nome de artista). Custo caiu pra $0.05/imagem via fal.ai gpt-image-2. Ver: `docs/decisoes/2026-05-07-geracao-de-capa-mvp.md`.
 
 ## Contexto
 
