@@ -59,7 +59,7 @@ Este doc e versao resumida focada em decisoes que viraram MVP.
 | Multitenancy | Supabase RLS dia 1 |
 | Postagem | A/B/C no mesmo canal (nao multi-canal no MVP) |
 | Capa | Manual (sem geracao IA no MVP) |
-| Vibe + tags | Gemini 2.0 Audio + grounded search |
+| Vibe + tags | Gemini 2.0 Audio + grounded search *(refinado em 2026-05-07: mood passa a vir do produtor; Gemini detecta apenas BPM/key/genero/artistas similares + tags trending)* |
 | Nome do beat | IA sugere 3, user escolhe |
 | Cobranca | Pix na unha ate 10o pagante |
 

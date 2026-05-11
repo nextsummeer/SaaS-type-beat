@@ -45,7 +45,7 @@ Plano original: `~/.claude/plans/bom-na-verdade-vamos-sorted-lamport.md`
 | **Multi-canal** | Fora do MVP. 1 canal por user. V2 expande. | `2026-04-25-3-variacoes-abc.md` |
 | **Multitenancy** | Supabase RLS desde dia 1 em TODAS as tabelas com `user_id` | `2026-04-25-multitenancy-rls.md` |
 | **Capa** | IA por estilo+mood (fal.ai gpt-image-2 $0.05) **OU** upload manual em todos os tiers. Sem texto, sem nome de artista. | `2026-05-07-geracao-de-capa-mvp.md` (revisa `2026-04-25-capa-manual.md`) |
-| **Vibe + tags** | Gemini 2.0 Audio + Google Search grounding. Sem Cyanite, sem banco proprio. | `2026-04-25-gemini-vs-cyanite.md` |
+| **Analise tecnica + tags** | Gemini 2.0 Audio (BPM/key/genero/artistas similares) + Google Search grounding (tags trending). Sem Cyanite, sem banco proprio. Mood NAO vem do Gemini — vem do produtor (cards visuais). | `2026-04-25-gemini-vs-cyanite.md` (refinada em 2026-05-07) |
 | **Nome do beat** | IA sugere 3 (formato `[Artista] Type Beat - [Mood]`) com nomes inspirados nos top hits do artista via Spotify API. User escolhe ou edita. | `2026-04-25-3-variacoes-abc.md` + `2026-05-07-fluxo-upload-e-inputs-do-produtor.md` |
 | **Input do upload** | Producer informa artista (lista controlada + Spotify normaliza custom) + mood (cards visuais 6 opcoes). IA NAO adivinha. | `2026-05-07-fluxo-upload-e-inputs-do-produtor.md` |
 | **Estilo visual** | Producer escolhe 1 dos 6-7 estilos no onboarding (default do canal). Pode trocar por upload. | `2026-05-07-geracao-de-capa-mvp.md` |
@@ -315,13 +315,15 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 
 ### Fase 3 — Analise IA Gemini Audio + grounded search (Gustavo executa)
 
-> **Por que:** sem analise, nao tem como gerar copy direcionado. Gemini classifica vibe, busca tags trending.
+> **Por que:** sem analise tecnica + tags trending, nao tem como gerar copy direcionado. Gemini extrai BPM/key/genero, sugere artistas similares (backup) e busca tags trending no Google.
+>
+> **Importante:** mood do beat **NAO** vem do Gemini — vem do produtor via cards visuais no upload (T2.10). Gemini detecta apenas genero musical (trap/drill/afrobeat/etc), nao mood emocional.
 
 #### `[ ]` T3.1 — Service: gemini_service.analyze_audio
 
 - **Arquivo:** `api/app/services/gemini_service.py`
-- **O que fazer:** Funcao `analyze_audio(mp3_path) -> {bpm, key, vibe, artistas_similares[]}`. Usa Gemini File API se >20MB (ja documentado em referencias). Prompt estruturado pedindo JSON.
-- **Criterio de pronto:** Beat trap real → retorna BPM dentro de tolerancia +-5%, 3+ artistas similares plausiveis
+- **O que fazer:** Funcao `analyze_audio(mp3_path) -> {bpm, key, genero, artistas_similares[]}`. Usa Gemini File API se >20MB (ja documentado em referencias). Prompt estruturado pedindo JSON. **Nao pedir mood/vibe** — esse input vem do produtor. `artistas_similares` serve de backup pra alimentar o angulo C do generate.py quando o produtor nao informou colaboradores.
+- **Criterio de pronto:** Beat trap real → retorna BPM dentro de tolerancia +-5%, genero plausivel, 3+ artistas similares plausiveis
 - **Dependencia:** T0.4 (referencia gemini-audio.md)
 
 #### `[ ]` T3.2 — Service: gemini_service.search_trending_tags (grounded)
@@ -335,7 +337,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 
 - **Arquivos:** `api/app/workers/analyze.py`
 - **O que fazer:** Endpoint `/internal/beats/{id}/analyze`. Carrega MP3 convertido, chama T3.1 + T3.2, salva campos no row, status=analyzed, dispara QStash → generate.
-- **Criterio de pronto:** Beat ja convertido → row tem bpm, key, vibe, artistas_similares, tags_sugeridas preenchidos. Status=analyzed.
+- **Criterio de pronto:** Beat ja convertido → row tem bpm, key, genero, artistas_similares, tags_sugeridas preenchidos. Status=analyzed. Mood NAO e preenchido aqui (ja veio do produtor no upload).
 - **Dependencia:** T3.1, T3.2
 
 #### `[ ]` T3.4 — usage_tracker registra cost_usd em api_usage
@@ -361,10 +363,10 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 #### `[ ]` T4.1 — Service: anthropic_service.generate_3_variants
 
 - **Arquivo:** `api/app/services/anthropic_service.py`
-- **O que fazer:** Funcao recebe `(beat_metadata)` e retorna 3 pacotes `{titulo, descricao, tags[]}`. Inputs incluem: artista principal + colaboradores (do form), mood (do form, cards visuais), BPM/key/vibe (do analyze.py), tags trending (do analyze.py), e **top 10 musicas do artista via Spotify API** (para alimentar nomes inspirados). Prompt forca angulos distintos:
+- **O que fazer:** Funcao recebe `(beat_metadata)` e retorna 3 pacotes `{titulo, descricao, tags[]}`. Inputs incluem: artista principal + colaboradores (do form), mood (do form, cards visuais), BPM/key/genero (do analyze.py), artistas_similares (do analyze.py — backup pra angulo C), tags trending (do analyze.py), e **top 10 musicas do artista via Spotify API** (para alimentar nomes inspirados). Prompt forca angulos distintos:
   - **A:** angulo `[Artista 1] Type Beat - [Mood]` com nome inspirado no estilo lexical dos hits do artista (ex: Drake → "GOD PLAN", "FEELINGS"). Importante: **inspirado em, nao copia literal** — evita problema de copyright.
   - **B:** angulo `[BPM] BPM [Genero] Type Beat - [Tom]`
-  - **C:** angulo `[Artista 2] x [Artista 3] Type Beat - [Vibe]` (usa colaboradores se houver, senao usa artistas similares do analyze)
+  - **C:** angulo `[Artista 2] x [Artista 3] Type Beat - [Genero]` (usa colaboradores se houver, senao usa artistas similares do analyze; usa genero detectado pelo Gemini)
 - **Criterio de pronto:** 3 titulos disjuntos (>50% palavras diferentes), tags com >50% disjuncao entre as 3 variacoes. Pra "Drake" + mood "sad", pelo menos 1 dos 3 titulos tem palavra-chave inspirada em hit real (testavel comparando com top tracks Spotify).
 - **Dependencia:** T0.4 (referencia Claude), T2.8 (spotify_service)
 

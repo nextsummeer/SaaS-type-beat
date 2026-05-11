@@ -8,7 +8,7 @@
 
 A versao original do MVP previa que a IA inferisse o "estilo" do beat (qual artista de referencia, qual genero, qual mood) atraves da analise de audio do Gemini. Isso e a tatica que a BeatStars adotou nas novas features de IA deles (geracao automatica de nome / descricao / tags).
 
-Gustavo testou a feature da BeatStars com um beat afrobeat e validou que **a abordagem "IA adivinha tudo pelo audio" entrega resultados genericos e fora da vibe**. O Gemini consegue detectar BPM, tom e mood com confianca, mas nao consegue acertar com precisao o artista de referencia (Drake vs Don Toliver vs The Weeknd e indistinguivel sem contexto).
+Gustavo testou a feature da BeatStars com um beat afrobeat e validou que **a abordagem "IA adivinha tudo pelo audio" entrega resultados genericos e fora da vibe**. O Gemini consegue detectar BPM, tom e genero musical com confianca, mas (a) nao consegue acertar com precisao o artista de referencia (Drake vs Don Toliver vs The Weeknd e indistinguivel sem contexto), e (b) detectar mood emocional pelo audio sozinho gera classificacoes inconsistentes que nao casam com a intencao do produtor (mesmo beat pode ser "sad" pra um ouvido e "atmospheric" pra outro).
 
 A conclusao da sessao 2026-05-07 (brainstorm-jornada-cliente.md) foi clara: **o produtor SABE pra qual artista o beat foi feito**. Pedir pra IA adivinhar e remover agencia do produtor e adicionar um ponto de erro evitavel.
 

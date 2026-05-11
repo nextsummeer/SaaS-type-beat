@@ -35,6 +35,8 @@ create trigger youtube_accounts_updated
   for each row execute function set_updated_at();
 
 -- beats
+-- Nota 2026-05-07: mood, cover_source, visual_style sao adicionados na migration 004 (T2.6).
+-- Mood vem do produtor (cards visuais no upload), nao do Gemini.
 create table beats (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -43,11 +45,11 @@ create table beats (
   cover_path text,
   video_path text,                     -- mp4 gerado (capa+audio)
   status text not null default 'uploaded',
-  bpm int,
-  music_key text,
-  vibe text,
-  artistas_similares jsonb,
-  tags_sugeridas jsonb,
+  bpm int,                             -- do analyze.py (Gemini)
+  music_key text,                      -- do analyze.py (Gemini)
+  genero text,                         -- do analyze.py (Gemini) — trap, drill, afrobeat, etc
+  artistas_similares jsonb,            -- do analyze.py (Gemini) — backup pra angulo C do generate
+  tags_sugeridas jsonb,                -- do analyze.py (Gemini grounded search)
   duracao_segundos int,
   error_message text,
   created_at timestamptz default now(),

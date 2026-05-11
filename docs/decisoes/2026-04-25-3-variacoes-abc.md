@@ -31,9 +31,11 @@ Confirmado via AskUserQuestion 2026-04-25 15:30. Multi-canal fica pra V2 quando 
 ### Como Claude gera 3 angulos distintos
 
 Prompt forca disjuncao explicita:
-- **A:** angulo `[Artista 1 detectado] Type Beat - [Mood]`
-- **B:** angulo `[BPM] BPM [Genero] Type Beat - [Tom musical]`
-- **C:** angulo `[Artista 2] x [Artista 3] Type Beat - [Vibe]`
+- **A:** angulo `[Artista informado pelo produtor] Type Beat - [Mood do produtor]`
+- **B:** angulo `[BPM] BPM [Genero detectado] Type Beat - [Tom musical detectado]`
+- **C:** angulo `[Artista 2] x [Artista 3] Type Beat - [Genero detectado]` (colaboradores informados pelo produtor OU artistas similares do Gemini como backup)
+
+> Nota 2026-05-07: Artista vem do produtor (lista controlada + Spotify), nao detectado pelo Gemini. Mood vem do produtor (cards visuais), nao do Gemini. Gemini fornece BPM, key, genero e artistas similares (backup). Ver `2026-05-07-fluxo-upload-e-inputs-do-produtor.md`.
 
 Criterio de pronto (T4.5):
 - Titulos com >50% palavras diferentes entre as 3

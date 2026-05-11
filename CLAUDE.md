@@ -46,7 +46,8 @@ WORKER 1 — convert.py (ffmpeg → MP3 320kbps + loudnorm)
    │
    ▼
 WORKER 2 — analyze.py (Gemini Audio + grounded search)
-   │  bpm, key, vibe, artistas_similares, tags_trending
+   │  bpm, key, genero, artistas_similares (backup), tags_trending
+   │  obs: mood vem do produtor (cards visuais), nao do Gemini
    ▼
 WORKER 3 — generate.py (Claude → 3 pacotes A/B/C)
    │  3 rows em posts (titulo + desc + tags)

@@ -32,7 +32,9 @@ def upload_audio(mp3_path: str):
 
 Files ficam disponiveis 48h. Apos isso, re-upload.
 
-## Analise de vibe (BPM, key, mood, artistas similares)
+## Analise tecnica (BPM, key, genero, artistas similares)
+
+> **Importante:** Mood do beat NAO e analisado aqui — vem do produtor via cards visuais no upload. Ver `docs/decisoes/2026-05-07-fluxo-upload-e-inputs-do-produtor.md`. Gemini detecta apenas dados tecnicos (BPM, key) e classificacao musical objetiva (genero, artistas similares de referencia).
 
 ```python
 def analyze_audio(mp3_path: str) -> dict:
@@ -44,9 +46,9 @@ def analyze_audio(mp3_path: str) -> dict:
             "Voce ouviu um beat instrumental. Analise e retorne JSON com:\n"
             "- bpm: int (estimativa)\n"
             "- key: str (ex: 'C# minor', 'F major')\n"
-            "- vibe: str (3-5 palavras descrevendo, ex: 'dark, melodic, trap')\n"
-            "- artistas_similares: list[str] (3-5 artistas que provavelmente comprariam ou usariam esse beat)\n"
-            "- genero: str (trap, drill, hyperpop, plug, boom bap, etc)\n",
+            "- genero: str (trap, drill, hyperpop, plug, boom bap, afrobeat, etc)\n"
+            "- artistas_similares: list[str] (3-5 artistas que provavelmente comprariam ou usariam esse beat — usado como BACKUP no gerador de copy quando o produtor nao informou colaboradores)\n"
+            "NAO retorne mood/vibe — esse input vem do produtor.",
             audio_file,
         ],
         config=types.GenerateContentConfig(
@@ -56,14 +58,13 @@ def analyze_audio(mp3_path: str) -> dict:
                 properties={
                     "bpm": types.Schema(type=types.Type.INTEGER),
                     "key": types.Schema(type=types.Type.STRING),
-                    "vibe": types.Schema(type=types.Type.STRING),
+                    "genero": types.Schema(type=types.Type.STRING),
                     "artistas_similares": types.Schema(
                         type=types.Type.ARRAY,
                         items=types.Schema(type=types.Type.STRING),
                     ),
-                    "genero": types.Schema(type=types.Type.STRING),
                 },
-                required=["bpm", "key", "vibe", "artistas_similares", "genero"],
+                required=["bpm", "key", "genero", "artistas_similares"],
             ),
         ),
     )

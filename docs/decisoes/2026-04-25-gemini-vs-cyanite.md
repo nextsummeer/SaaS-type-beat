@@ -1,13 +1,15 @@
 # Gemini Audio + grounded search (vs Cyanite, vs banco proprio)
 
 **Data:** 2026-04-25
-**Status:** aceita
+**Status:** aceita (refinada em 2026-05-07)
 **Tags:** decisao, ia, audio, seo
+
+> ⚠️ **Atualizacao 2026-05-07:** O escopo do Gemini foi reduzido. Mood agora vem do produtor (cards visuais no upload, ver `2026-05-07-fluxo-upload-e-inputs-do-produtor.md`), nao mais do Gemini. Gemini continua detectando BPM, key, **genero** (trap/drill/afrobeat/etc) e sugerindo artistas similares como backup. Grounded search pra tags trending continua igual.
 
 ## Contexto
 
 Sistema precisa, dado um MP3, retornar:
-1. **Vibe musical:** BPM, tom, genero, mood, artistas similares
+1. **Analise tecnica:** BPM, tom, genero musical, artistas similares (backup quando produtor nao informou colaboradores)
 2. **Tags trending no YouTube:** termos que beatmakers usam pra rankear
 
 Sao dois problemas distintos. Avaliamos solucoes pra cada.
@@ -15,11 +17,11 @@ Sao dois problemas distintos. Avaliamos solucoes pra cada.
 ## Opcoes Consideradas
 
 ### 1. Gemini 2.0 Flash Audio + Gemini com `google_search` tool (grounded)
-- **Pros:** 1 vendor pros 2 problemas. Gemini Audio extrai BPM/key/vibe/artistas com qualidade boa pra MVP. Grounded search retorna tags com base em pesquisa real do Google. Custo baixo (~$0.10-0.30 por beat completo). Free tier generoso.
+- **Pros:** 1 vendor pros 2 problemas. Gemini Audio extrai BPM/key/genero/artistas com qualidade boa pra MVP. Grounded search retorna tags com base em pesquisa real do Google. Custo baixo (~$0.10-0.30 por beat completo). Free tier generoso.
 - **Contras:** BPM/key nao tem precisao laboratorial. Pode errar artistas em casos de niche. Grounded search depende de Google indexar termos type beat (geralmente funciona).
 
 ### 2. Cyanite.ai (API comercial de music analysis)
-- **Pros:** ~99% acuracia em BPM/key/genero/mood. Output formal e estruturado.
+- **Pros:** ~99% acuracia em BPM/key/genero. Output formal e estruturado.
 - **Contras:** Pay-per-use $0.10-0.30/analise. Nao resolve tags trending (apenas analise musical). Precisa cadastrar billing. Lock-in com vendor.
 
 ### 3. Banco proprio em Supabase (curado manualmente)
@@ -34,13 +36,14 @@ Sao dois problemas distintos. Avaliamos solucoes pra cada.
 
 **Veredito: Opcao 1 — Gemini Audio + Gemini grounded search.**
 
-Confirmado via AskUserQuestion 2026-04-25 15:30. Cobre os 2 problemas com 1 vendor, custo baixo, 0 infra adicional. Vibe pode nao ser laboratorial mas e suficiente pra gerar copy direcionado. Tags via grounded search funcionam quando Google indexa o nicho — e type beat esta saturado de paginas indexadas.
+Confirmado via AskUserQuestion 2026-04-25 15:30. Cobre os 2 problemas com 1 vendor, custo baixo, 0 infra adicional. Analise tecnica pode nao ser laboratorial mas e suficiente pra gerar copy direcionado. Tags via grounded search funcionam quando Google indexa o nicho — e type beat esta saturado de paginas indexadas.
 
-### Implementacao
+### Implementacao (atualizada em 2026-05-07)
 
-- **`gemini_service.analyze_audio(mp3_path)`** retorna `{bpm, key, vibe, artistas_similares: [str]}`
+- **`gemini_service.analyze_audio(mp3_path)`** retorna `{bpm, key, genero, artistas_similares: [str]}`
   - Usa Gemini File API se MP3 > 20MB (3+ min em 320kbps)
-  - Prompt: "Voce ouviu um beat. Identifique: BPM (numero), tonalidade (ex: C# minor), vibe em 3-5 palavras, e 3-5 artistas que provavelmente comprariam ou usariam esse beat. Responda em JSON."
+  - Prompt: "Voce ouviu um beat. Identifique: BPM (numero), tonalidade (ex: C# minor), genero musical (trap, drill, afrobeat, boom bap, hyperpop, etc), e 3-5 artistas que provavelmente comprariam ou usariam esse beat. Responda em JSON."
+  - **NAO pedir mood/vibe** — mood vem do produtor via cards visuais (ver `2026-05-07-fluxo-upload-e-inputs-do-produtor.md`)
 - **`gemini_service.search_trending_tags(artistas)`** retorna `{tags: [str]}`
   - Usa Gemini com tool `google_search` ativada
   - Prompt: "Pesquise no Google quais sao as tags YouTube mais usadas em videos de '{artista} type beat' nas ultimas semanas. Retorne 15+ tags ordenadas por uso. Responda em JSON."
