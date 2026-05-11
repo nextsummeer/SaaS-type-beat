@@ -43,9 +43,10 @@ export function UploadForm() {
 
       await uploadWithProgress(signedData.signedUrl, audioFile, setAudioProgress)
 
+      let coverPath: string | null = null
       if (coverFile) {
         const coverExt = coverFile.name.split('.').pop()?.toLowerCase() ?? 'jpg'
-        const coverPath = `${user.id}/${beatId}/cover.${coverExt}`
+        coverPath = `${user.id}/${beatId}/cover.${coverExt}`
         const { data: coverSigned, error: coverSignedError } = await supabase.storage
           .from('covers')
           .createSignedUploadUrl(coverPath)
@@ -53,6 +54,26 @@ export function UploadForm() {
           throw new Error(`Erro ao preparar upload da capa: ${coverSignedError?.message}`)
         }
         await uploadWithProgress(coverSigned.signedUrl, coverFile)
+      }
+
+      // Registra o beat no banco e dispara o pipeline
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Sessão expirada')
+
+      const apiRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/beats`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ audio_path: audioPath, cover_path: coverPath }),
+        },
+      )
+      if (!apiRes.ok) {
+        const err = await apiRes.json().catch(() => ({}))
+        throw new Error(err.detail ?? 'Erro ao registrar beat')
       }
 
       setStatus('done')
