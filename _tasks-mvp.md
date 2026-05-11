@@ -1,12 +1,12 @@
 # _tasks — [NOME] Fase 1 (MVP) @gustavo
 
 **Criado:** 2026-04-25
-**Atualizado:** 2026-05-07
+**Atualizado:** 2026-05-11
 **Outcome:** Produtor convidado faz login, escolhe estilo visual padrao (onboarding), conecta canal YouTube, sobe um beat (qualquer formato) informando artista de referencia (lista controlada + Spotify) e mood (cards visuais), opcionalmente envia capa propria, recebe capa gerada por IA + 3 variacoes A/B/C de titulo+descricao+tags geradas pela IA (com nomes inspirados em hits do artista via Spotify), edita o que quiser, confirma agendamento, e ve 3 videos publicados/agendados no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Meta: beta fechado setembro 2026.
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** T0.7 — configurar Vercel (web/) + Railway (api/)
+**Proximo passo:** T0.7 — aguardando Gustavo configurar Vercel + Railway nos dashboards (codigo pronto)
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -135,7 +135,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** `gh repo view HENRIQUE4345/beatpost` mostra repo. Push de `master` ou `main` ok.
 - **Dependencia:** T0.5 (pra commitar com migrations dentro)
 
-#### `[ ]` T0.7 — Configurar Vercel (web/) + Railway (api/)
+#### `[~]` T0.7 — Configurar Vercel (web/) + Railway (api/)
 
 - **O que fazer:**
   - Vercel: importar repo, root directory = `web/`, framework Next.js, env vars do `.env.local`
@@ -570,3 +570,4 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **2026-05-11** — T0.5 + T0.6 fechadas. Supabase criado, migrations aplicadas, commit + push pro GitHub (nextsummeer/SaaS-type-beat).
 - **2026-05-11** — T0.5 fechada. Supabase project `beatpost-mvp` criado (sa-east-1). 3 migrations aplicadas (tabelas, RLS, storage buckets). IDs atualizados no CLAUDE.md.
 - **2026-05-07** — Sessao de produto com Gustavo (`docs/sessoes/2026-05-07-brainstorm-jornada-cliente.md`). Definidos inputs do upload (artista via lista controlada + Spotify, mood via cards visuais) e geracao de capa por IA entra no MVP (fal.ai gpt-image-2, $0.05/imagem, estilo do perfil + mood do beat). 2 ADRs criadas (`2026-05-07-fluxo-upload-e-inputs-do-produtor.md`, `2026-05-07-geracao-de-capa-mvp.md`). Tasks novas adicionadas: T1.7 (onboarding), T2.6-T2.12 (inputs do upload + Spotify), T4.6-T4.11 (curadoria de estilos + capa IA). Regra 6 do CLAUDE.md atualizada.
+- **2026-05-11** — T0.7 codigo pronto. web/: Next.js 16 + TypeScript + Tailwind + shadcn/ui (build passando). api/: FastAPI minimo com /health + requirements.txt + Procfile + nixpacks.toml. Aguardando Gustavo configurar Vercel e Railway nos dashboards. T1.1 tambem coberta (setup Next.js completo ja feito aqui).
