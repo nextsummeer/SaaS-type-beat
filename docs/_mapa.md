@@ -50,3 +50,4 @@
 - `sessoes/2026-05-11-t12-a-t15-auth-dashboard.md` — T1.2→T1.5: Login Supabase Auth, middleware, dashboard+sidebar, API badge. Bugs e decisoes documentados. [ativo, importante]
 - `sessoes/2026-05-11-t16-t21-playwright-upload.md` — T1.6+T2.1: Playwright E2E (login→dashboard→logout), T1.7 bloqueada, UI de upload com progress bar direto para Supabase Storage. [ativo, importante]
 - `sessoes/2026-05-11-t22-endpoint-beats.md` — T2.2: POST /beats, supabase_service, qstash_service. Fixes: GRANT service_role, Vercel env vars, page.tsx redirect, ESLint Next.js 16. [ativo, importante]
+- `sessoes/2026-05-11-t23-a-t33-convert-analyze-librosa.md` — T2.3→T3.3: worker convert (MP3-only), pagina /beats/[id] Realtime, testes convert, analise BPM+tom com librosa (Gemini descartado para audio). [ativo, importante]
