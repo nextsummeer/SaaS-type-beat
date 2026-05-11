@@ -6,7 +6,7 @@
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** T0.7 — aguardando Gustavo configurar Vercel + Railway nos dashboards (codigo pronto)
+**Proximo passo:** T1.1 — setup Next.js ja coberto em T0.7, avancar para T1.2 (Login Supabase Auth)
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -135,7 +135,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** `gh repo view HENRIQUE4345/beatpost` mostra repo. Push de `master` ou `main` ok.
 - **Dependencia:** T0.5 (pra commitar com migrations dentro)
 
-#### `[~]` T0.7 — Configurar Vercel (web/) + Railway (api/)
+#### `[x]` T0.7 — Configurar Vercel (web/) + Railway (api/)
 
 - **O que fazer:**
   - Vercel: importar repo, root directory = `web/`, framework Next.js, env vars do `.env.local`
