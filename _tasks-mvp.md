@@ -6,7 +6,7 @@
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** T1.5 — API /health endpoint + integracao web→api
+**Proximo passo:** T1.6 — Test E2E login → dashboard → logout
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -178,7 +178,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Logado, ve sidebar. Clicar Sair desloga e volta pra `/login`.
 - **Dependencia:** T1.3
 
-#### `[ ]` T1.5 — API: `/health` endpoint + integracao web→api
+#### `[x]` T1.5 — API: `/health` endpoint + integracao web→api
 
 - **Arquivos:** `api/app/main.py`, `api/app/routes/health.py`, `web/lib/api.ts`
 - **O que fazer:** FastAPI app com CORS configurado. Rota `GET /health` retorna `{ok: true, version}`. Web chama no boot do dashboard.
@@ -573,4 +573,5 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **2026-05-11** — T0.7 codigo pronto. web/: Next.js 16 + TypeScript + Tailwind + shadcn/ui (build passando). api/: FastAPI minimo com /health + requirements.txt + Procfile + nixpacks.toml. Aguardando Gustavo configurar Vercel e Railway nos dashboards. T1.1 tambem coberta (setup Next.js completo ja feito aqui).
 - **2026-05-11** — T1.2 concluida. Supabase Auth configurado (@supabase/ssr). LoginForm com email/senha + Google OAuth. Callback em /auth/callback. web/.env.local criado (ANON_KEY pendente de preenchimento). Google OAuth pendente de config no Supabase dashboard.
 - **2026-05-11** — T1.3 concluida. Middleware web/middleware.ts protege rotas (dashboard, upload, beats, youtube, configuracoes, onboarding). Redirect pra /login se sem sessao. Redirect pra /dashboard se logado tenta acessar /login. Testado e funcionando.
+- **2026-05-11** — T1.5 concluida. web/lib/api.ts com healthCheck(). Dashboard mostra API: OK v0.1.0 (verde) apontando pro Railway. CORS funcionando.
 - **2026-05-11** — T1.4 concluida. Layout app com sidebar (web/app/(app)/layout.tsx), dashboard vazio (web/app/(app)/dashboard/page.tsx), Sidebar com Upload/Beats/YouTube/Sair (web/components/Sidebar.tsx). Logout funcional. Testado e funcionando.
