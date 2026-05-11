@@ -46,3 +46,4 @@
 - `sessoes/2026-05-07-concorrentes-e-stack.md` — Analise BeatValet, decisao de cobrir BeatStars na V1.5 [ativo]
 - `sessoes/2026-05-07-brainstorm-jornada-cliente.md` — Inputs do upload (artista, mood) + capa por IA entra no MVP [ativo, importante]
 - `sessoes/2026-05-11-setup-contas-e-supabase.md` — T0.5+T0.6: email do projeto, Supabase criado, 3 migrations aplicadas, push GitHub [ativo]
+- `sessoes/2026-05-11-t07-vercel-railway-setup.md` — T0.7+T1.1: Next.js web/ + FastAPI api/ + Vercel + Railway no ar. Problemas resolvidos documentados. [ativo, importante]
