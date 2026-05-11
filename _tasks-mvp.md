@@ -6,7 +6,7 @@
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** T1.1 — setup Next.js ja coberto em T0.7, avancar para T1.2 (Login Supabase Auth)
+**Proximo passo:** T1.3 — Middleware Next.js (redirect se nao autenticado)
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -150,14 +150,14 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 
 > **Por que:** sem auth, qualquer feature seguinte vira inseguranca multitenancy. Comeca pelo basico — login, route guard, layout.
 
-#### `[ ]` T1.1 — Setup inicial Next.js + Tailwind + shadcn/ui
+#### `[x]` T1.1 — Setup inicial Next.js + Tailwind + shadcn/ui
 
 - **Arquivo:** `web/`
 - **O que fazer:** `pnpm create next-app web --typescript --tailwind --app`. Instalar shadcn/ui (`npx shadcn@latest init`). Configurar paths, alias `@/`.
 - **Criterio de pronto:** `pnpm dev` em `web/` mostra pagina inicial Tailwind funcionando
 - **Dependencia:** T0.7
 
-#### `[ ]` T1.2 — Login Supabase Auth (email + Google)
+#### `[x]` T1.2 — Login Supabase Auth (email + Google)
 
 - **Arquivo:** `web/app/(auth)/login/page.tsx` + `web/lib/supabase/{client,server}.ts`
 - **O que fazer:** Componente `<LoginForm />` com Supabase Auth UI (`@supabase/auth-ui-react`). Provider Google habilitado no Supabase dashboard. Callback em `/auth/callback`.
@@ -571,3 +571,4 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **2026-05-11** — T0.5 fechada. Supabase project `beatpost-mvp` criado (sa-east-1). 3 migrations aplicadas (tabelas, RLS, storage buckets). IDs atualizados no CLAUDE.md.
 - **2026-05-07** — Sessao de produto com Gustavo (`docs/sessoes/2026-05-07-brainstorm-jornada-cliente.md`). Definidos inputs do upload (artista via lista controlada + Spotify, mood via cards visuais) e geracao de capa por IA entra no MVP (fal.ai gpt-image-2, $0.05/imagem, estilo do perfil + mood do beat). 2 ADRs criadas (`2026-05-07-fluxo-upload-e-inputs-do-produtor.md`, `2026-05-07-geracao-de-capa-mvp.md`). Tasks novas adicionadas: T1.7 (onboarding), T2.6-T2.12 (inputs do upload + Spotify), T4.6-T4.11 (curadoria de estilos + capa IA). Regra 6 do CLAUDE.md atualizada.
 - **2026-05-11** — T0.7 codigo pronto. web/: Next.js 16 + TypeScript + Tailwind + shadcn/ui (build passando). api/: FastAPI minimo com /health + requirements.txt + Procfile + nixpacks.toml. Aguardando Gustavo configurar Vercel e Railway nos dashboards. T1.1 tambem coberta (setup Next.js completo ja feito aqui).
+- **2026-05-11** — T1.2 concluida. Supabase Auth configurado (@supabase/ssr). LoginForm com email/senha + Google OAuth. Callback em /auth/callback. web/.env.local criado (ANON_KEY pendente de preenchimento). Google OAuth pendente de config no Supabase dashboard.
