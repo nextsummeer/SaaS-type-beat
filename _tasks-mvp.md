@@ -6,7 +6,7 @@
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** T2.2 — configurar env vars no Railway + testar end-to-end
+**Proximo passo:** T2.3 — Worker convert.py: ffmpeg → MP3 320kbps + loudnorm
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -216,7 +216,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Upload de WAV de 10MB mostra progress de 0 a 100%, salva no bucket `audios/{user_id}/{beat_id}/original.wav`
 - **Dependencia:** T0.5, T1.4
 
-#### `[~]` T2.2 — Endpoint POST /beats que cria row + dispara QStash
+#### `[x]` T2.2 — Endpoint POST /beats que cria row + dispara QStash
 
 - **Arquivos:** `api/app/routes/beats.py`, `api/app/services/supabase_service.py`, `api/app/services/qstash_service.py`
 - **O que fazer:** Recebe `{audio_path, cover_path}`, valida ownership (RLS via JWT do user), insere row em `beats` com status=uploaded, publica job QStash → `POST /api/beats/{id}/process`
@@ -577,4 +577,4 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **2026-05-11** — T1.4 concluida. Layout app com sidebar (web/app/(app)/layout.tsx), dashboard vazio (web/app/(app)/dashboard/page.tsx), Sidebar com Upload/Beats/YouTube/Sair (web/components/Sidebar.tsx). Logout funcional. Testado e funcionando.
 - **2026-05-11** — T2.1 concluida. web/lib/storage.ts (uploadWithProgress via XHR), web/components/UploadForm.tsx (dropzone audio + capa opcional + progress bar), web/app/(app)/upload/page.tsx. Testado: MP3 3.45MB salvo em audios/{user_id}/{beat_id}/original.mp3 no Supabase Storage. RLS funcionando.
 - **2026-05-11** — T1.6 concluida. Playwright instalado (v1.59.1). playwright.config.ts + web/e2e/auth.spec.ts criados. Teste cria user via Supabase admin, faz login, verifica dashboard, desloga, deleta user. pnpm test:e2e passa (1 passed, 22s).
-- **2026-05-11** — T2.2 codigo pronto. api/routes/beats.py (POST /beats), api/services/supabase_service.py, api/services/qstash_service.py. UploadForm atualizado para chamar API apos upload. ESLint configurado (eslint-config-next). Aguardando Railway env vars (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY) para validar end-to-end.
+- **2026-05-11** — T2.2 concluida. POST /beats funcionando end-to-end: upload → row em beats (status=uploaded) confirmado no Supabase. Fixes: GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role (permissao faltando), page.tsx raiz redirecionando para /dashboard, ESLint configurado (next lint removido no Next.js 16).
