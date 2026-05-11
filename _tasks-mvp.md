@@ -6,7 +6,7 @@
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** T2.6 — Migration: novos campos de input (mood, estilo, artistas)
+**Proximo passo:** T3.4 — usage_tracker (sem custo no librosa, registrar só chamadas pagas futuras)
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -320,12 +320,12 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 >
 > **Importante:** mood do beat **NAO** vem do Gemini — vem do produtor via cards visuais no upload (T2.10). Gemini detecta apenas genero musical (trap/drill/afrobeat/etc), nao mood emocional.
 
-#### `[ ]` T3.1 — Service: gemini_service.analyze_audio
+#### `[x]` T3.1 — Service: audio_service.detect_bpm_and_key
 
-- **Arquivo:** `api/app/services/gemini_service.py`
-- **O que fazer:** Funcao `analyze_audio(mp3_path) -> {bpm, key, genero, artistas_similares[]}`. Usa Gemini File API se >20MB (ja documentado em referencias). Prompt estruturado pedindo JSON. **Nao pedir mood/vibe** — esse input vem do produtor. `artistas_similares` serve de backup pra alimentar o angulo C do generate.py quando o produtor nao informou colaboradores.
-- **Criterio de pronto:** Beat trap real → retorna BPM dentro de tolerancia +-5%, genero plausivel, 3+ artistas similares plausiveis
-- **Dependencia:** T0.4 (referencia gemini-audio.md)
+- **Arquivo:** `api/app/services/audio_service.py`
+- **Decisao (2026-05-11):** Substituido Gemini por librosa (gratuito, preciso, deterministico). Detecta apenas BPM e tom musical (ex: "A minor"). Genero removido (IA falha muito). Artistas similares removidos (produtor informa o artista). Mood removido (vem do produtor via cards visuais). Tom detectado via perfis de Krumhansl-Kessler sobre chromagrama.
+- **Criterio de pronto:** Funcao retorna {bpm, music_key} para qualquer MP3 valido.
+- **Dependencia:** librosa, soundfile, ffmpeg (ja no nixpacks)
 
 #### `[ ]` T3.2 — Service: gemini_service.search_trending_tags (grounded)
 
@@ -334,12 +334,12 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Pra `["Drake", "The Weeknd"]` retorna 15+ tags com pelo menos 5 contendo "type beat"
 - **Dependencia:** T3.1
 
-#### `[ ]` T3.3 — Worker analyze.py orquestra + atualiza beats
+#### `[x]` T3.3 — Worker analyze.py orquestra + atualiza beats
 
 - **Arquivos:** `api/app/workers/analyze.py`
-- **O que fazer:** Endpoint `/internal/beats/{id}/analyze`. Carrega MP3 convertido, chama T3.1 + T3.2, salva campos no row, status=analyzed, dispara QStash → generate.
-- **Criterio de pronto:** Beat ja convertido → row tem bpm, key, genero, artistas_similares, tags_sugeridas preenchidos. Status=analyzed. Mood NAO e preenchido aqui (ja veio do produtor no upload).
-- **Dependencia:** T3.1, T3.2
+- **O que fazer:** Endpoint `/internal/beats/{id}/analyze`. Baixa MP3 do Storage para arquivo temporario, chama audio_service.detect_bpm_and_key, salva bpm e music_key no row, status=analyzed, dispara QStash → generate. Idempotente. T3.2 (tags) postergado para quando artista estiver disponivel (apos T2.9).
+- **Criterio de pronto:** Beat convertido → row tem bpm e music_key. Status=analyzed.
+- **Dependencia:** T3.1
 
 #### `[ ]` T3.4 — usage_tracker registra cost_usd em api_usage
 
@@ -582,3 +582,4 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **2026-05-11** — T2.3 concluida. Decisao de produto: MVP aceita somente MP3 com tag de produtor ja gravada — sem ffmpeg, sem loudnorm (preserva master do produtor). Worker convert.py valida existencia do arquivo no Storage, avanca status uploaded→converted, dispara job analyze no QStash. Upload form atualizado para aceitar so .mp3. qstash_service.py refatorado com funcao _dispatch generica + dispatch_analyze_job adicionado.
 - **2026-05-11** — T2.4 concluida. Pagina /beats/[id] com step list (Upload→Conversao→Analise→Geracao→Pronto). Status atualiza em tempo real via Supabase Realtime. Apos upload, UploadForm redireciona automaticamente para /beats/{id}. Pagina de upload ganhou aviso em amber explicando MP3 com tag de produtor.
 - **2026-05-11** — T2.5 concluida. 3 testes pytest para worker convert.py: caminho feliz (uploaded→converted + dispatch analyze), idempotencia (converted→skipped), arquivo ausente (→failed 422). Python 3.11 instalado via winget. 3 passed em 2s.
+- **2026-05-11** — T3.1+T3.3 concluidas. Decisao: librosa substituiu Gemini para analise de audio (gratuito, deterministico, preciso). Detecta BPM e tom (Krumhansl-Kessler). Genero, artistas similares e mood removidos. Worker analyze.py baixa MP3 do Storage, analisa, salva bpm+music_key, avanca status converted→analyzed, dispara generate. T3.2 (tags Gemini) postergado para apos T2.9 (artista disponivel). 3 testes existentes continuam passando.

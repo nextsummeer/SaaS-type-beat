@@ -38,5 +38,10 @@ def dispatch_convert_job(beat_id: str) -> bool:
 
 
 def dispatch_analyze_job(beat_id: str) -> bool:
-    """Envia job pro QStash para analisar o beat com Gemini (próxima fase)."""
+    """Envia job pro QStash para analisar o beat com librosa."""
     return _dispatch(f"/internal/beats/{beat_id}/analyze", beat_id, "analyze")
+
+
+def dispatch_generate_job(beat_id: str) -> bool:
+    """Envia job pro QStash para gerar as 3 variações A/B/C com Claude."""
+    return _dispatch(f"/internal/beats/{beat_id}/generate", beat_id, "generate")
