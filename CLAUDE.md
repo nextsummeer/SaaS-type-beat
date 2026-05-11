@@ -22,8 +22,8 @@ Producer Hub SaaS B2C para produtores de type beats que publicam no YouTube. A p
 
 ## IDs Importantes
 
-- Supabase Project ID: [PREENCHER apos T0.5]
-- Supabase URL: https://[PROJECT_ID].supabase.co
+- Supabase Project ID: fniliopbvsbimvejqqms
+- Supabase URL: https://fniliopbvsbimvejqqms.supabase.co
 - Vercel project: [PREENCHER apos T0.7]
 - Railway project: [PREENCHER apos T0.7]
 - YouTube OAuth Client ID: [PREENCHER apos cadastrar projeto Google Cloud]
