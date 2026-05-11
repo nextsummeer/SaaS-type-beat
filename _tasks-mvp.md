@@ -6,7 +6,7 @@
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** T2.3 — Worker convert.py: ffmpeg → MP3 320kbps + loudnorm
+**Proximo passo:** T2.5 — Testes do worker convert.py
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -223,25 +223,26 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Dado upload do T2.1, row em `beats` aparece com status=uploaded e job aparece no QStash dashboard
 - **Dependencia:** T2.1
 
-#### `[ ]` T2.3 — Worker convert.py: ffmpeg → MP3 320kbps + loudnorm
+#### `[x]` T2.3 — Worker convert.py: validacao + avanco de status
 
-- **Arquivos:** `api/app/workers/convert.py`, `api/app/services/ffmpeg_service.py`
-- **O que fazer:** Endpoint `/internal/beats/{id}/convert` (signed por QStash). Baixa audio do Supabase Storage, roda `ffmpeg -i input -af loudnorm=I=-23:TP=-1.5:LRA=11 -b:a 320k -acodec libmp3lame output.mp3`, sobe pra `audios/{user_id}/{beat_id}/converted.mp3`, atualiza status=converted, dispara QStash → analyze. **Idempotente:** se status ja for >= converted, retorna 200 sem fazer nada.
-- **Criterio de pronto:** Upload de WAV/FLAC/M4A vira MP3 320kbps no bucket. Status na DB avanca corretamente.
+- **Arquivos:** `api/app/workers/convert.py`, `api/app/services/qstash_service.py`
+- **Decisao (2026-05-11):** MVP aceita somente MP3. Produtor entrega o arquivo ja masterizado com a tag de produtor gravada no audio — nao tocamos no arquivo. Sem ffmpeg nesta etapa (ffmpeg entra so na Fase 5 para gerar o MP4). Loudnorm foi descartado para nao alterar a master do produtor. Se no futuro precisar aceitar WAV/FLAC/M4A (ex: integracao BeatStars), adicionar ffmpeg_service.py aqui.
+- **O que faz:** Endpoint `/internal/beats/{id}/convert` chamado pelo QStash. Verifica existencia do arquivo no Storage, avanca status `uploaded → converted`, dispara QStash → analyze. **Idempotente:** se status ja for >= converted, retorna 200 sem fazer nada.
+- **Criterio de pronto:** Beat com MP3 no Storage tem status atualizado para converted. Job analyze aparece no QStash.
 - **Dependencia:** T2.2
 
-#### `[ ]` T2.4 — Pagina /beats/[id] com status em tempo real
+#### `[x]` T2.4 — Pagina /beats/[id] com status em tempo real
 
 - **Arquivos:** `web/app/(app)/beats/[id]/page.tsx`
 - **O que fazer:** Subscribe via Supabase Realtime na row do beat. Mostra step list (Upload → Conversao → Analise → Geracao → Pronto pra revisar) com check/loader.
 - **Criterio de pronto:** Apos upload, abre `/beats/[id]` e ve "Conversao" com loader → check em ~30s
 - **Dependencia:** T2.3
 
-#### `[ ]` T2.5 — Test: upload de wav, flac, m4a, mp3 → todos viram mp3 320
+#### `[ ]` T2.5 — Test: worker convert avanca status corretamente
 
 - **Arquivo:** `api/tests/workers/test_convert.py`
-- **O que fazer:** Pytest com 4 fixtures de audio (wav, flac, m4a, mp3). Cada um vira mp3 320kbps validavel via `ffprobe`.
-- **Criterio de pronto:** `pytest -m slow tests/workers/test_convert.py` passa pros 4 formatos
+- **O que fazer:** Pytest com mock do Supabase. Testa: (1) beat uploaded → vira converted e dispara analyze; (2) beat ja converted → retorna skipped sem fazer nada (idempotencia); (3) beat sem arquivo no Storage → marca failed.
+- **Criterio de pronto:** `pytest tests/workers/test_convert.py` passa
 - **Dependencia:** T2.3
 
 #### `[ ]` T2.6 — Migration: novos campos de input (mood, estilo, artistas)
@@ -578,3 +579,5 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **2026-05-11** — T2.1 concluida. web/lib/storage.ts (uploadWithProgress via XHR), web/components/UploadForm.tsx (dropzone audio + capa opcional + progress bar), web/app/(app)/upload/page.tsx. Testado: MP3 3.45MB salvo em audios/{user_id}/{beat_id}/original.mp3 no Supabase Storage. RLS funcionando.
 - **2026-05-11** — T1.6 concluida. Playwright instalado (v1.59.1). playwright.config.ts + web/e2e/auth.spec.ts criados. Teste cria user via Supabase admin, faz login, verifica dashboard, desloga, deleta user. pnpm test:e2e passa (1 passed, 22s).
 - **2026-05-11** — T2.2 concluida. POST /beats funcionando end-to-end: upload → row em beats (status=uploaded) confirmado no Supabase. Fixes: GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role (permissao faltando), page.tsx raiz redirecionando para /dashboard, ESLint configurado (next lint removido no Next.js 16).
+- **2026-05-11** — T2.3 concluida. Decisao de produto: MVP aceita somente MP3 com tag de produtor ja gravada — sem ffmpeg, sem loudnorm (preserva master do produtor). Worker convert.py valida existencia do arquivo no Storage, avanca status uploaded→converted, dispara job analyze no QStash. Upload form atualizado para aceitar so .mp3. qstash_service.py refatorado com funcao _dispatch generica + dispatch_analyze_job adicionado.
+- **2026-05-11** — T2.4 concluida. Pagina /beats/[id] com step list (Upload→Conversao→Analise→Geracao→Pronto). Status atualiza em tempo real via Supabase Realtime. Apos upload, UploadForm redireciona automaticamente para /beats/{id}. Pagina de upload ganhou aviso em amber explicando MP3 com tag de produtor.

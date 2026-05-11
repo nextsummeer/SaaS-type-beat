@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { UploadCloud, CheckCircle2, AlertCircle, Music, Image } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { UploadCloud, AlertCircle, Music, Image } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { uploadWithProgress } from '@/lib/storage'
 
-type Status = 'idle' | 'uploading' | 'done' | 'error'
+type Status = 'idle' | 'uploading' | 'error'
 
 export function UploadForm() {
+  const router = useRouter()
   const supabase = createClient()
   const audioRef = useRef<HTMLInputElement>(null)
   const coverRef = useRef<HTMLInputElement>(null)
@@ -31,8 +33,7 @@ export function UploadForm() {
       if (userError || !user) throw new Error('Usuário não autenticado')
 
       const beatId = crypto.randomUUID()
-      const ext = audioFile.name.split('.').pop()?.toLowerCase() ?? 'mp3'
-      const audioPath = `${user.id}/${beatId}/original.${ext}`
+      const audioPath = `${user.id}/${beatId}/original.mp3`
 
       const { data: signedData, error: signedError } = await supabase.storage
         .from('audios')
@@ -76,7 +77,8 @@ export function UploadForm() {
         throw new Error(err.detail ?? 'Erro ao registrar beat')
       }
 
-      setStatus('done')
+      const { id: dbBeatId } = await apiRes.json()
+      router.push(`/beats/${dbBeatId}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido')
       setStatus('error')
@@ -84,31 +86,6 @@ export function UploadForm() {
   }
 
   const uploading = status === 'uploading'
-
-  if (status === 'done') {
-    return (
-      <div className="flex flex-col items-center gap-4 rounded-xl border border-green-500/20 bg-green-500/5 px-8 py-10 text-center">
-        <CheckCircle2 className="h-12 w-12 text-green-400" />
-        <div>
-          <p className="text-lg font-semibold text-white">Upload concluído!</p>
-          <p className="mt-1 text-sm text-zinc-400">
-            Seu beat foi enviado. Em breve o pipeline de IA vai gerar os títulos e descrições.
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            setStatus('idle')
-            setAudioFile(null)
-            setCoverFile(null)
-            setAudioProgress(0)
-          }}
-          className="mt-2 rounded-lg bg-zinc-800 px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-700"
-        >
-          Fazer outro upload
-        </button>
-      </div>
-    )
-  }
 
   return (
     <form onSubmit={handleSubmit} className="flex max-w-lg flex-col gap-6">
@@ -136,7 +113,7 @@ export function UploadForm() {
               <UploadCloud className="h-8 w-8 text-zinc-500" />
               <div>
                 <p className="text-sm text-zinc-300">Clique para selecionar o áudio</p>
-                <p className="text-xs text-zinc-500">MP3, WAV, FLAC ou M4A</p>
+                <p className="text-xs text-zinc-500">Somente MP3 — com sua tag de produtor no áudio</p>
               </div>
             </>
           )}
@@ -144,7 +121,7 @@ export function UploadForm() {
         <input
           ref={audioRef}
           type="file"
-          accept=".mp3,.wav,.flac,.m4a,audio/mpeg,audio/wav,audio/flac,audio/x-m4a,audio/mp4"
+          accept=".mp3,audio/mpeg"
           className="hidden"
           onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
         />

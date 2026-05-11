@@ -9,20 +9,15 @@ API_BASE_URL = os.getenv("API_BASE_URL", "https://saas-type-beat-production.up.r
 QSTASH_PUBLISH_URL = "https://qstash.upstash.io/v2/publish/"
 
 
-def dispatch_convert_job(beat_id: str) -> bool:
-    """Envia job pro QStash para converter o áudio do beat.
-
-    Retorna True se enviado, False se QSTASH_TOKEN não estiver configurado.
-    Lança exceção se o envio falhar.
-    """
+def _dispatch(endpoint: str, beat_id: str, job_name: str) -> bool:
+    """Envia job genérico pro QStash. Retorna True se enviado."""
     if not QSTASH_TOKEN:
         logger.warning(
-            "QSTASH_TOKEN não configurado — job de conversão não enviado (beat=%s)", beat_id
+            "QSTASH_TOKEN não configurado — job %s não enviado (beat=%s)", job_name, beat_id
         )
         return False
 
-    target_url = f"{API_BASE_URL}/internal/beats/{beat_id}/convert"
-
+    target_url = f"{API_BASE_URL}{endpoint}"
     resp = requests.post(
         f"{QSTASH_PUBLISH_URL}{target_url}",
         headers={
@@ -35,3 +30,13 @@ def dispatch_convert_job(beat_id: str) -> bool:
     resp.raise_for_status()
     logger.info("Job QStash enviado: beat=%s → %s", beat_id, target_url)
     return True
+
+
+def dispatch_convert_job(beat_id: str) -> bool:
+    """Envia job pro QStash para validar e avançar o beat para 'converted'."""
+    return _dispatch(f"/internal/beats/{beat_id}/convert", beat_id, "convert")
+
+
+def dispatch_analyze_job(beat_id: str) -> bool:
+    """Envia job pro QStash para analisar o beat com Gemini (próxima fase)."""
+    return _dispatch(f"/internal/beats/{beat_id}/analyze", beat_id, "analyze")
