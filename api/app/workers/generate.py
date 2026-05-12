@@ -53,16 +53,10 @@ def generate_beat(beat_id: str):
     music_key = beat.get("music_key")
     user_id = beat["user_id"]
 
-    # Busca perfil do produtor
-    profile_result = client.table("user_profiles").select("nome, instagram").eq("user_id", user_id).maybe_single().execute()
+    # Busca perfil do produtor (inclui email_contato adicionado na migration 004)
+    profile_result = client.table("user_profiles").select("nome, instagram, email_contato").eq("user_id", user_id).maybe_single().execute()
     profile = profile_result.data or {}
-
-    # Busca email do usuário
-    try:
-        user_result = client.auth.admin.get_user_by_id(user_id)
-        producer_email = user_result.user.email if user_result.user else None
-    except Exception:
-        producer_email = None
+    producer_email = profile.get("email_contato")
 
     # 1. Spotify: top tracks do artista
     try:
