@@ -38,6 +38,17 @@ export async function fetchBeats(token: string): Promise<BeatListItem[]> {
   return res.json()
 }
 
+export async function deleteBeat(beatId: string, token: string): Promise<void> {
+  const res = await fetch(`${API_URL}/beats/${beatId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok && res.status !== 204) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail ?? 'Erro ao deletar beat')
+  }
+}
+
 export async function fetchPost(beatId: string, token: string) {
   const res = await fetch(`${API_URL}/posts/${beatId}`, {
     headers: { Authorization: `Bearer ${token}` },

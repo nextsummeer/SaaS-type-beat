@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Loader2, Plus, Upload } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { fetchBeats, type BeatListItem } from '@/lib/api'
+import { fetchBeats, deleteBeat, type BeatListItem } from '@/lib/api'
 import { BeatCard } from '@/components/BeatCard'
 
 type FiltroKey = 'todos' | 'processando' | 'rascunho' | 'agendado' | 'postado' | 'falhou'
@@ -65,6 +65,17 @@ export default function BeatsPage() {
     const interval = setInterval(carrega, 5000)
     return () => { cancelado = true; clearInterval(interval) }
   }, [])
+
+  async function handleDelete(beatId: string) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { router.push('/login'); return }
+    try {
+      await deleteBeat(beatId, session.access_token)
+      setBeats((prev) => prev.filter((b) => b.id !== beatId))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao deletar')
+    }
+  }
 
   const contagens = useMemo(() => {
     const out: Record<FiltroKey, number> = { todos: 0, processando: 0, rascunho: 0, agendado: 0, postado: 0, falhou: 0 }
@@ -162,9 +173,9 @@ export default function BeatsPage() {
           Nenhum beat neste filtro.
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
           {visiveis.map((b) => (
-            <BeatCard key={b.id} beat={b} />
+            <BeatCard key={b.id} beat={b} onDelete={handleDelete} />
           ))}
         </div>
       )}

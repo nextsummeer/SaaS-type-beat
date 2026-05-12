@@ -129,3 +129,46 @@ def create_beat(
         logger.error("Falha ao enviar job QStash: beat=%s erro=%s", beat["id"], exc)
 
     return {"id": beat["id"], "status": "uploaded"}
+
+
+@router.delete("/{beat_id}", status_code=204)
+def delete_beat(beat_id: str, authorization: str = Header(...)):
+    """Deleta um beat (e posts via cascade) + remove arquivos do Storage."""
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token inválido")
+    token = authorization.removeprefix("Bearer ")
+
+    try:
+        user = validate_token(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token inválido ou expirado")
+
+    client = get_admin_client()
+
+    beat_result = (
+        client.table("beats")
+        .select("id, audio_path, cover_path")
+        .eq("id", beat_id)
+        .eq("user_id", str(user.id))
+        .execute()
+    )
+    if not beat_result.data:
+        raise HTTPException(status_code=404, detail="Beat não encontrado")
+
+    beat = beat_result.data[0]
+
+    if beat.get("audio_path"):
+        try:
+            client.storage.from_("audios").remove([beat["audio_path"]])
+        except Exception as exc:
+            logger.warning("Falha ao remover audio %s: %s", beat["audio_path"], exc)
+
+    if beat.get("cover_path"):
+        try:
+            client.storage.from_("covers").remove([beat["cover_path"]])
+        except Exception as exc:
+            logger.warning("Falha ao remover capa %s: %s", beat["cover_path"], exc)
+
+    client.table("beats").delete().eq("id", beat_id).eq("user_id", str(user.id)).execute()
+    logger.info("Beat %s deletado pelo user %s", beat_id, user.id)
+    return None
