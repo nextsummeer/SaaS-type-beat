@@ -106,6 +106,7 @@ export async function patchPost(
     purchase_link?: string
     scheduled_at?: string
     status?: string
+    privacy_status?: 'public' | 'unlisted'
   },
 ) {
   const res = await fetch(`${API_URL}/posts/${postId}`, {

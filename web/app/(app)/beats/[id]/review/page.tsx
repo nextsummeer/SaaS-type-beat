@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Loader2, Save, CalendarClock, CheckCircle2, Tag, X, ExternalLink, Trash2 } from 'lucide-react'
+import { Loader2, Save, CalendarClock, CheckCircle2, Tag, X, ExternalLink, Trash2, Globe, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { fetchPost, patchPost, deleteBeat } from '@/lib/api'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -29,7 +29,10 @@ interface Post {
   purchase_link: string | null
   scheduled_at: string | null
   status: string
+  privacy_status: 'public' | 'unlisted' | null
 }
+
+type PrivacyStatus = 'public' | 'unlisted'
 
 function defaultScheduledAt(): string {
   const d = new Date()
@@ -53,6 +56,7 @@ export default function ReviewPage() {
   const [tags, setTags] = useState<string[]>([])
   const [purchaseLink, setPurchaseLink] = useState('')
   const [scheduledAt, setScheduledAt] = useState(defaultScheduledAt())
+  const [privacyStatus, setPrivacyStatus] = useState<PrivacyStatus>('public')
   const [newTag, setNewTag] = useState('')
 
   const [saving, setSaving] = useState(false)
@@ -73,6 +77,9 @@ export default function ReviewPage() {
         setTags(Array.isArray(data.tags) ? data.tags : [])
         setPurchaseLink(data.purchase_link ?? '')
         if (data.scheduled_at) setScheduledAt(data.scheduled_at.slice(0, 16))
+        if (data.privacy_status === 'public' || data.privacy_status === 'unlisted') {
+          setPrivacyStatus(data.privacy_status)
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Erro ao carregar')
       } finally {
@@ -121,6 +128,7 @@ export default function ReviewPage() {
         purchase_link: purchaseLink || undefined,
         scheduled_at: new Date(scheduledAt).toISOString(),
         status: 'scheduled',
+        privacy_status: privacyStatus,
       })
       router.push('/beats')
     } catch (e) {
@@ -358,6 +366,45 @@ export default function ReviewPage() {
           onChange={(e) => setScheduledAt(e.target.value)}
           className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
         />
+
+        <div className="space-y-2 pt-2">
+          <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            Visibilidade quando publicar
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setPrivacyStatus('public')}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition ${
+                privacyStatus === 'public'
+                  ? 'border-violet-500 bg-violet-500/10 text-white'
+                  : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
+              }`}
+            >
+              <Globe className="h-4 w-4" />
+              <span>
+                <span className="block font-medium">Público</span>
+                <span className="block text-[10px] text-zinc-500">aparece em busca</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPrivacyStatus('unlisted')}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition ${
+                privacyStatus === 'unlisted'
+                  ? 'border-violet-500 bg-violet-500/10 text-white'
+                  : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
+              }`}
+            >
+              <EyeOff className="h-4 w-4" />
+              <span>
+                <span className="block font-medium">Não listado</span>
+                <span className="block text-[10px] text-zinc-500">só com o link</span>
+              </span>
+            </button>
+          </div>
+        </div>
+
         <button
           type="button"
           onClick={handleSchedule}

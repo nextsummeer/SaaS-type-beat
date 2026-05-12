@@ -119,8 +119,12 @@ def test_convert_arquivo_ausente_marca_failed():
 
     assert response.status_code == 422
 
-    # Status marcado como failed
-    supabase_mock.table.return_value.update.assert_called_once_with({"status": "failed"})
+    # Status marcado como failed (com error_message preenchido)
+    update_call = supabase_mock.table.return_value.update.call_args
+    assert update_call is not None, "update() não foi chamado"
+    update_payload = update_call.args[0]
+    assert update_payload["status"] == "failed"
+    assert "arquivo" in update_payload.get("error_message", "").lower()
 
     # Nenhum job disparado
     mock_dispatch.assert_not_called()

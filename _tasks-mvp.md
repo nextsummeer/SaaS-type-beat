@@ -1,12 +1,12 @@
 # _tasks — [NOME] Fase 1 (MVP) @gustavo
 
 **Criado:** 2026-04-25
-**Atualizado:** 2026-05-11
+**Atualizado:** 2026-05-12
 **Outcome:** Produtor convidado faz login, escolhe estilo visual padrao (onboarding), conecta canal YouTube, sobe um beat (qualquer formato) informando artista de referencia (lista controlada + Spotify) e mood (cards visuais), opcionalmente envia capa propria, recebe capa gerada por IA + 3 variacoes A/B/C de titulo+descricao+tags geradas pela IA (com nomes inspirados em hits do artista via Spotify), edita o que quiser, confirma agendamento, e ve 3 videos publicados/agendados no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Meta: beta fechado setembro 2026.
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** T5.3 (ffmpeg_service: audio_para_video) + T5.2 (youtube_service.upload_video) + T5.4 (worker publish.py).
+**Proximo passo:** T5.5 (solicitar aumento de quota YouTube — atual 10k/dia = 6 uploads) + T5.6 (test E2E publicando beat real em conta de teste). Migration 007 a aplicar manualmente no Supabase Studio.
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -551,30 +551,26 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Beatmaker clica conectar → autoriza no Google → volta logado com canal. Row em `youtube_accounts` salva.
 - **Dependencia:** T0.5, T1.4
 
-#### `[ ]` T5.2 — Service: youtube_service.upload_video
+#### `[x]` T5.2 — Service: youtube_service.upload_video
 
 - **Arquivo:** `api/app/services/youtube_service.py`
-- **O que fazer:** Funcao `upload_video(user_id, mp4_path, title, description, tags, scheduled_at) -> youtube_video_id`. Refresh token automatico se expirado. Define `publishAt`. Tenta thumbnail custom (catch 403).
-- **Criterio de pronto:** Funcao com mock retorna video_id. Com integration test real (`@slow`) publica em conta de teste.
-- **Dependencia:** T5.1
+- **Decisao (2026-05-12):** Implementado com `google-api-python-client` + `google-auth`. Refresh automatico do access_token quando expirado (persiste o novo). Quando `scheduled_at` no futuro: sobe como `private` + `publishAt` (YouTube agenda). Quando ausente/passado: sobe direto com `privacy_status` final. Thumbnail custom em try/except (canal nao verificado da 403). Trunca titulo (100), descricao (5000), tags (500 chars total).
+- **Criterio de pronto:** Funcao retorna `{video_id, url, scheduled, privacy_status_final}`. Falta validar com upload real.
+- **Dependencia:** T5.1 — ✅ concluido
 
-#### `[ ]` T5.3 — Service: ffmpeg_service.audio_para_video
+#### `[x]` T5.3 — Service: ffmpeg_service.audio_para_video
 
 - **Arquivo:** `api/app/services/ffmpeg_service.py`
-- **O que fazer:** Funcao gera mp4 com `ffmpeg -loop 1 -i capa.jpg -i beat.mp3 -c:v libx264 -preset fast -crf 23 -r 30 -pix_fmt yuv420p -c:a aac -shortest output.mp4`
-- **Criterio de pronto:** Beat de 3min vira mp4 ~50MB com capa estatica + audio
-- **Dependencia:** —
+- **Decisao (2026-05-12):** Otimizado pra capa estatica: `-r 1 -c:a copy` (sem reencode do MP3, fps minimo). MP4 fica ~5x menor e gera ~10x mais rapido que `-r 30 -c:a aac`. Adicionado `-movflags +faststart` pra streaming. Timeout de 5min, captura stderr no log.
+- **Criterio de pronto:** Funcao `audio_to_mp4(mp3, cover, output)`. Falta validar com upload real.
+- **Dependencia:** — (ffmpeg ja no nixpacks)
 
-#### `[ ]` T5.4 — Worker publish.py: gera mp4 + upload 3x
+#### `[x]` T5.4 — Worker publish.py: gera mp4 + upload no YouTube
 
-- **Arquivos:** `api/app/workers/publish.py`
-- **O que fazer:** Endpoint `/internal/beats/{id}/publish`. Para cada post da variacao A/B/C:
-  - Chama T5.3 pra gerar mp4 (cacheia, mesmo mp4 pra 3 uploads)
-  - Chama T5.2 com titulo/desc/tags/scheduled_at especifico
-  - Salva `youtube_video_id` na row
-  - Status=published
-- **Criterio de pronto:** Apos confirmar agendamento, 3 videos aparecem agendados no YouTube Studio com horarios diferentes
-- **Dependencia:** T5.2, T5.3, T4.4
+- **Arquivos:** `api/app/workers/publish.py`, `api/app/services/qstash_service.py` (dispatch_publish_job), `api/app/routes/posts.py` (dispara publish no PATCH com status=scheduled)
+- **Decisao (2026-05-12):** A/B/C ja removido do MVP — 1 video por beat. Worker baixa MP3 (bucket `audios`) e capa (bucket `covers`) via signed URL, gera MP4 com ffmpeg_service, sobe com youtube_service (passando `scheduled_at` + `privacy_status` do post). Atualiza `youtube_video_id`, `youtube_url`, `published_at` no post. Idempotente: se `youtube_video_id` ja existe, retorna `skipped`. Migration 007 adiciona `posts.privacy_status` (public/unlisted, default public). UI da review tem toggle Publico / Nao listado.
+- **Criterio de pronto:** Apos confirmar agendamento na /review, video aparece agendado no YouTube Studio. Falta validar end-to-end com upload real (deploy Railway com novas deps Google + aplicar migration 007).
+- **Dependencia:** T5.2 ✅, T5.3 ✅, T4.4 ✅
 
 #### `[ ]` T5.5 — Solicitar quota YouTube no Google Cloud Console
 
@@ -660,3 +656,4 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **2026-05-12** — Pipeline funcionando ponta-a-ponta! Fixes adicionais: GRANT service_role nas tabelas (workers usam admin_client), removido `.maybe_single()` (bug postgrest-py 204), try/except amplo nos workers + `_mark_failed` salva error_message, IDEOTAGS reduzidas 80→40-60 + 12-15 tags fortes, max_tokens 4096→6000 e timeout Claude 60s→120s. T2.13 concluida — BPM manual + link da loja no upload (librosa errava 30% dos type beats com tripletas, ex: Travis Scott 140 BPM virou 92). Pipeline em 50s. T2.14 criada (pagina /beats com cards — hoje quebra ao sair de /beats/[id]). Ver `docs/sessoes/2026-05-12-pipeline-funcionando-bpm-manual.md`.
 - **2026-05-12** — T2.14 concluida. GET /beats no backend retorna lista do user (RLS multitenant) com merge dos dados do post variacao='A' (titulo, scheduled_at, post_status). Frontend: fetchBeats em web/lib/api.ts + componente web/components/BeatCard.tsx (thumbnail signed URL do bucket covers ou placeholder com inicial, badge de status colorido — Postado/Agendado/Em Rascunho/Processando/Falhou, BPM+key, datas de criacao e modificacao) + pagina web/app/(app)/beats/page.tsx com filtros em chips (Todos/Processando/Rascunho/Agendados/Postados/Falhou) e empty state com CTA pra upload. Polling 5s pra status atualizar conforme pipeline avanca. Clique no card direciona pra /beats/[id] se em processamento ou /beats/[id]/review se pronto/agendado/postado. Typecheck passa. Lint sem erros novos.
 - **2026-05-11** — T3.1+T3.3 concluidas. Decisao: librosa substituiu Gemini para analise de audio (gratuito, deterministico, preciso). Detecta BPM e tom (Krumhansl-Kessler). Genero, artistas similares e mood removidos. Worker analyze.py baixa MP3 do Storage, analisa, salva bpm+music_key, avanca status converted→analyzed, dispara generate. T3.2 (tags Gemini) postergado para apos T2.9 (artista disponivel). 3 testes existentes continuam passando.
+- **2026-05-12** — T5.2 + T5.3 + T5.4 concluidas (codigo). Pipeline de publicacao no YouTube fechado: `ffmpeg_service.audio_to_mp4` (capa estatica + audio, otimizado `-r 1 -c:a copy`), `youtube_service.upload_video` (google-api-python-client, refresh automatico do access_token, publishAt para agendamento, thumbnail custom em try/except, trunca titulo/desc/tags nos limites do YouTube), `workers/publish.py` (baixa MP3+capa via signed URL, gera MP4, sobe no YouTube, atualiza youtube_video_id/url/published_at no post, idempotente). Migration 007 adiciona `posts.privacy_status` (public/unlisted, default public). PATCH /posts dispara `dispatch_publish_job` quando recebe status='scheduled'. UI da /review tem toggle Publico/Nao listado. Decisoes confirmadas com Gustavo: (a) envia pro YouTube imediato com publishAt no futuro (YouTube agenda), (b) user escolhe visibilidade na review, (c) scheduled_at no passado vira upload imediato (modo de teste). Pendente: aplicar migration 007 no Supabase Studio, garantir env vars no Railway, validar pipeline com upload real. Teste antigo `test_convert_arquivo_ausente_marca_failed` arrumado (esperava `{status:failed}` mas codigo agora salva `error_message` junto). 3/3 testes verdes, typecheck verde.

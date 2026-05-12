@@ -55,3 +55,8 @@ def dispatch_analyze_job(beat_id: str) -> bool:
 def dispatch_generate_job(beat_id: str) -> bool:
     """Envia job pro QStash para gerar as 3 variações A/B/C com Claude."""
     return _dispatch(f"/internal/beats/{beat_id}/generate", beat_id, "generate")
+
+
+def dispatch_publish_job(beat_id: str) -> bool:
+    """Envia job pro QStash para gerar MP4 e subir no YouTube."""
+    return _dispatch(f"/internal/beats/{beat_id}/publish", beat_id, "publish")
