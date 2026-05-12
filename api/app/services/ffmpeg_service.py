@@ -1,12 +1,34 @@
 """Gera MP4 (capa estatica + audio MP3) via ffmpeg pra upload no YouTube."""
 import logging
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 FFMPEG_TIMEOUT_SECONDS = 300
+
+
+def _ffmpeg_binary() -> str:
+    """Retorna o path do binario ffmpeg.
+    Ordem: FFMPEG_PATH env > ffmpeg no PATH > imageio-ffmpeg embutido.
+    """
+    env_path = os.environ.get("FFMPEG_PATH")
+    if env_path and os.path.exists(env_path):
+        return env_path
+
+    which = shutil.which("ffmpeg")
+    if which:
+        return which
+
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception as exc:
+        raise RuntimeError(
+            "ffmpeg nao encontrado: nem no PATH, nem via imageio-ffmpeg"
+        ) from exc
 
 
 def audio_to_mp4(mp3_path: str, cover_path: str, output_path: str) -> None:
@@ -21,8 +43,9 @@ def audio_to_mp4(mp3_path: str, cover_path: str, output_path: str) -> None:
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
+    ffmpeg_bin = _ffmpeg_binary()
     cmd = [
-        "ffmpeg", "-y",
+        ffmpeg_bin, "-y",
         "-loop", "1", "-i", cover_path,
         "-i", mp3_path,
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
@@ -32,7 +55,7 @@ def audio_to_mp4(mp3_path: str, cover_path: str, output_path: str) -> None:
         output_path,
     ]
 
-    logger.info("ffmpeg: gerando MP4 %s", output_path)
+    logger.info("ffmpeg: gerando MP4 com bin=%s output=%s", ffmpeg_bin, output_path)
     try:
         result = subprocess.run(
             cmd,
