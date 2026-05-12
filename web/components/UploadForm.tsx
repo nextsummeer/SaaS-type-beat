@@ -16,13 +16,16 @@ export function UploadForm() {
 
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [artistaNome, setArtistaNome] = useState('')
   const [audioProgress, setAudioProgress] = useState(0)
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
 
+  const canSubmit = !!audioFile && !!coverFile && artistaNome.trim().length > 0
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!audioFile) return
+    if (!canSubmit) return
 
     setStatus('uploading')
     setError(null)
@@ -42,20 +45,17 @@ export function UploadForm() {
         throw new Error(`Erro ao preparar upload: ${signedError?.message}`)
       }
 
-      await uploadWithProgress(signedData.signedUrl, audioFile, setAudioProgress)
+      await uploadWithProgress(signedData.signedUrl, audioFile!, setAudioProgress)
 
-      let coverPath: string | null = null
-      if (coverFile) {
-        const coverExt = coverFile.name.split('.').pop()?.toLowerCase() ?? 'jpg'
-        coverPath = `${user.id}/${beatId}/cover.${coverExt}`
-        const { data: coverSigned, error: coverSignedError } = await supabase.storage
-          .from('covers')
-          .createSignedUploadUrl(coverPath)
-        if (coverSignedError || !coverSigned) {
-          throw new Error(`Erro ao preparar upload da capa: ${coverSignedError?.message}`)
-        }
-        await uploadWithProgress(coverSigned.signedUrl, coverFile)
+      const coverExt = coverFile!.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+      const coverPath = `${user.id}/${beatId}/cover.${coverExt}`
+      const { data: coverSigned, error: coverSignedError } = await supabase.storage
+        .from('covers')
+        .createSignedUploadUrl(coverPath)
+      if (coverSignedError || !coverSigned) {
+        throw new Error(`Erro ao preparar upload da capa: ${coverSignedError?.message}`)
       }
+      await uploadWithProgress(coverSigned.signedUrl, coverFile!)
 
       // Registra o beat no banco e dispara o pipeline
       const { data: { session } } = await supabase.auth.getSession()
@@ -69,7 +69,11 @@ export function UploadForm() {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ audio_path: audioPath, cover_path: coverPath }),
+          body: JSON.stringify({
+            audio_path: audioPath,
+            cover_path: coverPath,
+            artista_nome: artistaNome.trim(),
+          }),
         },
       )
       if (!apiRes.ok) {
@@ -89,6 +93,21 @@ export function UploadForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex max-w-lg flex-col gap-6">
+      {/* Artista */}
+      <div>
+        <label className="mb-2 block text-sm font-medium text-zinc-300">
+          Type beat de quem? <span className="text-red-400">*</span>
+        </label>
+        <input
+          type="text"
+          value={artistaNome}
+          onChange={(e) => setArtistaNome(e.target.value)}
+          disabled={uploading}
+          placeholder="Ex: Drake, Nettspend, Travis Scott..."
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500 disabled:opacity-50"
+        />
+      </div>
+
       {/* Audio */}
       <div>
         <label className="mb-2 block text-sm font-medium text-zinc-300">
@@ -131,7 +150,7 @@ export function UploadForm() {
       {uploading && (
         <div>
           <div className="mb-1 flex justify-between text-xs text-zinc-400">
-            <span>Enviando áudio...</span>
+            <span>Enviando...</span>
             <span>{audioProgress}%</span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
@@ -143,10 +162,10 @@ export function UploadForm() {
         </div>
       )}
 
-      {/* Cover */}
+      {/* Cover — obrigatória */}
       <div>
         <label className="mb-2 block text-sm font-medium text-zinc-300">
-          Capa <span className="text-zinc-500">(opcional)</span>
+          Capa do beat <span className="text-red-400">*</span>
         </label>
         <button
           type="button"
@@ -162,7 +181,7 @@ export function UploadForm() {
           ) : (
             <>
               <Image className="h-6 w-6 text-zinc-500" />
-              <p className="text-sm text-zinc-500">Clique para adicionar uma capa (JPG ou PNG)</p>
+              <p className="text-sm text-zinc-500">Clique para adicionar a capa (JPG ou PNG)</p>
             </>
           )}
         </button>
@@ -186,7 +205,7 @@ export function UploadForm() {
       {/* Submit */}
       <button
         type="submit"
-        disabled={!audioFile || uploading}
+        disabled={!canSubmit || uploading}
         className="rounded-lg bg-violet-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {uploading ? 'Enviando...' : 'Fazer upload'}

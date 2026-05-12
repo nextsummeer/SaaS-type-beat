@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 class CreateBeatRequest(BaseModel):
     audio_path: str
     cover_path: Optional[str] = None
+    artista_nome: Optional[str] = None
 
 
 @router.post("", status_code=201)
@@ -39,6 +40,7 @@ def create_beat(
                 "user_id": str(user.id),
                 "audio_path": body.audio_path,
                 "cover_path": body.cover_path,
+                "artista_nome": body.artista_nome,
                 "status": "uploaded",
             }
         )

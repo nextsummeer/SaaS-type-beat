@@ -54,7 +54,7 @@ const STEPS = [
   },
   {
     label: 'Geração de títulos',
-    description: 'Claude gera 3 variações A/B/C',
+    description: 'Claude gera título, descrição e tags',
     doneAt: 'ready_for_review' as BeatStatus,
   },
   {

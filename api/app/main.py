@@ -2,8 +2,8 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import beats
-from app.workers import convert, analyze
+from app.routes import beats, posts
+from app.workers import convert, analyze, generate
 
 app = FastAPI(title="BeatPost API", version="0.1.0")
 
@@ -16,8 +16,10 @@ app.add_middleware(
 )
 
 app.include_router(beats.router)
+app.include_router(posts.router)
 app.include_router(convert.router)
 app.include_router(analyze.router)
+app.include_router(generate.router)
 
 
 @app.get("/health")
