@@ -86,6 +86,7 @@ def generate_beat(beat_id: str):
             producer_nome=profile.get("nome"),
             producer_instagram=profile.get("instagram"),
             producer_email=producer_email,
+            store_link=beat.get("store_link"),
         )
 
         # 4. Insere 1 post (variacao='A')

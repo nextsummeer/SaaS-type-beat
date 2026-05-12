@@ -17,6 +17,7 @@ def generate_metadata(
     producer_nome: str | None,
     producer_instagram: str | None,
     producer_email: str | None,
+    store_link: str | None = None,
 ) -> dict:
     """
     Usa Claude para gerar:
@@ -42,6 +43,7 @@ def generate_metadata(
     nome_str = producer_nome or "[Nome do Produtor]"
     instagram_str = f"@{producer_instagram}" if producer_instagram else "@seuinstagram"
     email_str = producer_email or "seuemail@gmail.com"
+    link_str = store_link.strip() if store_link else "[insira seu link de venda]"
 
     prompt = f"""Você é um especialista em SEO para type beats no YouTube. Preciso que você gere o conteúdo completo para um vídeo de type beat.
 
@@ -67,8 +69,8 @@ INSTRUÇÕES:
 
 3. DESCRICAO: Monte a descrição EXATAMENTE neste template (substituindo os campos entre chaves):
 
-💵 Purchase this beat: [insira seu link de venda]
-Free Download | Purchase (For Profit): [insira seu link de venda]
+💵 Purchase this beat: {link_str}
+Free Download | Purchase (For Profit): {link_str}
 
 free ONLY for NON PROFIT use. credit is always required
 MUST purchase a lease for uploading your track on streaming platforms (apple music, spotify etc.)

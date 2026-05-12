@@ -22,6 +22,7 @@
 - `decisoes/2026-04-25-cobranca-na-unha.md` — Pix manual ate 10 pagantes [ativo]
 - `decisoes/2026-05-07-fluxo-upload-e-inputs-do-produtor.md` — Artista informado + mood + lista controlada + Spotify API [ativo]
 - `decisoes/2026-05-07-geracao-de-capa-mvp.md` — Capa IA por estilo+mood entra no MVP, fal.ai $0.05/imagem [ativo]
+- `decisoes/2026-05-12-bpm-manual-e-link-loja.md` — BPM informado pelo produtor + link da loja opcional no upload (T2.13) [ativo]
 
 ## Arquitetura
 - `arquitetura/pipeline-upload-postagem.md` — Fluxo ponta-a-ponta + state machine [ativo]

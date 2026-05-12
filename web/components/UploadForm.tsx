@@ -17,11 +17,21 @@ export function UploadForm() {
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [artistaNome, setArtistaNome] = useState('')
+  const [bpm, setBpm] = useState('')
+  const [jaPublicado, setJaPublicado] = useState(false)
+  const [storeLink, setStoreLink] = useState('')
   const [audioProgress, setAudioProgress] = useState(0)
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
 
-  const canSubmit = !!audioFile && !!coverFile && artistaNome.trim().length > 0
+  const bpmNum = Number(bpm)
+  const bpmValid = Number.isFinite(bpmNum) && bpmNum >= 40 && bpmNum <= 300
+  const canSubmit =
+    !!audioFile &&
+    !!coverFile &&
+    artistaNome.trim().length > 0 &&
+    bpmValid &&
+    (!jaPublicado || storeLink.trim().length > 0)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -73,6 +83,8 @@ export function UploadForm() {
             audio_path: audioPath,
             cover_path: coverPath,
             artista_nome: artistaNome.trim(),
+            bpm: bpmNum,
+            store_link: jaPublicado ? storeLink.trim() : null,
           }),
         },
       )
@@ -93,19 +105,63 @@ export function UploadForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex max-w-lg flex-col gap-6">
-      {/* Artista */}
-      <div>
-        <label className="mb-2 block text-sm font-medium text-zinc-300">
-          Type beat de quem? <span className="text-red-400">*</span>
+      {/* Artista + BPM lado a lado */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="col-span-2">
+          <label className="mb-2 block text-sm font-medium text-zinc-300">
+            Type beat de quem? <span className="text-red-400">*</span>
+          </label>
+          <input
+            type="text"
+            value={artistaNome}
+            onChange={(e) => setArtistaNome(e.target.value)}
+            disabled={uploading}
+            placeholder="Ex: Drake, Nettspend, Travis Scott..."
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500 disabled:opacity-50"
+          />
+        </div>
+        <div>
+          <label className="mb-2 block text-sm font-medium text-zinc-300">
+            BPM <span className="text-red-400">*</span>
+          </label>
+          <input
+            type="number"
+            value={bpm}
+            onChange={(e) => setBpm(e.target.value)}
+            disabled={uploading}
+            min={40}
+            max={300}
+            placeholder="140"
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500 disabled:opacity-50"
+          />
+        </div>
+      </div>
+
+      {/* Link da loja (condicional) */}
+      <div className="space-y-3">
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
+          <input
+            type="checkbox"
+            checked={jaPublicado}
+            onChange={(e) => setJaPublicado(e.target.checked)}
+            disabled={uploading}
+            className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-violet-600 focus:ring-violet-500"
+          />
+          Já publiquei esse beat em uma loja (BeatStars, Airbit, etc)
         </label>
-        <input
-          type="text"
-          value={artistaNome}
-          onChange={(e) => setArtistaNome(e.target.value)}
-          disabled={uploading}
-          placeholder="Ex: Drake, Nettspend, Travis Scott..."
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500 disabled:opacity-50"
-        />
+        {jaPublicado && (
+          <div>
+            <input
+              type="url"
+              value={storeLink}
+              onChange={(e) => setStoreLink(e.target.value)}
+              disabled={uploading}
+              placeholder="https://www.beatstars.com/beat/..."
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500 disabled:opacity-50"
+            />
+            <p className="mt-1 text-xs text-zinc-500">Esse link vai aparecer na descrição do vídeo no YouTube.</p>
+          </div>
+        )}
       </div>
 
       {/* Audio */}

@@ -10,20 +10,17 @@ _MINOR = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3
 _NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 
-def detect_bpm_and_key(file_path: str) -> dict:
+def detect_key(file_path: str) -> dict:
     """
-    Analisa um arquivo de áudio e retorna BPM e tom musical.
+    Analisa um arquivo de áudio e retorna o tom musical (key).
+    BPM nao e detectado aqui — vem do input manual do produtor (T2.13).
 
-    Retorna: {"bpm": 140, "music_key": "A minor"}
+    Retorna: {"music_key": "A minor"}
     """
     import librosa  # import lazy — evita custo de startup quando não usado
 
-    # Carrega só os primeiros 60s a 22050 Hz — suficiente para BPM e tom
+    # Carrega só os primeiros 60s a 22050 Hz — suficiente para detectar tom
     y, sr = librosa.load(file_path, sr=22050, mono=True, duration=60)
-
-    # BPM
-    tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-    bpm = int(round(float(np.atleast_1d(tempo)[0])))
 
     # Tom — correlação com perfis de Krumhansl-Kessler
     chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
@@ -44,5 +41,5 @@ def detect_bpm_and_key(file_path: str) -> dict:
             best_score = minor_score
             best_key = f"{_NOTES[i]} minor"
 
-    logger.info("Análise: bpm=%d key=%s", bpm, best_key)
-    return {"bpm": bpm, "music_key": best_key}
+    logger.info("Análise: key=%s", best_key)
+    return {"music_key": best_key}

@@ -6,7 +6,7 @@
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** Testar fluxo completo upload→revisao. Se pipeline chegar em "Pronto para revisar": proximo e T5.1 (YouTube OAuth). Ver instrucoes detalhadas em `docs/sessoes/2026-05-12-debug-pipeline-upload.md`.
+**Proximo passo:** Rodar migration `005_store_link.sql` no SQL Editor do Supabase, esperar deploy do Railway, testar upload com BPM manual + link da loja. Se OK: proximo e T5.1 (YouTube OAuth).
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -311,6 +311,21 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **O que fazer:** Atualizar o endpoint da T2.2 para receber `{audio_path, cover_path?, artista_principal_id, colaboradores_ids?, mood, cover_source, visual_style?}`. Validar mood obrigatorio. Validar consistencia cover_source/cover_path. Inserir em `beats` + `beat_artistas`.
 - **Criterio de pronto:** POST com todos campos cria row + relacoes corretamente. POST sem mood retorna 400.
 - **Dependencia:** T2.2, T2.6
+
+#### `[ ]` T2.13 — Inputs manuais BPM + link da loja no upload
+
+- **Arquivos:**
+  - `supabase/migrations/005_store_link.sql` (ADD COLUMN beats.store_link)
+  - `web/components/UploadForm.tsx` (campo BPM obrigatorio + checkbox "ja publicado" + campo link condicional)
+  - `api/app/routes/beats.py` (aceitar bpm e store_link)
+  - `api/app/services/audio_service.py` (remover librosa.beat.beat_track, manter so chroma_cqt)
+  - `api/app/workers/analyze.py` (nao atualiza mais bpm — vem do upload)
+  - `api/app/services/anthropic_service.py` (substituir placeholder do link na descricao)
+  - `api/app/workers/generate.py` (passar store_link)
+- **Decisao (2026-05-12):** Librosa erra BPM em type beats com hi-hats em tripletas (caso real: beat 140 BPM detectado como 92). Produtor sabe o BPM real do beat dele — inputs manuais sao mais confiaveis que DSP. Link da loja tambem por input direto: substitui placeholder `[insira seu link de venda]` na descricao quando preenchido.
+- **Criterio de pronto:** Upload com BPM=140 chega na review com "BPM - 140" na descricao e tag "140 bpm type beat". Upload com store_link tem o link na descricao em vez do placeholder.
+- **Dependencia:** T4.2 (pipeline funcionando — concluido)
+- **ADR:** `docs/decisoes/2026-05-12-bpm-manual-e-link-loja.md`
 
 ---
 

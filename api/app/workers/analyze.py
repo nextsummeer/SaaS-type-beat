@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.services.supabase_service import get_admin_client
 from app.services.qstash_service import dispatch_generate_job
-from app.services.audio_service import detect_bpm_and_key
+from app.services.audio_service import detect_key
 
 router = APIRouter(prefix="/internal/beats", tags=["workers"])
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ def analyze_beat(beat_id: str):
             resp.raise_for_status()
             tmp.write(resp.content)
 
-        analysis = detect_bpm_and_key(tmp_path)
+        analysis = detect_key(tmp_path)
     except Exception as exc:
         _mark_failed(client, beat_id, f"Falha na análise: {exc}")
         raise HTTPException(status_code=500, detail=f"Erro na análise de áudio: {exc}")
@@ -77,14 +77,13 @@ def analyze_beat(beat_id: str):
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
 
-    # Salva resultado e avança status
+    # Salva tom e avança status (BPM ja vem do upload — T2.13)
     client.table("beats").update({
-        "bpm": analysis["bpm"],
         "music_key": analysis["music_key"],
         "status": "analyzed",
     }).eq("id", beat_id).execute()
 
-    logger.info("Beat %s: bpm=%d key=%s → analyzed", beat_id, analysis["bpm"], analysis["music_key"])
+    logger.info("Beat %s: key=%s → analyzed", beat_id, analysis["music_key"])
 
     try:
         dispatch_generate_job(beat_id)
