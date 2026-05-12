@@ -81,11 +81,21 @@ def audio_to_mp4(mp3_path: str, cover_path: str, output_path: str) -> None:
         canvas_path, canvas_size // 1024,
     )
 
+    # Modo "low memory" do libx264 (Railway free tem ~512MB):
+    #   -preset ultrafast: encoder mais rapido, menos buffers internos
+    #   -bf 0: sem B-frames (lookahead minimo)
+    #   -g 1: GOP=1, todo frame eh keyframe (sem inter-frame state)
+    #   -profile:v baseline: profile mais simples do H.264
+    # Como a capa eh estatica e roda a 1fps, isso nao perde qualidade visivel
+    # e mantem pico de RAM <100MB.
     cmd = [
         ffmpeg_bin, "-y",
         "-loop", "1", "-i", canvas_path,
         "-i", mp3_path,
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+        "-c:v", "libx264", "-preset", "ultrafast",
+        "-profile:v", "baseline", "-level", "3.1",
+        "-bf", "0", "-g", "1",
+        "-crf", "23",
         "-r", "1", "-pix_fmt", "yuv420p",
         "-c:a", "copy",
         "-shortest", "-movflags", "+faststart",
