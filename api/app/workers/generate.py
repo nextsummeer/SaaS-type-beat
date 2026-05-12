@@ -1,4 +1,5 @@
 import logging
+import concurrent.futures
 
 from fastapi import APIRouter, HTTPException
 
@@ -58,19 +59,20 @@ def generate_beat(beat_id: str):
     profile = profile_result.data or {}
     producer_email = profile.get("email_contato")
 
-    # 1. Spotify: top tracks do artista
-    try:
-        top_tracks = get_top_tracks(artista_nome)
-    except Exception as exc:
-        logger.warning("Spotify falhou para '%s': %s — continuando sem top tracks", artista_nome, exc)
-        top_tracks = []
-
-    # 2. Gemini: tags trending
-    try:
-        trending_tags = search_trending_tags(artista_nome)
-    except Exception as exc:
-        logger.warning("Gemini falhou para '%s': %s — continuando sem tags trending", artista_nome, exc)
-        trending_tags = []
+    # 1+2. Spotify + Gemini em paralelo (economiza ~15s)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        fut_spotify = executor.submit(get_top_tracks, artista_nome)
+        fut_gemini = executor.submit(search_trending_tags, artista_nome)
+        try:
+            top_tracks = fut_spotify.result(timeout=15)
+        except Exception as exc:
+            logger.warning("Spotify falhou para '%s': %s", artista_nome, exc)
+            top_tracks = []
+        try:
+            trending_tags = fut_gemini.result(timeout=25)
+        except Exception as exc:
+            logger.warning("Gemini falhou para '%s': %s", artista_nome, exc)
+            trending_tags = []
 
     # 3. Claude: gera título, descrição e tags
     try:

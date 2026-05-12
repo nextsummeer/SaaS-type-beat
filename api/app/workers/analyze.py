@@ -43,6 +43,9 @@ def analyze_beat(beat_id: str):
         logger.info("Beat %s já analisado (status=%s) — pulando", beat_id, beat["status"])
         return {"ok": True, "skipped": True}
 
+    # Avança para "analyzing" imediatamente (melhora UX na step list)
+    client.table("beats").update({"status": "analyzing"}).eq("id", beat_id).execute()
+
     audio_path = beat.get("audio_path")
     if not audio_path:
         _mark_failed(client, beat_id, "audio_path ausente")
@@ -58,6 +61,7 @@ def analyze_beat(beat_id: str):
         _mark_failed(client, beat_id, f"Storage inacessível: {exc}")
         raise HTTPException(status_code=422, detail="Arquivo de áudio não encontrado no Storage")
 
+    tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
             tmp_path = tmp.name
@@ -70,7 +74,7 @@ def analyze_beat(beat_id: str):
         _mark_failed(client, beat_id, f"Falha na análise: {exc}")
         raise HTTPException(status_code=500, detail=f"Erro na análise de áudio: {exc}")
     finally:
-        if os.path.exists(tmp_path):
+        if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
 
     # Salva resultado e avança status
