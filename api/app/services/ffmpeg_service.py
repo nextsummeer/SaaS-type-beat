@@ -75,19 +75,24 @@ def audio_to_mp4(mp3_path: str, cover_path: str, output_path: str) -> None:
 
     ffmpeg_bin = _ffmpeg_binary()
     canvas_path = _prepare_canvas(cover_path)
-    # tune=stillimage otimiza libx264 pra video onde frame nao muda — pouca CPU/RAM.
+    canvas_size = os.path.getsize(canvas_path)
+    logger.info(
+        "ffmpeg: canvas pronto path=%s size=%dKB",
+        canvas_path, canvas_size // 1024,
+    )
+
     cmd = [
         ffmpeg_bin, "-y",
         "-loop", "1", "-i", canvas_path,
         "-i", mp3_path,
-        "-c:v", "libx264", "-preset", "veryfast", "-tune", "stillimage", "-crf", "23",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
         "-r", "1", "-pix_fmt", "yuv420p",
         "-c:a", "copy",
         "-shortest", "-movflags", "+faststart",
         output_path,
     ]
 
-    logger.info("ffmpeg: gerando MP4 1920x1080 com bin=%s output=%s", ffmpeg_bin, output_path)
+    logger.info("ffmpeg: rodando cmd=%s", " ".join(cmd))
     try:
         result = subprocess.run(
             cmd,
@@ -97,9 +102,9 @@ def audio_to_mp4(mp3_path: str, cover_path: str, output_path: str) -> None:
             timeout=FFMPEG_TIMEOUT_SECONDS,
         )
     except subprocess.CalledProcessError as exc:
-        stderr_tail = (exc.stderr or "")[-2000:]
-        logger.error("ffmpeg falhou (rc=%s): %s", exc.returncode, stderr_tail)
-        raise RuntimeError(f"ffmpeg falhou: {stderr_tail}") from exc
+        stderr_tail = (exc.stderr or "")[-8000:]
+        logger.error("ffmpeg falhou (rc=%s) stderr=\n%s", exc.returncode, stderr_tail)
+        raise RuntimeError(f"ffmpeg rc={exc.returncode}: {stderr_tail[-1500:]}") from exc
     except subprocess.TimeoutExpired as exc:
         logger.error("ffmpeg timeout apos %ss", FFMPEG_TIMEOUT_SECONDS)
         raise RuntimeError(f"ffmpeg timeout apos {FFMPEG_TIMEOUT_SECONDS}s") from exc
