@@ -1,5 +1,6 @@
 import os
 import logging
+import threading
 import requests
 
 logger = logging.getLogger(__name__)
@@ -9,15 +10,24 @@ API_BASE_URL = os.getenv("API_BASE_URL", "https://saas-type-beat-production.up.r
 QSTASH_PUBLISH_URL = "https://qstash.upstash.io/v2/publish/"
 
 
-def _dispatch(endpoint: str, beat_id: str, job_name: str) -> bool:
-    """Envia job genérico pro QStash. Retorna True se enviado."""
-    if not QSTASH_TOKEN:
-        logger.warning(
-            "QSTASH_TOKEN não configurado — job %s não enviado (beat=%s)", job_name, beat_id
-        )
-        return False
+def _call_direct(url: str, beat_id: str, job_name: str):
+    """Chama o endpoint do worker diretamente (fallback sem QStash)."""
+    try:
+        resp = requests.post(url, json={"beat_id": beat_id}, timeout=180)
+        logger.info("Fallback direto: beat=%s job=%s status=%d", beat_id, job_name, resp.status_code)
+    except Exception as exc:
+        logger.error("Fallback direto falhou: beat=%s job=%s erro=%s", beat_id, job_name, exc)
 
+
+def _dispatch(endpoint: str, beat_id: str, job_name: str) -> bool:
+    """Envia job pro QStash. Se QSTASH_TOKEN ausente, chama o endpoint diretamente em background."""
     target_url = f"{API_BASE_URL}{endpoint}"
+
+    if not QSTASH_TOKEN:
+        logger.warning("QSTASH_TOKEN ausente — chamando %s diretamente (beat=%s)", target_url, beat_id)
+        threading.Thread(target=_call_direct, args=(target_url, beat_id, job_name), daemon=True).start()
+        return True
+
     resp = requests.post(
         f"{QSTASH_PUBLISH_URL}{target_url}",
         headers={
