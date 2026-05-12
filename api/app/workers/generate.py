@@ -49,34 +49,34 @@ def generate_beat(beat_id: str):
 
     client.table("beats").update({"status": "generating"}).eq("id", beat_id).execute()
 
-    artista_nome = beat.get("artista_nome") or "type beat"
-    bpm = beat.get("bpm")
-    music_key = beat.get("music_key")
-    user_id = beat["user_id"]
-
-    # Busca perfil do produtor (inclui email_contato adicionado na migration 004)
-    profile_result = client.table("user_profiles").select("nome, instagram, email_contato").eq("user_id", user_id).maybe_single().execute()
-    profile = profile_result.data or {}
-    producer_email = profile.get("email_contato")
-
-    # 1+2. Spotify + Gemini em paralelo — shutdown(wait=False) evita bloqueio
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
-    fut_spotify = executor.submit(get_top_tracks, artista_nome)
-    fut_gemini = executor.submit(search_trending_tags, artista_nome)
     try:
-        top_tracks = fut_spotify.result(timeout=15)
-    except Exception as exc:
-        logger.warning("Spotify falhou para '%s': %s", artista_nome, exc)
-        top_tracks = []
-    try:
-        trending_tags = fut_gemini.result(timeout=25)
-    except Exception as exc:
-        logger.warning("Gemini falhou para '%s': %s", artista_nome, exc)
-        trending_tags = []
-    executor.shutdown(wait=False, cancel_futures=True)
+        artista_nome = beat.get("artista_nome") or "type beat"
+        bpm = beat.get("bpm")
+        music_key = beat.get("music_key")
+        user_id = beat["user_id"]
 
-    # 3. Claude: gera título, descrição e tags
-    try:
+        # Busca perfil do produtor — sem .maybe_single() (bug do postgrest-py com 204 No Content)
+        profile_result = client.table("user_profiles").select("nome, instagram, email_contato").eq("user_id", user_id).execute()
+        profile = profile_result.data[0] if profile_result.data else {}
+        producer_email = profile.get("email_contato")
+
+        # 1+2. Spotify + Gemini em paralelo — shutdown(wait=False) evita bloqueio
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+        fut_spotify = executor.submit(get_top_tracks, artista_nome)
+        fut_gemini = executor.submit(search_trending_tags, artista_nome)
+        try:
+            top_tracks = fut_spotify.result(timeout=15)
+        except Exception as exc:
+            logger.warning("Spotify falhou para '%s': %s", artista_nome, exc)
+            top_tracks = []
+        try:
+            trending_tags = fut_gemini.result(timeout=25)
+        except Exception as exc:
+            logger.warning("Gemini falhou para '%s': %s", artista_nome, exc)
+            trending_tags = []
+        executor.shutdown(wait=False, cancel_futures=True)
+
+        # 3. Claude: gera título, descrição e tags
         metadata = generate_metadata(
             artista_nome=artista_nome,
             bpm=bpm,
@@ -87,12 +87,8 @@ def generate_beat(beat_id: str):
             producer_instagram=profile.get("instagram"),
             producer_email=producer_email,
         )
-    except Exception as exc:
-        _mark_failed(client, beat_id, f"Claude falhou: {exc}")
-        raise HTTPException(status_code=500, detail=f"Erro na geração com Claude: {exc}")
 
-    # 4. Insere 1 post (variacao='A')
-    try:
+        # 4. Insere 1 post (variacao='A')
         client.table("posts").insert({
             "beat_id": beat_id,
             "user_id": user_id,
@@ -102,15 +98,19 @@ def generate_beat(beat_id: str):
             "tags": metadata["tags"],
             "status": "draft",
         }).execute()
+
+        # 5. Avança status
+        client.table("beats").update({"status": "ready_for_review"}).eq("id", beat_id).execute()
+
+        logger.info(
+            "Beat %s: geração concluída — titulo='%s' tags=%d",
+            beat_id, metadata["titulo"], len(metadata["tags"]),
+        )
+        return {"ok": True, "beat_id": beat_id, "beat_name": metadata["beat_name"], "status": "ready_for_review"}
+
+    except HTTPException:
+        raise
     except Exception as exc:
-        _mark_failed(client, beat_id, f"Erro ao salvar post: {exc}")
-        raise HTTPException(status_code=500, detail=f"Erro ao salvar post: {exc}")
-
-    # 5. Avança status
-    client.table("beats").update({"status": "ready_for_review"}).eq("id", beat_id).execute()
-
-    logger.info(
-        "Beat %s: geração concluída — titulo='%s' tags=%d",
-        beat_id, metadata["titulo"], len(metadata["tags"]),
-    )
-    return {"ok": True, "beat_id": beat_id, "beat_name": metadata["beat_name"], "status": "ready_for_review"}
+        logger.exception("Erro inesperado em generate_beat (beat=%s)", beat_id)
+        _mark_failed(client, beat_id, f"Erro inesperado: {exc}")
+        raise HTTPException(status_code=500, detail=f"Erro inesperado: {exc}")
