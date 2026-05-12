@@ -3,11 +3,17 @@ import logging
 import os
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
+
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
 FFMPEG_TIMEOUT_SECONDS = 300
+VIDEO_WIDTH = 1920
+VIDEO_HEIGHT = 1080
+COVER_SIZE = 1080
 
 
 def _ffmpeg_binary() -> str:
@@ -31,6 +37,30 @@ def _ffmpeg_binary() -> str:
         ) from exc
 
 
+def _prepare_canvas(cover_path: str) -> str:
+    """
+    Pre-processa a capa em um canvas 1920x1080 com fundo preto e capa
+    centralizada num quadrado 1080x1080 (pillarbox). Pillow faz isso em
+    memoria minima, evitando OOM no ffmpeg.
+    Retorna o path do JPEG temporario.
+    """
+    with Image.open(cover_path) as img:
+        img = img.convert("RGB")
+
+        # Encaixa a capa em COVER_SIZE x COVER_SIZE preservando aspect ratio
+        img.thumbnail((COVER_SIZE, COVER_SIZE), Image.LANCZOS)
+
+        canvas = Image.new("RGB", (VIDEO_WIDTH, VIDEO_HEIGHT), color=(0, 0, 0))
+        offset_x = (VIDEO_WIDTH - img.width) // 2
+        offset_y = (VIDEO_HEIGHT - img.height) // 2
+        canvas.paste(img, (offset_x, offset_y))
+
+        out = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+        out.close()
+        canvas.save(out.name, "JPEG", quality=92, optimize=True)
+        return out.name
+
+
 def audio_to_mp4(mp3_path: str, cover_path: str, output_path: str) -> None:
     """
     Gera MP4 com capa estatica + audio.
@@ -44,23 +74,13 @@ def audio_to_mp4(mp3_path: str, cover_path: str, output_path: str) -> None:
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
     ffmpeg_bin = _ffmpeg_binary()
-    # Capa quadrada centralizada em canvas 1920x1080 com pillarbox preto:
-    # 1. scale ate caber em 1080x1080 mantendo aspect ratio (capa nao precisa ser exatamente 1:1)
-    # 2. pad pra completar pra 1080x1080 (caso a capa nao seja perfeitamente quadrada)
-    # 3. pad pra 1920x1080 (barras pretas nas laterais)
-    # Resultado: video 16:9 → evita classificacao automatica como Shorts pelo YouTube.
-    video_filter = (
-        "scale=1080:1080:force_original_aspect_ratio=decrease,"
-        "pad=1080:1080:(ow-iw)/2:(oh-ih)/2:color=black,"
-        "pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=black,"
-        "setsar=1"
-    )
+    canvas_path = _prepare_canvas(cover_path)
+    # tune=stillimage otimiza libx264 pra video onde frame nao muda — pouca CPU/RAM.
     cmd = [
         ffmpeg_bin, "-y",
-        "-loop", "1", "-i", cover_path,
+        "-loop", "1", "-i", canvas_path,
         "-i", mp3_path,
-        "-vf", video_filter,
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+        "-c:v", "libx264", "-preset", "veryfast", "-tune", "stillimage", "-crf", "23",
         "-r", "1", "-pix_fmt", "yuv420p",
         "-c:a", "copy",
         "-shortest", "-movflags", "+faststart",
@@ -83,6 +103,12 @@ def audio_to_mp4(mp3_path: str, cover_path: str, output_path: str) -> None:
     except subprocess.TimeoutExpired as exc:
         logger.error("ffmpeg timeout apos %ss", FFMPEG_TIMEOUT_SECONDS)
         raise RuntimeError(f"ffmpeg timeout apos {FFMPEG_TIMEOUT_SECONDS}s") from exc
+    finally:
+        if os.path.exists(canvas_path):
+            try:
+                os.unlink(canvas_path)
+            except OSError:
+                pass
 
     size_mb = os.path.getsize(output_path) / (1024 * 1024)
     logger.info("ffmpeg: MP4 gerado %.1fMB stderr_tail=%s", size_mb, (result.stderr or "")[-200:])
