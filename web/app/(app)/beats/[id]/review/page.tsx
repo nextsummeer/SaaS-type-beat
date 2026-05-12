@@ -34,12 +34,16 @@ interface Post {
 
 type PrivacyStatus = 'public' | 'unlisted'
 
+function toLocalDatetimeInput(d: Date): string {
+  // formato datetime-local: YYYY-MM-DDTHH:MM no fuso do navegador
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 function defaultScheduledAt(): string {
   const d = new Date()
   d.setHours(18, 0, 0, 0)
-  // formato datetime-local: YYYY-MM-DDTHH:MM
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return toLocalDatetimeInput(d)
 }
 
 export default function ReviewPage() {
@@ -76,7 +80,11 @@ export default function ReviewPage() {
         setDescricao(data.descricao ?? '')
         setTags(Array.isArray(data.tags) ? data.tags : [])
         setPurchaseLink(data.purchase_link ?? '')
-        if (data.scheduled_at) setScheduledAt(data.scheduled_at.slice(0, 16))
+        if (data.scheduled_at) {
+          // Banco guarda em UTC; converte pro fuso local pro input datetime-local
+          const localDate = new Date(data.scheduled_at)
+          if (!isNaN(localDate.getTime())) setScheduledAt(toLocalDatetimeInput(localDate))
+        }
         if (data.privacy_status === 'public' || data.privacy_status === 'unlisted') {
           setPrivacyStatus(data.privacy_status)
         }
