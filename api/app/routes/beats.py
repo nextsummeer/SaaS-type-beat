@@ -19,6 +19,70 @@ class CreateBeatRequest(BaseModel):
     store_link: Optional[str] = None
 
 
+@router.get("")
+def list_beats(authorization: str = Header(...)):
+    """Lista beats do usuário autenticado com dados do post (variacao=A)."""
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token inválido")
+    token = authorization.removeprefix("Bearer ")
+
+    try:
+        user = validate_token(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token inválido ou expirado")
+
+    client = get_admin_client()
+
+    beats_result = (
+        client.table("beats")
+        .select(
+            "id, status, artista_nome, bpm, music_key, cover_path, "
+            "error_message, created_at, updated_at"
+        )
+        .eq("user_id", str(user.id))
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    beats = beats_result.data or []
+    if not beats:
+        return []
+
+    beat_ids = [b["id"] for b in beats]
+
+    posts_result = (
+        client.table("posts")
+        .select("beat_id, titulo, status, scheduled_at, youtube_url, updated_at")
+        .in_("beat_id", beat_ids)
+        .eq("variacao", "A")
+        .execute()
+    )
+    posts_by_beat = {p["beat_id"]: p for p in (posts_result.data or [])}
+
+    out = []
+    for b in beats:
+        post = posts_by_beat.get(b["id"])
+        out.append(
+            {
+                "id": b["id"],
+                "status": b["status"],
+                "artista_nome": b.get("artista_nome"),
+                "bpm": b.get("bpm"),
+                "music_key": b.get("music_key"),
+                "cover_path": b.get("cover_path"),
+                "error_message": b.get("error_message"),
+                "created_at": b.get("created_at"),
+                "updated_at": b.get("updated_at"),
+                "titulo": post.get("titulo") if post else None,
+                "post_status": post.get("status") if post else None,
+                "scheduled_at": post.get("scheduled_at") if post else None,
+                "youtube_url": post.get("youtube_url") if post else None,
+            }
+        )
+
+    return out
+
+
 @router.post("", status_code=201)
 def create_beat(
     body: CreateBeatRequest,

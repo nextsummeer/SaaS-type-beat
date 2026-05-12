@@ -6,7 +6,7 @@
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** T2.14 — Pagina /beats com lista de cards (hoje quebra ao sair de /beats/[id]). Apos T2.14: T5.1 (YouTube OAuth) + T5.2 (publish.py) + T5.3 (cron QStash).
+**Proximo passo:** T5.1 (YouTube OAuth) + T5.2 (youtube_service.upload_video) + T5.3 (ffmpeg gera mp4) + T5.4 (worker publish.py).
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -327,7 +327,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Dependencia:** T4.2 (pipeline funcionando — concluido)
 - **ADR:** `docs/decisoes/2026-05-12-bpm-manual-e-link-loja.md`
 
-#### `[ ]` T2.14 — Pagina /beats: lista de cards de todos os beats do produtor
+#### `[x]` T2.14 — Pagina /beats: lista de cards de todos os beats do produtor
 
 - **Arquivos:**
   - `web/app/(app)/beats/page.tsx` (lista cards — pagina hoje quebra ao sair de /beats/[id])
@@ -657,4 +657,5 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **2026-05-12** — Fase 4 simplificada implementada. T4.1 (anthropic_service), T2.8 (spotify_service), T3.2 (gemini_service), T4.2 (generate.py worker), T4.3 (review page), T4.4 (agendamento), posts.py (GET+PATCH), user_profiles (migration 004 + pagina /configuracoes), UploadForm atualizado (artista obrigatorio + capa obrigatoria). Erro encontrado no primeiro teste real — nao identificado (contexto esgotado). Investigar na proxima sessao. Ver `docs/sessoes/2026-05-12-fase4-generate-review.md`.
 - **2026-05-12** — Debug pipeline upload ponta-a-ponta. Fixes: GRANT authenticated em todas as tabelas, campo email_contato no perfil, fallback QStash via thread HTTP, polling 4s na pagina beats/[id], librosa otimizado (60s@22050Hz), bug critico ThreadPoolExecutor no Gemini corrigido (shutdown wait=False), Spotify+Gemini em paralelo, timeout Claude 60s. Teste final pendente. Ver `docs/sessoes/2026-05-12-debug-pipeline-upload.md`.
 - **2026-05-12** — Pipeline funcionando ponta-a-ponta! Fixes adicionais: GRANT service_role nas tabelas (workers usam admin_client), removido `.maybe_single()` (bug postgrest-py 204), try/except amplo nos workers + `_mark_failed` salva error_message, IDEOTAGS reduzidas 80→40-60 + 12-15 tags fortes, max_tokens 4096→6000 e timeout Claude 60s→120s. T2.13 concluida — BPM manual + link da loja no upload (librosa errava 30% dos type beats com tripletas, ex: Travis Scott 140 BPM virou 92). Pipeline em 50s. T2.14 criada (pagina /beats com cards — hoje quebra ao sair de /beats/[id]). Ver `docs/sessoes/2026-05-12-pipeline-funcionando-bpm-manual.md`.
+- **2026-05-12** — T2.14 concluida. GET /beats no backend retorna lista do user (RLS multitenant) com merge dos dados do post variacao='A' (titulo, scheduled_at, post_status). Frontend: fetchBeats em web/lib/api.ts + componente web/components/BeatCard.tsx (thumbnail signed URL do bucket covers ou placeholder com inicial, badge de status colorido — Postado/Agendado/Em Rascunho/Processando/Falhou, BPM+key, datas de criacao e modificacao) + pagina web/app/(app)/beats/page.tsx com filtros em chips (Todos/Processando/Rascunho/Agendados/Postados/Falhou) e empty state com CTA pra upload. Polling 5s pra status atualizar conforme pipeline avanca. Clique no card direciona pra /beats/[id] se em processamento ou /beats/[id]/review se pronto/agendado/postado. Typecheck passa. Lint sem erros novos.
 - **2026-05-11** — T3.1+T3.3 concluidas. Decisao: librosa substituiu Gemini para analise de audio (gratuito, deterministico, preciso). Detecta BPM e tom (Krumhansl-Kessler). Genero, artistas similares e mood removidos. Worker analyze.py baixa MP3 do Storage, analisa, salva bpm+music_key, avanca status converted→analyzed, dispara generate. T3.2 (tags Gemini) postergado para apos T2.9 (artista disponivel). 3 testes existentes continuam passando.

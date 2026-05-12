@@ -10,6 +10,34 @@ export async function healthCheck(): Promise<{ ok: boolean; version?: string }> 
   }
 }
 
+export interface BeatListItem {
+  id: string
+  status: string
+  artista_nome: string | null
+  bpm: number | null
+  music_key: string | null
+  cover_path: string | null
+  error_message: string | null
+  created_at: string
+  updated_at: string
+  titulo: string | null
+  post_status: string | null
+  scheduled_at: string | null
+  youtube_url: string | null
+}
+
+export async function fetchBeats(token: string): Promise<BeatListItem[]> {
+  const res = await fetch(`${API_URL}/beats`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail ?? 'Erro ao buscar beats')
+  }
+  return res.json()
+}
+
 export async function fetchPost(beatId: string, token: string) {
   const res = await fetch(`${API_URL}/posts/${beatId}`, {
     headers: { Authorization: `Bearer ${token}` },
