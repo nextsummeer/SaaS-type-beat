@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Music, Loader2, AlertCircle, Calendar, Clock, Trash2 } from 'lucide-react'
+import { Music, Loader2, AlertCircle, Calendar, Clock, Trash2, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { BeatListItem } from '@/lib/api'
 
 interface Props {
   beat: BeatListItem
-  onDelete: (id: string) => void
+  modoSelecao: boolean
+  selecionado: boolean
+  onToggleSelecionado: (id: string) => void
+  onPedirDelete: (beat: BeatListItem) => void
 }
 
 type Estado = {
@@ -58,10 +61,9 @@ function formataData(iso: string): string {
   }
 }
 
-export function BeatCard({ beat, onDelete }: Props) {
+export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, onPedirDelete }: Props) {
   const router = useRouter()
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState(false)
   const estado = estadoVisual(beat)
   const href = destino(beat)
   const supabase = createClient()
@@ -79,17 +81,18 @@ export function BeatCard({ beat, onDelete }: Props) {
     return () => { cancelado = true }
   }, [beat.cover_path])
 
-  async function handleDelete(e: React.MouseEvent) {
+  function handleCardClick() {
+    if (modoSelecao) {
+      onToggleSelecionado(beat.id)
+    } else {
+      router.push(href)
+    }
+  }
+
+  function handleDeleteClick(e: React.MouseEvent) {
     e.stopPropagation()
     e.preventDefault()
-    if (deleting) return
-    if (!confirm(`Deletar este beat${beat.titulo ? ` "${beat.titulo}"` : ''}?`)) return
-    setDeleting(true)
-    try {
-      await onDelete(beat.id)
-    } finally {
-      setDeleting(false)
-    }
+    onPedirDelete(beat)
   }
 
   const titulo = beat.titulo ?? '[Aguardando IA]'
@@ -97,8 +100,12 @@ export function BeatCard({ beat, onDelete }: Props) {
 
   return (
     <div
-      onClick={() => router.push(href)}
-      className="group flex cursor-pointer flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/50 transition hover:border-violet-500/40 hover:bg-zinc-900"
+      onClick={handleCardClick}
+      className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border bg-zinc-900/50 transition ${
+        selecionado
+          ? 'border-violet-500 ring-2 ring-violet-500/30'
+          : 'border-zinc-800 hover:border-violet-500/40 hover:bg-zinc-900'
+      }`}
     >
       {/* Thumbnail */}
       <div className="relative aspect-square w-full overflow-hidden bg-zinc-800">
@@ -107,7 +114,7 @@ export function BeatCard({ beat, onDelete }: Props) {
           <img
             src={coverUrl}
             alt={titulo}
-            className="h-full w-full object-cover transition group-hover:scale-105"
+            className={`h-full w-full object-cover transition ${modoSelecao ? '' : 'group-hover:scale-105'}`}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900/40 to-zinc-900">
@@ -115,17 +122,36 @@ export function BeatCard({ beat, onDelete }: Props) {
           </div>
         )}
 
-        {/* Botão deletar (canto superior esquerdo) */}
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={deleting}
-          title="Deletar beat"
-          aria-label="Deletar beat"
-          className="absolute left-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-700/50 bg-black/60 text-zinc-300 opacity-0 backdrop-blur-sm transition hover:border-red-500/50 hover:bg-red-500/20 hover:text-red-400 group-hover:opacity-100 disabled:cursor-not-allowed"
-        >
-          {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-        </button>
+        {/* Overlay escuro quando selecionado */}
+        {modoSelecao && selecionado && (
+          <div className="absolute inset-0 bg-violet-600/20" />
+        )}
+
+        {/* Checkbox em modo seleção */}
+        {modoSelecao && (
+          <div
+            className={`absolute left-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full border-2 transition ${
+              selecionado
+                ? 'border-violet-400 bg-violet-600 text-white'
+                : 'border-white/60 bg-black/40 backdrop-blur-sm'
+            }`}
+          >
+            {selecionado && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+          </div>
+        )}
+
+        {/* Botão deletar individual (só fora do modo seleção) */}
+        {!modoSelecao && (
+          <button
+            type="button"
+            onClick={handleDeleteClick}
+            title="Deletar beat"
+            aria-label="Deletar beat"
+            className="absolute left-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-700/50 bg-black/60 text-zinc-300 opacity-0 backdrop-blur-sm transition hover:border-red-500/50 hover:bg-red-500/20 hover:text-red-400 group-hover:opacity-100"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
 
         {/* Badge de status */}
         <div
