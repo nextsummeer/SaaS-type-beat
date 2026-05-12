@@ -56,3 +56,4 @@
 - `sessoes/2026-05-12-debug-pipeline-upload.md` — Debug pipeline upload: GRANT Supabase, fallback QStash, bug ThreadPoolExecutor Gemini, librosa otimizado. Teste final pendente. [ativo, importante]
 - `sessoes/2026-05-12-pipeline-funcionando-bpm-manual.md` — Pipeline funcionando ponta-a-ponta (50s)! Fixes: prompt Claude (40-60 IDEOTAGS), bug .maybe_single() postgrest-py, GRANT service_role, _mark_failed com error_message. T2.13 concluida: BPM manual + link da loja no upload. [ativo, importante]
 - `sessoes/2026-05-12-t51-youtube-oauth.md` — T5.1 concluida: OAuth YouTube end-to-end + T2.14 (lista de beats) + refinamentos de UX. 6 gotchas resolvidos durante setup. [ativo, importante]
+- `sessoes/2026-05-12-t52-t53-t54-publicacao-youtube.md` — T5.2+T5.3+T5.4 concluidas: pipeline ffmpeg+upload+publishAt funcionando em producao. 7 bugs resolvidos (OOM, Shorts auto, timezone, links nao clicaveis). 2 beats publicados ponta-a-ponta. [ativo, importante]
