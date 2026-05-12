@@ -172,6 +172,12 @@ export default function ReviewPage() {
     !!purchaseLink &&
     (placeholderNaDescricao || (!!post?.purchase_link && post.purchase_link !== purchaseLink && descricao.includes(post.purchase_link)))
 
+  // YouTube trunca a previa em ~120 chars; link beatstars.com/beat/... longo
+  // estoura essa previa e fica cortado com "..." (visualmente nao clicavel).
+  // O bsta.rs/XXXXX cabe inteiro e fica clicavel na previa.
+  const linkEhBeatstarsLongo =
+    !!purchaseLink && /(?:^|\/\/)(www\.)?beatstars\.com\/beat\//i.test(purchaseLink.trim())
+
   function removeTag(tag: string) {
     setTags((prev) => prev.filter((t) => t !== tag))
   }
@@ -270,6 +276,12 @@ export default function ReviewPage() {
         {!purchaseLink && placeholderNaDescricao && (
           <p className="text-xs text-amber-400">
             ⚠ A descrição ainda tem o placeholder <code className="rounded bg-zinc-800 px-1">[insira seu link de venda]</code>. Cole o link aqui pra ser substituído.
+          </p>
+        )}
+        {linkEhBeatstarsLongo && (
+          <p className="text-xs text-amber-400">
+            ⚠ Link longo do BeatStars vai aparecer cortado na prévia do YouTube e não fica clicável.
+            Use o link curto: vá na página do beat no BeatStars → <b>Share</b> → copie o link <code className="rounded bg-zinc-800 px-1">bsta.rs/XXXXX</code>.
           </p>
         )}
       </div>
