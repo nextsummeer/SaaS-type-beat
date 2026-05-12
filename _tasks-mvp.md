@@ -6,7 +6,7 @@
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** Fase 4 simplificada — generate.py com Claude gera 1 titulo + 1 descricao + 1 conjunto de tags por beat (A/B/C removido do MVP)
+**Proximo passo:** Fase 4 — investigar erro no fluxo generate.py (erro apareceu no primeiro teste real, nao identificado — ver sessao 2026-05-12)
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -361,7 +361,28 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 
 > **Por que:** o angulo defensavel. 3 versoes diferentes do mesmo beat, beatmaker escolhe e edita.
 
-#### `[ ]` T4.1 — Service: anthropic_service.generate_3_variants
+#### `[x]` T4.1 — Service: anthropic_service.generate_metadata (simplificado — 1 variacao)
+
+- **Arquivo:** `api/app/services/anthropic_service.py`
+- **Decisao (2026-05-12):** A/B/C removido do MVP. Claude gera 1 titulo + descricao com template padrao do produtor + 80-100 tags. Inputs: artista_nome + bpm + music_key + top_tracks (Spotify) + trending_tags (Gemini). Mood removido desta fase (aguarda decisao com socio). Capa obrigatoriamente manual por enquanto.
+- **Criterio de pronto:** ✅ Funcao retorna {beat_name, titulo, descricao, tags[]} para qualquer artista.
+- **Dependencia:** T2.8 (spotify_service — implementado junto nesta fase)
+
+#### `[x]` T2.8 — Service: spotify_service.py (auth + top tracks)
+
+- **Arquivo:** `api/app/services/spotify_service.py`
+- **Decisao (2026-05-12):** Implementado Client Credentials + search_artist + get_top_tracks. Cache de token em memoria. Graceful fallback se Spotify indisponivel.
+- **Criterio de pronto:** ✅ get_top_tracks("drake") retorna lista de titulos reais.
+- **Dependencia:** SPOTIFY_CLIENT_ID + SPOTIFY_CLIENT_SECRET no Railway
+
+#### `[x]` T3.2 — Service: gemini_service.search_trending_tags (grounded)
+
+- **Arquivo:** `api/app/services/gemini_service.py`
+- **Decisao (2026-05-12):** Implementado. Usa gemini-2.5-flash com google_search tool. Parse manual via regex. Graceful fallback se Gemini indisponivel.
+- **Criterio de pronto:** ✅ Retorna lista de tags trending para artista informado.
+- **Dependencia:** GOOGLE_API_KEY no Railway
+
+#### `[~]` T4.1-original — Service: anthropic_service.generate_3_variants
 
 - **Arquivo:** `api/app/services/anthropic_service.py`
 - **O que fazer:** Funcao recebe `(beat_metadata)` e retorna 3 pacotes `{titulo, descricao, tags[]}`. Inputs incluem: artista principal + colaboradores (do form), mood (do form, cards visuais), BPM/key/genero (do analyze.py), artistas_similares (do analyze.py — backup pra angulo C), tags trending (do analyze.py), e **top 10 musicas do artista via Spotify API** (para alimentar nomes inspirados). Prompt forca angulos distintos:
@@ -371,21 +392,40 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** 3 titulos disjuntos (>50% palavras diferentes), tags com >50% disjuncao entre as 3 variacoes. Pra "Drake" + mood "sad", pelo menos 1 dos 3 titulos tem palavra-chave inspirada em hit real (testavel comparando com top tracks Spotify).
 - **Dependencia:** T0.4 (referencia Claude), T2.8 (spotify_service)
 
-#### `[ ]` T4.2 — Worker generate.py cria 3 rows em posts
+#### `[x]` T4.2 — Worker generate.py cria 1 row em posts (simplificado)
+
+- **Arquivo:** `api/app/workers/generate.py`
+- **Decisao (2026-05-12):** Orquestra Spotify + Gemini + Claude. Cria 1 post (variacao='A'). Graceful: Spotify e Gemini sao opcionais (Claude gera mesmo sem eles). Erro real encontrado no primeiro teste — investigar na proxima sessao.
+- **Criterio de pronto:** ⚠️ Implementado mas com erro no primeiro teste real. Investigar.
+- **Dependencia:** T4.1, T3.2, T2.8
+
+#### `[ ]` T4.2-original — Worker generate.py cria 3 rows em posts
 
 - **Arquivos:** `api/app/workers/generate.py`
 - **O que fazer:** Endpoint `/internal/beats/{id}/generate`. Chama T4.1, insere 3 rows em `posts` (variacao A/B/C, status=draft), atualiza beat status=ready_for_review.
 - **Criterio de pronto:** Apos analyze, 3 posts criadas com titulos distintos. Status=ready_for_review.
 - **Dependencia:** T4.1, T3.3
 
-#### `[ ]` T4.3 — UI: 3 cards lado a lado em /beats/[id]
+#### `[x]` T4.3 — UI: review page /beats/[id]/review (simplificado — 1 card)
+
+- **Arquivos:** `web/app/(app)/beats/[id]/review/page.tsx`, `web/lib/api.ts` (fetchPost + patchPost), `api/app/routes/posts.py`
+- **Decisao (2026-05-12):** 1 card editavel (titulo + descricao + tags chips + link de venda). Agendamento com datetime-local default hoje 18h. Perfil do produtor salvo em user_profiles (nome + instagram) via pagina /configuracoes.
+- **Criterio de pronto:** ✅ Pagina criada. Depende do T4.2 funcionar (erro pendente).
+
+#### `[ ]` T4.3-original — UI: 3 cards lado a lado em /beats/[id]
 
 - **Arquivos:** `web/app/(app)/beats/[id]/page.tsx`, `web/components/VariacaoCard.tsx`
 - **O que fazer:** Quando status=ready_for_review, mostra 3 cards com titulo+desc+tags editaveis (Textarea + chips de tag). Cada card tem botao "Salvar".
 - **Criterio de pronto:** Editar titulo no card A salva no DB. Recarrega pagina, edicao persistiu.
 - **Dependencia:** T4.2
 
-#### `[ ]` T4.4 — UI: confirmacao de agendamento (default hoje 18h, +3d, +7d)
+#### `[x]` T4.4 — UI: agendamento integrado na review page (simplificado — 1 data)
+
+- **Arquivo:** `web/app/(app)/beats/[id]/review/page.tsx`
+- **Decisao (2026-05-12):** 1 data (default hoje 18h). PATCH /posts/{id} com scheduled_at + status=scheduled. Redireciona pra /beats apos confirmar.
+- **Criterio de pronto:** ✅ Implementado. Depende do T4.2 funcionar.
+
+#### `[ ]` T4.4-original — UI: confirmacao de agendamento (default hoje 18h, +3d, +7d)
 
 - **Arquivos:** `web/components/AgendamentoForm.tsx`
 - **O que fazer:** Apos editar 3 variacoes, beatmaker clica "Agendar publicacao". Modal mostra 3 date pickers default (hoje 18h, +3d 18h, +7d 18h), editaveis. Confirma → chama `PATCH /posts/{id}` em cada com `scheduled_at`.
@@ -583,4 +623,5 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **2026-05-11** — T2.4 concluida. Pagina /beats/[id] com step list (Upload→Conversao→Analise→Geracao→Pronto). Status atualiza em tempo real via Supabase Realtime. Apos upload, UploadForm redireciona automaticamente para /beats/{id}. Pagina de upload ganhou aviso em amber explicando MP3 com tag de produtor.
 - **2026-05-11** — T2.5 concluida. 3 testes pytest para worker convert.py: caminho feliz (uploaded→converted + dispatch analyze), idempotencia (converted→skipped), arquivo ausente (→failed 422). Python 3.11 instalado via winget. 3 passed em 2s.
 - **2026-05-11** — DECISAO: A/B/C de titulos/videos removido do MVP. MVP publica 1 video por beat (1 titulo, 1 descricao, 1 conjunto de tags). Motivo: maioria dos produtores tem 1 canal, complexidade nao justifica para beta fechado. A/B/C entra na V2. Tasks T4.1-T4.5 e T5.4 precisam ser revisadas para refletir "1 post por beat" na proxima sessao.
+- **2026-05-12** — Fase 4 simplificada implementada. T4.1 (anthropic_service), T2.8 (spotify_service), T3.2 (gemini_service), T4.2 (generate.py worker), T4.3 (review page), T4.4 (agendamento), posts.py (GET+PATCH), user_profiles (migration 004 + pagina /configuracoes), UploadForm atualizado (artista obrigatorio + capa obrigatoria). Erro encontrado no primeiro teste real — nao identificado (contexto esgotado). Investigar na proxima sessao. Ver `docs/sessoes/2026-05-12-fase4-generate-review.md`.
 - **2026-05-11** — T3.1+T3.3 concluidas. Decisao: librosa substituiu Gemini para analise de audio (gratuito, deterministico, preciso). Detecta BPM e tom (Krumhansl-Kessler). Genero, artistas similares e mood removidos. Worker analyze.py baixa MP3 do Storage, analisa, salva bpm+music_key, avanca status converted→analyzed, dispara generate. T3.2 (tags Gemini) postergado para apos T2.9 (artista disponivel). 3 testes existentes continuam passando.
