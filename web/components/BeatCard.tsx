@@ -28,6 +28,10 @@ function estadoVisual(beat: BeatListItem): Estado {
     return { label: 'Postado', className: 'bg-green-500/10 text-green-400 border-green-500/30' }
   }
   if (beat.post_status === 'scheduled') {
+    // YouTube publica sozinho no scheduled_at — se ja passou, mostra como Postado
+    if (beat.scheduled_at && new Date(beat.scheduled_at) <= new Date()) {
+      return { label: 'Postado', className: 'bg-green-500/10 text-green-400 border-green-500/30' }
+    }
     return { label: 'Agendado', className: 'bg-blue-500/10 text-blue-400 border-blue-500/30' }
   }
   if (beat.status === 'ready_for_review') {

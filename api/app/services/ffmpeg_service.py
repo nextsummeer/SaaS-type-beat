@@ -39,21 +39,30 @@ def _ffmpeg_binary() -> str:
 
 def _prepare_canvas(cover_path: str) -> str:
     """
-    Pre-processa a capa em um canvas 1920x1080 com fundo preto e capa
-    centralizada num quadrado 1080x1080 (pillarbox). Pillow faz isso em
-    memoria minima, evitando OOM no ffmpeg.
+    Pre-processa a capa em um canvas 1920x1080 com pillarbox preto.
+    A capa SEMPRE ocupa 100% da altura (1080px), preservando aspect ratio:
+      - capa 1:1 (1080x1080)  → centralizada, barras de 420px de cada lado
+      - capa menor que 1080   → upscale pra altura 1080 (mantem proporcao)
+      - capa wide (ex: 16:9)  → ocupa toda a largura tambem, crop horizontal centro
     Retorna o path do JPEG temporario.
     """
     with Image.open(cover_path) as img:
         img = img.convert("RGB")
 
-        # Encaixa a capa em COVER_SIZE x COVER_SIZE preservando aspect ratio
-        img.thumbnail((COVER_SIZE, COVER_SIZE), Image.LANCZOS)
+        # Forca altura = VIDEO_HEIGHT, mantendo aspect (upscale ou downscale)
+        if img.height != VIDEO_HEIGHT:
+            ratio = VIDEO_HEIGHT / img.height
+            new_w = max(1, int(round(img.width * ratio)))
+            img = img.resize((new_w, VIDEO_HEIGHT), Image.LANCZOS)
+
+        # Se a capa ficou mais larga que o canvas (capa wide), crop horizontal centro
+        if img.width > VIDEO_WIDTH:
+            left = (img.width - VIDEO_WIDTH) // 2
+            img = img.crop((left, 0, left + VIDEO_WIDTH, VIDEO_HEIGHT))
 
         canvas = Image.new("RGB", (VIDEO_WIDTH, VIDEO_HEIGHT), color=(0, 0, 0))
         offset_x = (VIDEO_WIDTH - img.width) // 2
-        offset_y = (VIDEO_HEIGHT - img.height) // 2
-        canvas.paste(img, (offset_x, offset_y))
+        canvas.paste(img, (offset_x, 0))
 
         out = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
         out.close()
