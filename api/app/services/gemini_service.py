@@ -11,7 +11,30 @@ _TIMEOUT_SECONDS = 20
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
 
 
-def _fetch_tags(artista_nome: str) -> list[str]:
+def search_trending_tags(artista_nome: str) -> list[str]:
+    """
+    Usa Gemini com Google Search grounding para buscar tags trending.
+    Timeout real de 15s na chamada HTTP — não bloqueia o pipeline.
+    """
+    if not GOOGLE_API_KEY:
+        logger.warning("GOOGLE_API_KEY não configurada — tags trending não buscadas")
+        return []
+
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(_do_gemini, artista_nome)
+    try:
+        tags = future.result(timeout=_TIMEOUT_SECONDS)
+        logger.info("Gemini retornou %d tags para '%s'", len(tags), artista_nome)
+        return tags
+    except Exception as exc:
+        logger.warning("Gemini timeout/erro para '%s': %s — sem tags", artista_nome, exc)
+        return []
+    finally:
+        # shutdown(wait=False) não bloqueia em threads penduradas
+        executor.shutdown(wait=False, cancel_futures=True)
+
+
+def _do_gemini(artista_nome: str) -> list[str]:
     from google import genai
     from google.genai import types
 
@@ -38,27 +61,3 @@ def _fetch_tags(artista_nome: str) -> list[str]:
         if isinstance(tags, list) and tags:
             return [str(t).lower().strip() for t in tags]
     return []
-
-
-def search_trending_tags(artista_nome: str) -> list[str]:
-    """
-    Usa Gemini com Google Search grounding para buscar os termos
-    mais pesquisados no YouTube para o artista. Timeout de 20s.
-    Retorna lista vazia se falhar ou timeout.
-    """
-    if not GOOGLE_API_KEY:
-        logger.warning("GOOGLE_API_KEY não configurada — tags trending não buscadas")
-        return []
-
-    try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(_fetch_tags, artista_nome)
-            tags = future.result(timeout=_TIMEOUT_SECONDS)
-            logger.info("Gemini retornou %d tags para '%s'", len(tags), artista_nome)
-            return tags
-    except concurrent.futures.TimeoutError:
-        logger.warning("Gemini timeout (%ds) para '%s' — continuando sem tags", _TIMEOUT_SECONDS, artista_nome)
-        return []
-    except Exception as exc:
-        logger.error("Erro no gemini_service para '%s': %s", artista_nome, exc)
-        return []

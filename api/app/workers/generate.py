@@ -59,20 +59,21 @@ def generate_beat(beat_id: str):
     profile = profile_result.data or {}
     producer_email = profile.get("email_contato")
 
-    # 1+2. Spotify + Gemini em paralelo (economiza ~15s)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        fut_spotify = executor.submit(get_top_tracks, artista_nome)
-        fut_gemini = executor.submit(search_trending_tags, artista_nome)
-        try:
-            top_tracks = fut_spotify.result(timeout=15)
-        except Exception as exc:
-            logger.warning("Spotify falhou para '%s': %s", artista_nome, exc)
-            top_tracks = []
-        try:
-            trending_tags = fut_gemini.result(timeout=25)
-        except Exception as exc:
-            logger.warning("Gemini falhou para '%s': %s", artista_nome, exc)
-            trending_tags = []
+    # 1+2. Spotify + Gemini em paralelo — shutdown(wait=False) evita bloqueio
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+    fut_spotify = executor.submit(get_top_tracks, artista_nome)
+    fut_gemini = executor.submit(search_trending_tags, artista_nome)
+    try:
+        top_tracks = fut_spotify.result(timeout=15)
+    except Exception as exc:
+        logger.warning("Spotify falhou para '%s': %s", artista_nome, exc)
+        top_tracks = []
+    try:
+        trending_tags = fut_gemini.result(timeout=25)
+    except Exception as exc:
+        logger.warning("Gemini falhou para '%s': %s", artista_nome, exc)
+        trending_tags = []
+    executor.shutdown(wait=False, cancel_futures=True)
 
     # 3. Claude: gera título, descrição e tags
     try:
