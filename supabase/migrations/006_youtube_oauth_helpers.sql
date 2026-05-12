@@ -14,7 +14,7 @@ CREATE OR REPLACE FUNCTION upsert_youtube_account(
 ) RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_id uuid;
@@ -46,7 +46,7 @@ CREATE OR REPLACE FUNCTION get_youtube_refresh_token(
 ) RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_token text;
