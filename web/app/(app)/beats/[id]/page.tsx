@@ -83,6 +83,7 @@ export default function BeatPage() {
   const { id } = useParams<{ id: string }>()
   const [beat, setBeat] = useState<Beat | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -91,8 +92,9 @@ export default function BeatPage() {
       .from('beats')
       .select('id, status, audio_path, created_at')
       .eq('id', id)
-      .single()
-      .then(({ data }) => {
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) setFetchError(error.message)
         if (data) setBeat(data as Beat)
         setLoading(false)
       })
@@ -125,6 +127,8 @@ export default function BeatPage() {
     return (
       <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-400">
         Beat não encontrado.
+        {fetchError && <p className="mt-1 text-xs opacity-70">Erro: {fetchError}</p>}
+        <p className="mt-1 text-xs opacity-70">ID: {id}</p>
       </div>
     )
   }
