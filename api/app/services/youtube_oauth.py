@@ -113,24 +113,43 @@ def exchange_code(code: str) -> dict:
 
 
 def get_channel_info(access_token: str) -> Optional[dict]:
-    """Retorna {channel_id, channel_title} do canal default do user, ou None."""
-    resp = requests.get(
-        YOUTUBE_CHANNELS_URL,
-        params={"part": "snippet", "mine": "true"},
-        headers={"Authorization": f"Bearer {access_token}"},
-        timeout=15,
-    )
-    if not resp.ok:
-        logger.error("Falha ao buscar canal: %s %s", resp.status_code, resp.text)
-        return None
-    items = resp.json().get("items", [])
-    if not items:
-        return None
-    item = items[0]
-    return {
-        "channel_id": item["id"],
-        "channel_title": item.get("snippet", {}).get("title", "Canal sem nome"),
-    }
+    """Retorna {channel_id, channel_title} do canal do user, ou None.
+
+    Tenta múltiplas estratégias pra cobrir contas comuns + Brand Accounts:
+      1) channels.list?mine=true            (canal default da conta autenticada)
+      2) channels.list?managedByMe=true     (canais gerenciados via Brand)
+    Loga response completo em ambos pra debug.
+    """
+    strategies = [
+        ("mine", {"part": "snippet", "mine": "true"}),
+        ("managedByMe", {"part": "snippet", "managedByMe": "true"}),
+    ]
+
+    for label, params in strategies:
+        resp = requests.get(
+            YOUTUBE_CHANNELS_URL,
+            params=params,
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=15,
+        )
+        logger.info(
+            "channels.list strategy=%s status=%s body=%s",
+            label,
+            resp.status_code,
+            resp.text[:1000],
+        )
+        if not resp.ok:
+            continue
+        items = resp.json().get("items", [])
+        if items:
+            item = items[0]
+            return {
+                "channel_id": item["id"],
+                "channel_title": item.get("snippet", {}).get("title", "Canal sem nome"),
+            }
+
+    logger.warning("Nenhuma estratégia de channels.list retornou items")
+    return None
 
 
 def revoke_token(token: str) -> None:
