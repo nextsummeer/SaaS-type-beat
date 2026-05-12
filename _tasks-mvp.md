@@ -6,7 +6,7 @@
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** Rodar migration `005_store_link.sql` no SQL Editor do Supabase, esperar deploy do Railway, testar upload com BPM manual + link da loja. Se OK: proximo e T5.1 (YouTube OAuth).
+**Proximo passo:** T5.1 (YouTube OAuth) — produtor conecta o canal pro pipeline poder publicar. Apos T5.1: T5.2 (publish.py gera MP4 + upload YouTube) + T5.3 (cron QStash dispara publish nos posts agendados).
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -312,7 +312,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** POST com todos campos cria row + relacoes corretamente. POST sem mood retorna 400.
 - **Dependencia:** T2.2, T2.6
 
-#### `[ ]` T2.13 — Inputs manuais BPM + link da loja no upload
+#### `[x]` T2.13 — Inputs manuais BPM + link da loja no upload
 
 - **Arquivos:**
   - `supabase/migrations/005_store_link.sql` (ADD COLUMN beats.store_link)
@@ -640,4 +640,5 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **2026-05-11** — DECISAO: A/B/C de titulos/videos removido do MVP. MVP publica 1 video por beat (1 titulo, 1 descricao, 1 conjunto de tags). Motivo: maioria dos produtores tem 1 canal, complexidade nao justifica para beta fechado. A/B/C entra na V2. Tasks T4.1-T4.5 e T5.4 precisam ser revisadas para refletir "1 post por beat" na proxima sessao.
 - **2026-05-12** — Fase 4 simplificada implementada. T4.1 (anthropic_service), T2.8 (spotify_service), T3.2 (gemini_service), T4.2 (generate.py worker), T4.3 (review page), T4.4 (agendamento), posts.py (GET+PATCH), user_profiles (migration 004 + pagina /configuracoes), UploadForm atualizado (artista obrigatorio + capa obrigatoria). Erro encontrado no primeiro teste real — nao identificado (contexto esgotado). Investigar na proxima sessao. Ver `docs/sessoes/2026-05-12-fase4-generate-review.md`.
 - **2026-05-12** — Debug pipeline upload ponta-a-ponta. Fixes: GRANT authenticated em todas as tabelas, campo email_contato no perfil, fallback QStash via thread HTTP, polling 4s na pagina beats/[id], librosa otimizado (60s@22050Hz), bug critico ThreadPoolExecutor no Gemini corrigido (shutdown wait=False), Spotify+Gemini em paralelo, timeout Claude 60s. Teste final pendente. Ver `docs/sessoes/2026-05-12-debug-pipeline-upload.md`.
+- **2026-05-12** — Pipeline funcionando ponta-a-ponta! Fixes adicionais: GRANT service_role nas tabelas (workers usam admin_client), removido `.maybe_single()` (bug postgrest-py 204), try/except amplo nos workers + `_mark_failed` salva error_message, IDEOTAGS reduzidas 80→40-60 + 12-15 tags fortes, max_tokens 4096→6000 e timeout Claude 60s→120s. T2.13 concluida — BPM manual + link da loja no upload (librosa errava 30% dos type beats com tripletas, ex: Travis Scott 140 BPM virou 92). Pipeline em 50s. Pronto pra T5.1.
 - **2026-05-11** — T3.1+T3.3 concluidas. Decisao: librosa substituiu Gemini para analise de audio (gratuito, deterministico, preciso). Detecta BPM e tom (Krumhansl-Kessler). Genero, artistas similares e mood removidos. Worker analyze.py baixa MP3 do Storage, analisa, salva bpm+music_key, avanca status converted→analyzed, dispara generate. T3.2 (tags Gemini) postergado para apos T2.9 (artista disponivel). 3 testes existentes continuam passando.
