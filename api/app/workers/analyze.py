@@ -96,4 +96,4 @@ def analyze_beat(beat_id: str):
 
 def _mark_failed(client, beat_id: str, reason: str):
     logger.error("Beat %s falhou na análise: %s", beat_id, reason)
-    client.table("beats").update({"status": "failed"}).eq("id", beat_id).execute()
+    client.table("beats").update({"status": "failed", "error_message": reason}).eq("id", beat_id).execute()
