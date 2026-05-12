@@ -20,6 +20,8 @@ GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke"
 YOUTUBE_CHANNELS_URL = "https://www.googleapis.com/youtube/v3/channels"
 
 YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
+YOUTUBE_READONLY_SCOPE = "https://www.googleapis.com/auth/youtube.readonly"
+REQUESTED_SCOPES = f"{YOUTUBE_UPLOAD_SCOPE} {YOUTUBE_READONLY_SCOPE}"
 
 STATE_TTL_SECONDS = 600
 
@@ -82,7 +84,7 @@ def build_auth_url(user_id: str) -> str:
         "client_id": _client_id(),
         "redirect_uri": _redirect_uri(),
         "response_type": "code",
-        "scope": YOUTUBE_UPLOAD_SCOPE,
+        "scope": REQUESTED_SCOPES,
         "access_type": "offline",
         "prompt": "consent select_account",
         "include_granted_scopes": "true",

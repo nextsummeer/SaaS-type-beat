@@ -97,7 +97,7 @@ def youtube_callback(
             refresh_token=refresh_token,
             access_token=access_token,
             expires_in=expires_in,
-            scopes=scope.split() if scope else [youtube_oauth.YOUTUBE_UPLOAD_SCOPE],
+            scopes=scope.split() if scope else youtube_oauth.REQUESTED_SCOPES.split(),
         )
     except Exception as exc:
         logger.exception("Falha ao salvar canal: %s", exc)
