@@ -2,9 +2,23 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Loader2, Save, CalendarClock, CheckCircle2, Tag, X } from 'lucide-react'
+import { Loader2, Save, CalendarClock, CheckCircle2, Tag, X, ExternalLink, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { fetchPost, patchPost } from '@/lib/api'
+import { fetchPost, patchPost, deleteBeat } from '@/lib/api'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
+
+const PLACEHOLDER_LINK = '[insira seu link de venda]'
+
+function sincronizaLink(desc: string, linkAntigo: string | null, linkNovo: string): string {
+  if (!linkNovo) return desc
+  if (desc.includes(PLACEHOLDER_LINK)) {
+    return desc.split(PLACEHOLDER_LINK).join(linkNovo)
+  }
+  if (linkAntigo && linkAntigo !== linkNovo && desc.includes(linkAntigo)) {
+    return desc.split(linkAntigo).join(linkNovo)
+  }
+  return desc
+}
 
 interface Post {
   id: string
@@ -44,6 +58,8 @@ export default function ReviewPage() {
   const [saving, setSaving] = useState(false)
   const [scheduling, setScheduling] = useState(false)
   const [savedOk, setSavedOk] = useState(false)
+  const [confirmandoDelete, setConfirmandoDelete] = useState(false)
+  const [deletando, setDeletando] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -73,12 +89,15 @@ export default function ReviewPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Sessão expirada')
+      const descSincronizada = sincronizaLink(descricao, post.purchase_link, purchaseLink)
+      if (descSincronizada !== descricao) setDescricao(descSincronizada)
       await patchPost(post.id, session.access_token, {
         titulo,
-        descricao,
+        descricao: descSincronizada,
         tags,
         purchase_link: purchaseLink || undefined,
       })
+      setPost({ ...post, purchase_link: purchaseLink, descricao: descSincronizada })
       setSavedOk(true)
       setTimeout(() => setSavedOk(false), 2500)
     } catch (e) {
@@ -94,9 +113,10 @@ export default function ReviewPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Sessão expirada')
+      const descSincronizada = sincronizaLink(descricao, post.purchase_link, purchaseLink)
       await patchPost(post.id, session.access_token, {
         titulo,
-        descricao,
+        descricao: descSincronizada,
         tags,
         purchase_link: purchaseLink || undefined,
         scheduled_at: new Date(scheduledAt).toISOString(),
@@ -109,6 +129,32 @@ export default function ReviewPage() {
       setScheduling(false)
     }
   }
+
+  async function handleDelete() {
+    setDeletando(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Sessão expirada')
+      await deleteBeat(beatId, session.access_token)
+      router.push('/beats')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao deletar')
+      setDeletando(false)
+      setConfirmandoDelete(false)
+    }
+  }
+
+  function abrirLinkVenda() {
+    if (!purchaseLink) return
+    let url = purchaseLink.trim()
+    if (!/^https?:\/\//i.test(url)) url = `https://${url}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  const placeholderNaDescricao = descricao.includes(PLACEHOLDER_LINK)
+  const linkVaiAtualizar =
+    !!purchaseLink &&
+    (placeholderNaDescricao || (!!post?.purchase_link && post.purchase_link !== purchaseLink && descricao.includes(post.purchase_link)))
 
   function removeTag(tag: string) {
     setTags((prev) => prev.filter((t) => t !== tag))
@@ -141,11 +187,21 @@ export default function ReviewPage() {
 
   return (
     <div className="max-w-2xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Revisar conteúdo do vídeo</h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Edite o título, descrição e tags antes de agendar a publicação.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Revisar conteúdo do vídeo</h1>
+          <p className="mt-1 text-sm text-zinc-400">
+            Edite o título, descrição e tags antes de agendar a publicação.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setConfirmandoDelete(true)}
+          className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-300 transition hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-400"
+        >
+          <Trash2 className="h-4 w-4" />
+          Deletar beat
+        </button>
       </div>
 
       {error && (
@@ -171,13 +227,35 @@ export default function ReviewPage() {
           Link de venda / download{' '}
           <span className="text-xs text-zinc-500">(cole o link do BeatStars ou similar)</span>
         </label>
-        <input
-          type="url"
-          value={purchaseLink}
-          onChange={(e) => setPurchaseLink(e.target.value)}
-          placeholder="https://www.beatstars.com/beat/..."
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
-        />
+        <div className="flex gap-2">
+          <input
+            type="url"
+            value={purchaseLink}
+            onChange={(e) => setPurchaseLink(e.target.value)}
+            placeholder="https://www.beatstars.com/beat/..."
+            className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+          />
+          <button
+            type="button"
+            onClick={abrirLinkVenda}
+            disabled={!purchaseLink.trim()}
+            title="Abrir link em nova aba"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-4 text-sm font-medium text-zinc-300 transition hover:border-violet-500/50 hover:bg-violet-500/10 hover:text-violet-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-zinc-700 disabled:hover:bg-zinc-900 disabled:hover:text-zinc-300"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Abrir
+          </button>
+        </div>
+        {linkVaiAtualizar && (
+          <p className="text-xs text-violet-400">
+            ↳ Ao salvar, esse link será aplicado também na descrição do vídeo automaticamente.
+          </p>
+        )}
+        {!purchaseLink && placeholderNaDescricao && (
+          <p className="text-xs text-amber-400">
+            ⚠ A descrição ainda tem o placeholder <code className="rounded bg-zinc-800 px-1">[insira seu link de venda]</code>. Cole o link aqui pra ser substituído.
+          </p>
+        )}
       </div>
 
       {/* Descrição */}
@@ -296,6 +374,18 @@ export default function ReviewPage() {
           )}
         </button>
       </div>
+
+      <ConfirmDialog
+        open={confirmandoDelete}
+        danger
+        loading={deletando}
+        title={`Deletar "${post?.titulo ?? 'este beat'}"?`}
+        description="O áudio, capa, título, descrição, tags e o agendamento serão apagados permanentemente. Essa ação não pode ser desfeita."
+        confirmLabel="Sim, deletar"
+        cancelLabel="Cancelar"
+        onConfirm={handleDelete}
+        onCancel={() => !deletando && setConfirmandoDelete(false)}
+      />
     </div>
   )
 }
