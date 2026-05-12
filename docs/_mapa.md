@@ -54,3 +54,4 @@
 - `sessoes/2026-05-11-t23-a-t33-convert-analyze-librosa.md` — T2.3→T3.3: worker convert (MP3-only), pagina /beats/[id] Realtime, testes convert, analise BPM+tom com librosa (Gemini descartado para audio). [ativo, importante]
 - `sessoes/2026-05-12-fase4-generate-review.md` — Fase 4 simplificada: generate.py (Spotify+Gemini+Claude), review UI, perfil do produtor, template descricao padrao. Erro no primeiro teste — investigar. [ativo, importante]
 - `sessoes/2026-05-12-debug-pipeline-upload.md` — Debug pipeline upload: GRANT Supabase, fallback QStash, bug ThreadPoolExecutor Gemini, librosa otimizado. Teste final pendente. [ativo, importante]
+- `sessoes/2026-05-12-pipeline-funcionando-bpm-manual.md` — Pipeline funcionando ponta-a-ponta (50s)! Fixes: prompt Claude (40-60 IDEOTAGS), bug .maybe_single() postgrest-py, GRANT service_role, _mark_failed com error_message. T2.13 concluida: BPM manual + link da loja no upload. [ativo, importante]
