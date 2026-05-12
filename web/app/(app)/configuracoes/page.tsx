@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 interface Profile {
   nome: string | null
   instagram: string | null
+  email_contato: string | null
 }
 
 export default function ConfiguracoesPage() {
@@ -14,6 +15,7 @@ export default function ConfiguracoesPage() {
 
   const [nome, setNome] = useState('')
   const [instagram, setInstagram] = useState('')
+  const [emailContato, setEmailContato] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savedOk, setSavedOk] = useState(false)
@@ -26,13 +28,14 @@ export default function ConfiguracoesPage() {
 
       const { data } = await supabase
         .from('user_profiles')
-        .select('nome, instagram')
+        .select('nome, instagram, email_contato')
         .eq('user_id', user.id)
         .maybeSingle()
 
       if (data) {
         setNome(data.nome ?? '')
         setInstagram(data.instagram ?? '')
+        setEmailContato(data.email_contato ?? '')
       }
       setLoading(false)
     }
@@ -52,7 +55,7 @@ export default function ConfiguracoesPage() {
       const { error: upsertError } = await supabase
         .from('user_profiles')
         .upsert(
-          { user_id: user.id, nome: nome.trim() || null, instagram: instagram.trim().replace(/^@/, '') || null },
+          { user_id: user.id, nome: nome.trim() || null, instagram: instagram.trim().replace(/^@/, '') || null, email_contato: emailContato.trim() || null },
           { onConflict: 'user_id' },
         )
 
@@ -94,6 +97,19 @@ export default function ConfiguracoesPage() {
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             placeholder="Ex: prod. Zestro"
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-zinc-300">
+            Email de contato
+          </label>
+          <input
+            type="email"
+            value={emailContato}
+            onChange={(e) => setEmailContato(e.target.value)}
+            placeholder="Ex: contato@seusite.com"
             className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
           />
         </div>
