@@ -52,3 +52,4 @@
 - `sessoes/2026-05-11-t22-endpoint-beats.md` — T2.2: POST /beats, supabase_service, qstash_service. Fixes: GRANT service_role, Vercel env vars, page.tsx redirect, ESLint Next.js 16. [ativo, importante]
 - `sessoes/2026-05-11-t23-a-t33-convert-analyze-librosa.md` — T2.3→T3.3: worker convert (MP3-only), pagina /beats/[id] Realtime, testes convert, analise BPM+tom com librosa (Gemini descartado para audio). [ativo, importante]
 - `sessoes/2026-05-12-fase4-generate-review.md` — Fase 4 simplificada: generate.py (Spotify+Gemini+Claude), review UI, perfil do produtor, template descricao padrao. Erro no primeiro teste — investigar. [ativo, importante]
+- `sessoes/2026-05-12-debug-pipeline-upload.md` — Debug pipeline upload: GRANT Supabase, fallback QStash, bug ThreadPoolExecutor Gemini, librosa otimizado. Teste final pendente. [ativo, importante]
