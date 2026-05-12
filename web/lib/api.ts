@@ -38,6 +38,41 @@ export async function fetchBeats(token: string): Promise<BeatListItem[]> {
   return res.json()
 }
 
+export interface YoutubeAccount {
+  channel_id: string
+  channel_title: string
+  connected_at: string | null
+  updated_at: string | null
+}
+
+export async function fetchYoutubeAccount(token: string): Promise<YoutubeAccount | null> {
+  const res = await fetch(`${API_URL}/youtube/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail ?? 'Erro ao buscar canal')
+  }
+  const data = await res.json()
+  return data.account ?? null
+}
+
+export async function disconnectYoutubeAccount(token: string): Promise<void> {
+  const res = await fetch(`${API_URL}/youtube/me`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok && res.status !== 204) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail ?? 'Erro ao desconectar canal')
+  }
+}
+
+export function getYoutubeAuthUrl(token: string): string {
+  return `${API_URL}/youtube/auth?token=${encodeURIComponent(token)}`
+}
+
 export async function deleteBeat(beatId: string, token: string): Promise<void> {
   const res = await fetch(`${API_URL}/beats/${beatId}`, {
     method: 'DELETE',
