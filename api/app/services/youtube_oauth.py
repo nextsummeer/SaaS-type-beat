@@ -84,7 +84,7 @@ def build_auth_url(user_id: str) -> str:
         "response_type": "code",
         "scope": YOUTUBE_UPLOAD_SCOPE,
         "access_type": "offline",
-        "prompt": "consent",
+        "prompt": "consent select_account",
         "include_granted_scopes": "true",
         "state": encode_state(user_id),
     }
