@@ -22,8 +22,8 @@ def generate_metadata(
     Usa Claude para gerar:
     - beat_name: nome criativo inspirado nos top tracks do artista
     - titulo: título do vídeo no formato YouTube type beat
-    - descricao: descrição completa com template + IDEOTAGS embutidas
-    - tags: lista de 80-100+ variações de tags para metadados do YouTube
+    - descricao: descrição completa com template + 40-60 IDEOTAGS embutidas (campo Descrição YouTube, limite 5000 chars)
+    - tags: lista de 12-15 tags fortes para o campo Tags do YouTube (limite 500 chars)
 
     Retorna dict com chaves: beat_name, titulo, descricao, tags (list[str])
     Lança exceção se falhar.
@@ -88,7 +88,7 @@ E-mail - {email_str}
 IDEOTAGS:
 [AQUI VOCÊ VAI COLOCAR O BLOCO DE IDEOTAGS — veja instrução 4]
 
-4. IDEOTAGS: Gere 80 a 100 variações de tags no estilo da descrição de type beats no YouTube. São palavras-chave separadas por vírgula que ficam no final da descrição. Use os termos trending como base e expanda sistematicamente com:
+4. IDEOTAGS (para o CAMPO DESCRIÇÃO do YouTube — limite 5000 chars): Gere 40 a 60 variações de keywords no estilo da descrição de type beats no YouTube. São palavras-chave separadas por vírgula que ficam no final da descrição (servem para SEO). Use os termos trending como base e expanda com:
    - Variações básicas: "[artista] type beat", "type beat [artista]", "[artista] type beat free", "free [artista] type beat"
    - Com BPM/tom: "[artista] [bpm] bpm type beat", "[artista] [key] type beat"
    - Com ano: "[artista] type beat 2025", "[artista] 2025 type beat"
@@ -98,7 +98,16 @@ IDEOTAGS:
    - Com "prod": "type beat prod [nome produtor]", "[artista] type beat prod [nome produtor]"
    Tudo em lowercase, sem # neste bloco.
 
-5. TAGS: Retorne a mesma lista de ideotags como um array JSON para usar nos metadados do vídeo no YouTube.
+5. TAGS (para o CAMPO TAGS oficial do YouTube — limite 500 chars TOTAIS): Retorne um array JSON com 12 a 15 tags FORTES e SELECIONADAS (não é a mesma lista das IDEOTAGS). Devem ser as keywords mais valiosas para SEO, somadas (com vírgulas) caber em ~450 chars. Priorize:
+   - "[artista] type beat" (sempre incluir)
+   - "type beat [artista]"
+   - "free [artista] type beat"
+   - "[artista] [bpm] bpm type beat"
+   - "[artista] type beat 2025"
+   - 1-2 cruzamentos com artistas dos top tracks
+   - 1-2 do trending
+   - Variação de gênero principal
+   Tudo em lowercase. Mantenha tags curtas (2-4 palavras) para caber em 500 chars no total.
 
 Responda APENAS com JSON válido neste formato exato:
 {{
@@ -110,9 +119,9 @@ Responda APENAS com JSON válido neste formato exato:
 
     response = client.messages.create(
         model=MODEL,
-        max_tokens=4096,
+        max_tokens=6000,
         messages=[{"role": "user", "content": prompt}],
-        timeout=60,
+        timeout=120,
     )
 
     raw = response.content[0].text.strip()
