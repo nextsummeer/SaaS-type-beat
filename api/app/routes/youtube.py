@@ -76,6 +76,12 @@ def youtube_callback(
     refresh_token = tokens.get("refresh_token")
     expires_in = int(tokens.get("expires_in", 3600))
     scope = tokens.get("scope", "")
+    logger.warning(
+        "[YT_DEBUG] callback tokens received: has_access=%s has_refresh=%s scope=%s",
+        bool(access_token),
+        bool(refresh_token),
+        scope,
+    )
 
     if not access_token or not refresh_token:
         logger.error("Tokens incompletos do Google: %s", list(tokens.keys()))

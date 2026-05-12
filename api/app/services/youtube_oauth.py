@@ -132,11 +132,11 @@ def get_channel_info(access_token: str) -> Optional[dict]:
             headers={"Authorization": f"Bearer {access_token}"},
             timeout=15,
         )
-        logger.info(
-            "channels.list strategy=%s status=%s body=%s",
+        logger.warning(
+            "[YT_DEBUG] channels.list strategy=%s status=%s body=%s",
             label,
             resp.status_code,
-            resp.text[:1000],
+            resp.text[:1500],
         )
         if not resp.ok:
             continue
