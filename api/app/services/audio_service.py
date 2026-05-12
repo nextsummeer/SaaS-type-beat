@@ -18,7 +18,8 @@ def detect_bpm_and_key(file_path: str) -> dict:
     """
     import librosa  # import lazy — evita custo de startup quando não usado
 
-    y, sr = librosa.load(file_path, sr=None, mono=True)
+    # Carrega só os primeiros 60s a 22050 Hz — suficiente para BPM e tom
+    y, sr = librosa.load(file_path, sr=22050, mono=True, duration=60)
 
     # BPM
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
