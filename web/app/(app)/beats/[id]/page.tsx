@@ -87,19 +87,23 @@ export default function BeatPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    // Carrega o beat inicial
-    supabase
-      .from('beats')
-      .select('id, status, audio_path, created_at')
-      .eq('id', id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error) setFetchError(error.message)
-        if (data) setBeat(data as Beat)
-        setLoading(false)
-      })
+    async function fetchBeat() {
+      const { data, error } = await supabase
+        .from('beats')
+        .select('id, status, audio_path, created_at')
+        .eq('id', id)
+        .maybeSingle()
+      if (error) setFetchError(error.message)
+      if (data) setBeat(data as Beat)
+      setLoading(false)
+    }
 
-    // Escuta atualizações em tempo real
+    fetchBeat()
+
+    // Polling a cada 4s como fallback ao Realtime
+    const interval = setInterval(fetchBeat, 4000)
+
+    // Realtime como complemento
     const channel = supabase
       .channel(`beat-${id}`)
       .on(
@@ -111,7 +115,10 @@ export default function BeatPage() {
       )
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      clearInterval(interval)
+      supabase.removeChannel(channel)
+    }
   }, [id])
 
   if (loading) {

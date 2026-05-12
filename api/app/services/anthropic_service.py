@@ -112,6 +112,7 @@ Responda APENAS com JSON válido neste formato exato:
         model=MODEL,
         max_tokens=4096,
         messages=[{"role": "user", "content": prompt}],
+        timeout=60,
     )
 
     raw = response.content[0].text.strip()
