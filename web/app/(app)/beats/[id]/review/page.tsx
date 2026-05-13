@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Loader2, Save, CalendarClock, CheckCircle2, Tag, X, ExternalLink, Trash2, Globe, EyeOff, Zap } from 'lucide-react'
+import { Loader2, Save, CalendarClock, CheckCircle2, Tag, X, ExternalLink, Trash2, Globe, EyeOff, Zap, Tv2, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { fetchPost, patchPost, deleteBeat } from '@/lib/api'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -31,6 +31,9 @@ interface Post {
   scheduled_at: string | null
   status: string
   privacy_status: 'public' | 'unlisted' | null
+  youtube_url: string | null
+  youtube_video_id: string | null
+  published_at: string | null
 }
 
 type PrivacyStatus = 'public' | 'unlisted'
@@ -293,6 +296,18 @@ export default function ReviewPage() {
         </div>
       )}
 
+      {post?.youtube_video_id && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-300">
+          <Info className="h-5 w-5 shrink-0 text-amber-400" />
+          <div>
+            <p className="font-medium">Este beat já está publicado no YouTube.</p>
+            <p className="mt-0.5 text-xs text-amber-300/80">
+              Você ainda pode editar os campos aqui (fica salvo no histórico), mas as alterações <strong>não atualizam o vídeo no YouTube</strong>. Pra editar o vídeo real, abra o YouTube Studio.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Título */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-zinc-300">Título do vídeo</label>
@@ -432,7 +447,40 @@ export default function ReviewPage() {
         )}
       </button>
 
-      {/* Agendamento */}
+      {/* Agendamento (oculto se beat já está no YouTube) */}
+      {post?.youtube_video_id ? (
+        <div className="space-y-4 rounded-xl border border-green-500/30 bg-green-500/5 p-6">
+          <div className="flex items-center gap-2">
+            <Tv2 className="h-5 w-5 text-green-400" />
+            <h2 className="text-base font-semibold text-white">Publicado no YouTube</h2>
+          </div>
+          <p className="text-xs text-zinc-400">
+            Este beat já foi enviado pro seu canal. Não dá pra agendar de novo — geraria vídeo duplicado.
+          </p>
+          {post.published_at && (
+            <p className="text-xs text-zinc-500">
+              Publicado em {new Date(post.published_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+          {post.youtube_url && (
+            <a
+              href={post.youtube_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-500"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Ver no YouTube
+            </a>
+          )}
+          <div className="flex items-start gap-2 rounded-lg border border-zinc-800 bg-zinc-950/50 px-3 py-2 text-xs text-zinc-500">
+            <Info className="h-4 w-4 shrink-0 text-zinc-600" />
+            <span>
+              Pra mudar título, descrição, tags ou capa do vídeo, edite direto no <a href="https://studio.youtube.com/" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline">YouTube Studio</a>. Edições feitas aqui não sincronizam com o vídeo.
+            </span>
+          </div>
+        </div>
+      ) : (
       <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
         <div className="flex items-center gap-2">
           <CalendarClock className="h-5 w-5 text-violet-400" />
@@ -542,6 +590,7 @@ export default function ReviewPage() {
           )}
         </button>
       </div>
+      )}
 
       <ConfirmDialog
         open={confirmandoDelete}
