@@ -167,7 +167,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-semibold text-black shadow-lg shadow-white/20 transition hover:-translate-y-0.5 hover:bg-zinc-200 hover:shadow-white/40 disabled:translate-y-0 disabled:opacity-70"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-bold text-black shadow-lg shadow-white/20 transition hover:-translate-y-0.5 hover:bg-zinc-200 hover:shadow-white/40 disabled:translate-y-0 disabled:bg-zinc-400 disabled:text-zinc-700"
         >
           {loading ? (
             <>
