@@ -773,6 +773,8 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 
 ## Historico de chats
 
+- **2026-05-13** — T6.14→T6.18: redesign visual interface pos-login. Inter + tokens CSS, sidebar redesenhada com grupos/icones, Dashboard no menu, toggle grade/lista em Beats (BeatListRow novo), upload centralizado, config em cards estilo Vaulto, dashboard com metricas placeholder. Skill frontend-design instalada. Proximo: redesign completo com cores Vaulto via /frontend-design na proxima sessao.
+
 - **2026-04-25 15:00** — Sessao fundadora com Gustavo (`MEU-CEREBRO/sessoes/2026-04-25-1500-brainstorm-gustavo-startup-beatmakers.md`)
 - **2026-04-25 16:30** — Henrique conduziu plan mode com Claude, gerou plano em `~/.claude/plans/bom-na-verdade-vamos-sorted-lamport.md`. Aprovado. Iniciou Fase 0.
 - **2026-04-25 16:45** — T0.1 fechada. 8 arquivos criados, 19 pastas. Estrutura monorepo pronta.
