@@ -185,33 +185,46 @@ function ConfiguracoesContent() {
     }
   }
 
+  const inputClass = "w-full rounded-lg border px-4 py-3 text-sm outline-none transition focus:ring-1"
+  const inputStyle = {
+    background: 'var(--bg-elevated)',
+    borderColor: 'var(--border)',
+    color: 'var(--text-primary)',
+  }
+
   return (
     <>
-      <div className="max-w-2xl space-y-10">
+      <div className="mx-auto max-w-2xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Configurações</h1>
-          <p className="mt-1 text-sm text-zinc-400">
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Configurações</h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
             Seu perfil e a conexão com o YouTube em um só lugar.
           </p>
         </div>
 
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Perfil</h2>
-            <p className="mt-1 text-sm text-zinc-400">
-              Esses dados aparecem automaticamente na descrição dos seus vídeos.
+        {/* Seção Perfil */}
+        <section
+          className="rounded-xl border p-6 space-y-5"
+          style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+        >
+          <div className="pb-1" style={{ borderBottom: '1px solid var(--border-muted)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>
+              Perfil do produtor
+            </p>
+            <p className="mt-0.5 text-sm" style={{ color: 'var(--text-muted)' }}>
+              Aparece automaticamente na descrição dos seus vídeos.
             </p>
           </div>
 
           {loadingPerfil ? (
-            <div className="flex items-center gap-3 text-zinc-400">
+            <div className="flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
               <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Carregando perfil...</span>
+              <span className="text-sm">Carregando perfil...</span>
             </div>
           ) : (
-            <form onSubmit={handleSavePerfil} className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">
+            <form onSubmit={handleSavePerfil} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
                   Nome artístico / tag de produtor
                 </label>
                 <input
@@ -219,12 +232,13 @@ function ConfiguracoesContent() {
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   placeholder="Ex: prod. Zestro"
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                  className={inputClass}
+                  style={inputStyle}
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
                   Email de contato
                 </label>
                 <input
@@ -232,28 +246,33 @@ function ConfiguracoesContent() {
                   value={emailContato}
                   onChange={(e) => setEmailContato(e.target.value)}
                   placeholder="Ex: contato@seusite.com"
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                  className={inputClass}
+                  style={inputStyle}
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
                   Instagram
                 </label>
-                <div className="flex items-center gap-0 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500">
-                  <span className="pl-4 text-sm text-zinc-500">@</span>
+                <div
+                  className="flex items-center overflow-hidden rounded-lg border transition focus-within:ring-1"
+                  style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
+                >
+                  <span className="pl-4 text-sm" style={{ color: 'var(--text-subtle)' }}>@</span>
                   <input
                     type="text"
                     value={instagram}
                     onChange={(e) => setInstagram(sanitizeInstagramHandle(e.target.value))}
                     placeholder="seuinstagram"
-                    className="flex-1 bg-transparent py-3 pr-4 text-sm text-white placeholder-zinc-600 outline-none"
+                    className="flex-1 bg-transparent py-3 pr-4 text-sm outline-none"
+                    style={{ color: 'var(--text-primary)' }}
                   />
                 </div>
               </div>
 
               {perfilError && (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
+                <div className="rounded-lg border px-4 py-3 text-sm" style={{ borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.05)', color: '#f87171' }}>
                   {perfilError}
                 </div>
               )}
@@ -261,61 +280,59 @@ function ConfiguracoesContent() {
               <button
                 type="submit"
                 disabled={saving}
-                className="flex items-center gap-2 rounded-lg bg-violet-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
+                style={{ background: savedOk ? '#16a34a' : 'var(--accent)' }}
               >
                 {savedOk ? (
-                  <>
-                    <CheckCircle2 className="h-4 w-4" />
-                    Salvo!
-                  </>
+                  <><CheckCircle2 className="h-4 w-4" />Salvo!</>
                 ) : saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Salvando...
-                  </>
+                  <><Loader2 className="h-4 w-4 animate-spin" />Salvando...</>
                 ) : (
-                  <>
-                    <Save className="h-4 w-4" />
-                    Salvar
-                  </>
+                  <><Save className="h-4 w-4" />Salvar</>
                 )}
               </button>
             </form>
           )}
         </section>
 
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Canal do YouTube</h2>
-            <p className="mt-1 text-sm text-zinc-400">
+        {/* Seção Canal YouTube */}
+        <section
+          className="rounded-xl border p-6 space-y-4"
+          style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+        >
+          <div className="pb-1" style={{ borderBottom: '1px solid var(--border-muted)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>
+              Canal do YouTube
+            </p>
+            <p className="mt-0.5 text-sm" style={{ color: 'var(--text-muted)' }}>
               Conecte seu canal pra publicarmos os beats automaticamente no horário agendado.
             </p>
           </div>
 
           {oauthSuccess && (
-            <div className="flex items-center gap-3 rounded-lg border border-green-500/20 bg-green-500/5 px-4 py-3 text-sm text-green-400">
+            <div className="flex items-center gap-3 rounded-lg border px-4 py-3 text-sm" style={{ borderColor: 'rgba(34,197,94,0.2)', background: 'rgba(34,197,94,0.05)', color: '#4ade80' }}>
               <CheckCircle2 className="h-5 w-5 shrink-0" />
               <span>{oauthSuccess}</span>
             </div>
           )}
 
           {oauthError && (
-            <div className="flex items-start gap-3 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
+            <div className="flex items-start gap-3 rounded-lg border px-4 py-3 text-sm" style={{ borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.05)', color: '#f87171' }}>
               <AlertCircle className="h-5 w-5 shrink-0" />
               <span>{oauthError}</span>
             </div>
           )}
 
           {loadingCanal ? (
-            <div className="flex items-center gap-3 text-zinc-400">
+            <div className="flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
               <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Carregando canal...</span>
+              <span className="text-sm">Carregando canal...</span>
             </div>
           ) : account ? (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+            <div className="rounded-xl border p-5" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
               <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-800">
-                  <Tv2 className="h-6 w-6 text-zinc-400" />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full" style={{ background: 'var(--bg-surface)' }}>
+                  <Tv2 className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
                 </div>
                 <div className="flex-1">
                   <div className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-400 ring-1 ring-inset ring-green-500/20">
@@ -325,20 +342,21 @@ function ConfiguracoesContent() {
                     </span>
                     Conectado
                   </div>
-                  <h3 className="mt-2 text-lg font-semibold text-white">{account.channel_title}</h3>
-                  <p className="mt-1 text-xs text-zinc-500">ID: {account.channel_id}</p>
-                  <div className="mt-3 flex items-center gap-1.5 text-xs text-zinc-400">
+                  <h3 className="mt-2 font-semibold" style={{ color: 'var(--text-primary)' }}>{account.channel_title}</h3>
+                  <p className="mt-0.5 text-xs" style={{ color: 'var(--text-subtle)' }}>ID: {account.channel_id}</p>
+                  <div className="mt-2 flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
                     <Calendar className="h-3 w-3" />
                     <span>Conectado em {formataData(account.connected_at)}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6 flex items-center gap-2 border-t border-zinc-800 pt-4">
+              <div className="mt-4 flex items-center gap-2 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
                 <button
                   type="button"
                   onClick={() => setConfirmandoDisconnect(true)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-400"
+                  className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'var(--bg-surface)' }}
                 >
                   <Unplug className="h-4 w-4" />
                   Desconectar canal
@@ -347,7 +365,8 @@ function ConfiguracoesContent() {
                   type="button"
                   onClick={handleConectar}
                   disabled={connecting}
-                  className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:bg-zinc-800 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition disabled:opacity-50"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'var(--bg-surface)' }}
                 >
                   {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <LinkIcon className="h-4 w-4" />}
                   Reconectar
@@ -355,13 +374,13 @@ function ConfiguracoesContent() {
               </div>
             </div>
           ) : (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-8">
+            <div className="rounded-xl border p-8" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
               <div className="flex flex-col items-center text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
-                  <Tv2 className="h-8 w-8 text-red-400" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-full" style={{ background: 'rgba(239,68,68,0.1)' }}>
+                  <Tv2 className="h-7 w-7 text-red-400" />
                 </div>
-                <h3 className="mt-4 text-lg font-semibold text-white">Conecte seu canal do YouTube</h3>
-                <p className="mt-2 max-w-md text-sm text-zinc-400">
+                <h3 className="mt-4 font-semibold" style={{ color: 'var(--text-primary)' }}>Conecte seu canal do YouTube</h3>
+                <p className="mt-2 max-w-md text-sm" style={{ color: 'var(--text-muted)' }}>
                   Você será redirecionado pro Google pra autorizar o BeatPost a publicar vídeos no seu canal.
                   A gente só pede a permissão de upload — não lê nem altera nada do seu canal.
                 </p>
@@ -369,34 +388,30 @@ function ConfiguracoesContent() {
                   type="button"
                   onClick={handleConectar}
                   disabled={connecting}
-                  className="mt-6 inline-flex items-center gap-2 rounded-lg bg-violet-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-50"
+                  className="mt-6 inline-flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
+                  style={{ background: 'var(--accent)' }}
                 >
                   {connecting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Redirecionando...
-                    </>
+                    <><Loader2 className="h-4 w-4 animate-spin" />Redirecionando...</>
                   ) : (
-                    <>
-                      <LinkIcon className="h-4 w-4" />
-                      Conectar canal
-                    </>
+                    <><LinkIcon className="h-4 w-4" />Conectar canal</>
                   )}
                 </button>
               </div>
             </div>
           )}
 
-          <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-xs text-zinc-500">
-            <p className="font-medium text-zinc-400">Sobre a permissão solicitada</p>
+          <div className="rounded-lg border px-4 py-3 text-xs" style={{ borderColor: 'var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-subtle)' }}>
+            <p className="font-medium" style={{ color: 'var(--text-muted)' }}>Sobre a permissão solicitada</p>
             <p className="mt-1">
-              Pedimos apenas o escopo <code className="rounded bg-zinc-800 px-1 text-zinc-300">youtube.upload</code>.
+              Pedimos apenas o escopo <code className="rounded px-1" style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}>youtube.upload</code>.
               Ele permite enviar vídeos novos no seu canal — não lê comentários, métricas nem listas. Você pode revogar a qualquer momento aqui ou em{' '}
               <a
                 href="https://myaccount.google.com/permissions"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-violet-400 underline-offset-2 hover:underline"
+                style={{ color: 'var(--accent)' }}
+                className="underline-offset-2 hover:underline"
               >
                 myaccount.google.com/permissions
               </a>.
@@ -426,7 +441,7 @@ function ConfiguracoesContent() {
 
 export default function ConfiguracoesPage() {
   return (
-    <Suspense fallback={<div className="text-zinc-400">Carregando...</div>}>
+    <Suspense fallback={<div className="text-sm" style={{ color: 'var(--text-muted)' }}>Carregando...</div>}>
       <ConfiguracoesContent />
     </Suspense>
   )

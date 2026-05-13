@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, Plus, Upload, CheckSquare, X, Trash2 } from 'lucide-react'
+import { Loader2, Plus, Upload, CheckSquare, X, Trash2, LayoutGrid, List } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { fetchBeats, deleteBeat, type BeatListItem } from '@/lib/api'
 import { BeatCard } from '@/components/BeatCard'
+import { BeatListRow } from '@/components/BeatListRow'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 type FiltroKey = 'todos' | 'processando' | 'rascunho' | 'agendado' | 'postado' | 'falhou'
@@ -50,6 +51,16 @@ export default function BeatsPage() {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
   const [confirmacao, setConfirmacao] = useState<ConfirmacaoState>(null)
   const [deletando, setDeletando] = useState(false)
+  const [vizualizacao, setVizualizacao] = useState<'grade' | 'lista'>(() => {
+    if (typeof window === 'undefined') return 'grade'
+    return (localStorage.getItem('beats-view') as 'grade' | 'lista') ?? 'grade'
+  })
+
+  function toggleVizualizacao() {
+    const nova = vizualizacao === 'grade' ? 'lista' : 'grade'
+    setVizualizacao(nova)
+    localStorage.setItem('beats-view', nova)
+  }
 
   useEffect(() => {
     let cancelado = false
@@ -148,16 +159,16 @@ export default function BeatsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-3 text-zinc-400">
+      <div className="flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
         <Loader2 className="h-5 w-5 animate-spin" />
-        <span>Carregando seus beats...</span>
+        <span className="text-sm">Carregando seus beats...</span>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-400">
+      <div className="rounded-lg border px-5 py-4 text-sm" style={{ borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.05)', color: '#f87171' }}>
         {error}
       </div>
     )
@@ -165,15 +176,18 @@ export default function BeatsPage() {
 
   if (beats.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-900/30 px-6 py-20 text-center">
-        <Upload className="h-10 w-10 text-zinc-600" />
-        <h2 className="mt-4 text-lg font-semibold text-white">Você ainda não subiu nenhum beat</h2>
-        <p className="mt-1 max-w-sm text-sm text-zinc-400">
+      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed px-6 py-20 text-center" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface)' }}>
+        <Upload className="h-10 w-10" style={{ color: 'var(--text-subtle)' }} />
+        <h2 className="mt-4 text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Você ainda não subiu nenhum beat</h2>
+        <p className="mt-1 max-w-sm text-sm" style={{ color: 'var(--text-muted)' }}>
           Faça upload do primeiro MP3 e a IA gera título, descrição e tags pra você revisar.
         </p>
         <Link
           href="/upload"
-          className="mt-6 inline-flex items-center gap-2 rounded-lg bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-500"
+          className="mt-6 inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition"
+          style={{ background: 'var(--accent)' }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--accent-hover)' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--accent)' }}
         >
           <Plus className="h-4 w-4" />
           Subir meu primeiro beat
@@ -188,8 +202,8 @@ export default function BeatsPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Meus beats</h1>
-            <p className="mt-1 text-sm text-zinc-400">
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Meus beats</h1>
+            <p className="mt-0.5 text-sm" style={{ color: 'var(--text-muted)' }}>
               {modoSelecao
                 ? `${selecionados.size} de ${visiveis.length} ${visiveis.length === 1 ? 'selecionado' : 'selecionados'}`
                 : `${beats.length} ${beats.length === 1 ? 'beat' : 'beats'} no total`}
@@ -201,23 +215,26 @@ export default function BeatsPage() {
               <button
                 type="button"
                 onClick={selecionarTodos}
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-300 transition hover:bg-zinc-800"
+                className="rounded-lg border px-3 py-1.5 text-xs font-medium transition"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'var(--bg-surface)' }}
               >
-                Selecionar todos ({visiveis.length})
+                Todos ({visiveis.length})
               </button>
               <button
                 type="button"
                 onClick={pedirDeleteLote}
                 disabled={selecionados.size === 0}
-                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex items-center gap-2 rounded-lg px-4 py-1.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-40"
+                style={{ background: '#dc2626' }}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
                 Deletar ({selecionados.size})
               </button>
               <button
                 type="button"
                 onClick={sairModoSelecao}
-                className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:bg-zinc-800"
+                className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'var(--bg-surface)' }}
               >
                 <X className="h-4 w-4" />
                 Cancelar
@@ -225,17 +242,29 @@ export default function BeatsPage() {
             </div>
           ) : (
             <div className="flex items-center gap-2">
+              {/* Toggle grade/lista */}
+              <button
+                type="button"
+                onClick={toggleVizualizacao}
+                title={vizualizacao === 'grade' ? 'Ver como lista' : 'Ver como grade'}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border transition"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'var(--bg-surface)' }}
+              >
+                {vizualizacao === 'grade' ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+              </button>
               <button
                 type="button"
                 onClick={entrarModoSelecao}
-                className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:bg-zinc-800"
+                className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'var(--bg-surface)' }}
               >
                 <CheckSquare className="h-4 w-4" />
                 Selecionar
               </button>
               <Link
                 href="/upload"
-                className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-500"
+                className="inline-flex items-center gap-2 rounded-lg px-4 py-1.5 text-sm font-semibold text-white transition"
+                style={{ background: 'var(--accent)' }}
               >
                 <Plus className="h-4 w-4" />
                 Novo beat
@@ -254,27 +283,42 @@ export default function BeatsPage() {
                 key={f.key}
                 type="button"
                 onClick={() => setFiltro(f.key)}
-                className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${
-                  ativo
-                    ? 'border-violet-500 bg-violet-600 text-white'
-                    : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800'
-                }`}
+                className="rounded-full border px-3.5 py-1 text-xs font-medium transition"
+                style={{
+                  borderColor: ativo ? 'var(--accent)' : 'var(--border)',
+                  background: ativo ? 'var(--accent-muted)' : 'var(--bg-surface)',
+                  color: ativo ? '#c4b5fd' : 'var(--text-muted)',
+                }}
               >
-                {f.label} <span className={ativo ? 'text-violet-200' : 'text-zinc-500'}>{count}</span>
+                {f.label}{' '}
+                <span style={{ color: ativo ? '#ddd6fe' : 'var(--text-subtle)' }}>{count}</span>
               </button>
             )
           })}
         </div>
 
-        {/* Grid de cards */}
+        {/* Conteúdo */}
         {visiveis.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-zinc-800 bg-zinc-900/30 px-6 py-12 text-center text-sm text-zinc-500">
+          <div className="rounded-lg border border-dashed px-6 py-12 text-center text-sm" style={{ borderColor: 'var(--border)', color: 'var(--text-subtle)' }}>
             Nenhum beat neste filtro.
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+        ) : vizualizacao === 'grade' ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {visiveis.map((b) => (
               <BeatCard
+                key={b.id}
+                beat={b}
+                modoSelecao={modoSelecao}
+                selecionado={selecionados.has(b.id)}
+                onToggleSelecionado={toggleSelecionado}
+                onPedirDelete={pedirDeleteIndividual}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-lg border" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface)' }}>
+            {visiveis.map((b) => (
+              <BeatListRow
                 key={b.id}
                 beat={b}
                 modoSelecao={modoSelecao}

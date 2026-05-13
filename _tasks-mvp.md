@@ -6,7 +6,7 @@
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** T6.6-T6.13 concluidas (polimento UX pos-uso-real). T5.5 adiada (auditoria YouTube — exige nome da plataforma + dominio + privacy/ToS que socio esta definindo). Proximas: T5.6 (E2E com conta de teste), T2.6-T2.12 (inputs completos do upload: mood cards, seletor artista Spotify, estilos visuais), T4.6 (curadoria visual estilos capa IA), T6.1-T6.4 (dashboard cards + estados). Aguardando Gustavo ativar Recursos avancados do canal YouTube (selfie 6s) pra links virarem clicaveis.
+**Proximo passo:** T6.14-T6.18 concluidas (redesign visual pós-login). Pendentes: T5.6 (E2E conta de teste), T2.6-T2.12 (inputs completos: mood cards, seletor artista Spotify, estilos visuais), T4.6 (curadoria estilos capa IA), T6.1-T6.4 (dashboard cards reais + empty/error states).
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -702,6 +702,72 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Decisao (2026-05-13):** Gustavo notou durante uso real que /youtube e /configuracoes sao ambos "perfil do produtor" partido em dois lugares. Unificacao reduz sidebar pra 3 itens (Upload, Beats, Configuracoes) e centraliza conexao YouTube + nome/email/Instagram em uma pagina so. Decisao consciente de NAO adicionar campos novos (BeatStars/Twitter/TikTok) nesta etapa — fica pra quando precisar de verdade.
 - **Criterio de pronto:** ✅ Sidebar com 3 itens. /configuracoes mostra secao Perfil + secao Canal YouTube. Callback OAuth volta pra /configuracoes?connected=1 com banner verde. Typecheck verde.
 - **Dependencia:** —
+
+---
+
+### Redesign Visual — Interface pós-login (Gustavo executa)
+
+> **Por que:** Interface pós-login está muito crua — conteúdo espremido na esquerda, espaço desperdiçado, sidebar sem personalidade, tipografia sem hierarquia. Referência visual: Vaulto dashboard (dark premium, sidebar com grupos, cards com profundidade). Auth pages não mudam. Executar nessa ordem: tokens → layout → componentes → páginas.
+
+#### `[x]` T6.14 — Fundação visual: Inter + nova paleta CSS
+
+- **Arquivos:** `web/app/globals.css`, `web/app/layout.tsx`
+- **O que fazer:**
+  - Trocar fonte Geist por **Inter** (Google Fonts via `next/font/google`)
+  - Nova paleta de variáveis CSS: `--bg-base` (#0c0c0e), `--bg-surface` (#131316), `--bg-elevated` (#1c1c21), `--border` (#27272f), `--text-primary` (#f4f4f5), `--text-muted` (#71717a), `--accent` (#7c3aed), `--accent-hover` (#6d28d9)
+  - `border-radius` padrão: `--radius-sm` 6px, `--radius-md` 10px, `--radius-lg` 16px
+  - Aplicar Inter no body via `font-family: var(--font-inter), sans-serif`
+  - Manter globals.css da auth intocado (video background + glass já estão bons)
+- **Criterio de pronto:** `pnpm typecheck` verde. Toda interface pós-login usa Inter. Fundo base visualmente diferente do atual zinc-950 flat.
+- **Dependencia:** —
+
+#### `[x]` T6.15 — Novo layout + sidebar estilo Vaulto
+
+- **Arquivos:** `web/components/Sidebar.tsx`, `web/app/(app)/layout.tsx`
+- **O que fazer:**
+  - Sidebar com fundo `--bg-surface` + borda direita `--border`
+  - Logo "BeatPost" no topo com ícone (Music2 do lucide)
+  - Navegação agrupada por categoria (label uppercase muted tipo "GERAL", "CONTA")
+  - Itens: Dashboard (LayoutDashboard), Upload (Upload), Beats (Music), Configurações (Settings) — todos com ícone + label
+  - Item ativo: fundo `--bg-elevated` + texto primary + sem violeta flat — mais sutil
+  - Sair no rodapé com separador acima
+  - Layout principal: `flex-1 overflow-y-auto` com padding horizontal generoso + `max-w-5xl mx-auto` no conteúdo (centraliza e evita espaço desperdiçado)
+- **Criterio de pronto:** Dashboard aparece no menu. Conteúdo de todas as páginas fica centralizado horizontalmente. Sidebar visualmente mais rica.
+- **Dependencia:** T6.14
+
+#### `[x]` T6.16 — Página Beats: toggle grade/lista + novo visual dos cards
+
+- **Arquivos:** `web/app/(app)/beats/page.tsx`, `web/components/BeatCard.tsx`, `web/components/BeatListRow.tsx` (novo)
+- **O que fazer:**
+  - Botão toggle no canto direito do header: ícone grade (LayoutGrid) / lista (List)
+  - Estado salvo em localStorage para persistir preferência
+  - **Modo grade (atual):** cards com `--bg-surface`, `border --border`, `border-radius --radius-md`, hover eleva para `--bg-elevated`
+  - **Modo lista (novo):** `BeatListRow` — linha horizontal com thumbnail 48x48, título, artista, BPM, tom, badge status, data, botão "Abrir" — estilo tabela limpa
+  - Filtros de status (Todos/Processando/Rascunho/Agendados/Postados/Falhos) mantidos acima
+- **Criterio de pronto:** Toggle funciona. Preferência persiste ao recarregar. Modo lista mostra todos os dados relevantes de forma compacta. Typecheck verde.
+- **Dependencia:** T6.15
+
+#### `[x]` T6.17 — Upload + Review centralizados com uso do espaço
+
+- **Arquivos:** `web/app/(app)/upload/page.tsx`, `web/components/UploadForm.tsx`, `web/app/(app)/beats/[id]/review/page.tsx`
+- **O que fazer:**
+  - Upload: form centralizado com `max-w-2xl mx-auto` + card container `--bg-surface border --border rounded --radius-lg p-8`
+  - Review: layout em **dois painéis** lado a lado — painel esquerdo (título + descrição + tags, ~60%) + painel direito (agendamento + ações, ~40%). Usa o espaço horizontal que hoje fica vazio.
+  - Inputs e textareas com `background: --bg-elevated`, `border: --border`, focus ring em accent
+  - Tag chips com novo visual (border + background sutil, × bem posicionado)
+- **Criterio de pronto:** Upload não tem mais espaço vazio gigante à direita. Review tem dois painéis que fazem uso natural da largura. Typecheck verde.
+- **Dependencia:** T6.15
+
+#### `[x]` T6.18 — Configurações + Dashboard com novo visual
+
+- **Arquivos:** `web/app/(app)/configuracoes/page.tsx`, `web/app/(app)/dashboard/page.tsx`
+- **O que fazer:**
+  - Config: `max-w-2xl mx-auto`, seções "Perfil" e "Canal do YouTube" em cards separados `--bg-surface border --border rounded --radius-lg p-6`
+  - Config: subtítulo de seção em uppercase muted (estilo Vaulto — "PERFIL DO PRODUTOR")
+  - Dashboard: header de boas-vindas com nome do produtor, subtítulo descritivo, card de ação primária "Novo beat" em destaque
+  - Dashboard: placeholder cards de métricas (views, beats publicados, agendados) com valores "--" e badge "Em breve" — prepara estrutura pra Fase 2 sem dados reais
+- **Criterio de pronto:** Config não tem espaço morto. Dashboard tem cara de produto real, não de página vazia. Typecheck verde.
+- **Dependencia:** T6.15
 
 ---
 
