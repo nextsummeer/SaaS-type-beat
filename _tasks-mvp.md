@@ -1,12 +1,12 @@
 # _tasks — [NOME] Fase 1 (MVP) @gustavo
 
 **Criado:** 2026-04-25
-**Atualizado:** 2026-05-12
+**Atualizado:** 2026-05-13
 **Outcome:** Produtor convidado faz login, escolhe estilo visual padrao (onboarding), conecta canal YouTube, sobe um beat (qualquer formato) informando artista de referencia (lista controlada + Spotify) e mood (cards visuais), opcionalmente envia capa propria, recebe capa gerada por IA + 3 variacoes A/B/C de titulo+descricao+tags geradas pela IA (com nomes inspirados em hits do artista via Spotify), edita o que quiser, confirma agendamento, e ve 3 videos publicados/agendados no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Meta: beta fechado setembro 2026.
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** T5.5 (solicitar aumento de quota YouTube — atual 10k/dia = 6 uploads) + T5.6 (test E2E publicando beat real em conta de teste). Pipeline ja validado em producao com 2 beats publicados. Aguardando Gustavo ativar Recursos avancados do canal YouTube (selfie 6s) pra links virarem clicaveis em videos novos.
+**Proximo passo:** T5.5 adiada (auditoria YouTube + dominio proprio + privacy/ToS — exige nome da plataforma que socio esta definindo). Foco volta pra melhorias de UX surgidas durante uso real: T6.6 (unificar YouTube + Configuracoes) ja concluida; restam itens do polimento da Fase 6 (T6.1-T6.5) e melhorias que aparecerem em novos uploads. Aguardando Gustavo ativar Recursos avancados do canal YouTube (selfie 6s) pra links virarem clicaveis em videos novos.
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -625,6 +625,18 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Gustavo confirma acesso aos 4 dashboards
 - **Dependencia:** T6.4
 
+#### `[x]` T6.6 — Unificar YouTube + Configuracoes em pagina unica de perfil
+
+- **Arquivos:**
+  - `web/app/(app)/configuracoes/page.tsx` (mescla perfil + conexao YouTube em 2 secoes)
+  - `web/components/Sidebar.tsx` (remove item "YouTube")
+  - `web/middleware.ts` (remove `/youtube` das rotas protegidas)
+  - `api/app/routes/youtube.py` (callback OAuth redireciona pra `/configuracoes`)
+  - `web/app/(app)/youtube/page.tsx` (deletado)
+- **Decisao (2026-05-13):** Gustavo notou durante uso real que /youtube e /configuracoes sao ambos "perfil do produtor" partido em dois lugares. Unificacao reduz sidebar pra 3 itens (Upload, Beats, Configuracoes) e centraliza conexao YouTube + nome/email/Instagram em uma pagina so. Decisao consciente de NAO adicionar campos novos (BeatStars/Twitter/TikTok) nesta etapa — fica pra quando precisar de verdade.
+- **Criterio de pronto:** ✅ Sidebar com 3 itens. /configuracoes mostra secao Perfil + secao Canal YouTube. Callback OAuth volta pra /configuracoes?connected=1 com banner verde. Typecheck verde.
+- **Dependencia:** —
+
 ---
 
 ## Historico de chats
@@ -657,4 +669,5 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **2026-05-12** — T2.14 concluida. GET /beats no backend retorna lista do user (RLS multitenant) com merge dos dados do post variacao='A' (titulo, scheduled_at, post_status). Frontend: fetchBeats em web/lib/api.ts + componente web/components/BeatCard.tsx (thumbnail signed URL do bucket covers ou placeholder com inicial, badge de status colorido — Postado/Agendado/Em Rascunho/Processando/Falhou, BPM+key, datas de criacao e modificacao) + pagina web/app/(app)/beats/page.tsx com filtros em chips (Todos/Processando/Rascunho/Agendados/Postados/Falhou) e empty state com CTA pra upload. Polling 5s pra status atualizar conforme pipeline avanca. Clique no card direciona pra /beats/[id] se em processamento ou /beats/[id]/review se pronto/agendado/postado. Typecheck passa. Lint sem erros novos.
 - **2026-05-11** — T3.1+T3.3 concluidas. Decisao: librosa substituiu Gemini para analise de audio (gratuito, deterministico, preciso). Detecta BPM e tom (Krumhansl-Kessler). Genero, artistas similares e mood removidos. Worker analyze.py baixa MP3 do Storage, analisa, salva bpm+music_key, avanca status converted→analyzed, dispara generate. T3.2 (tags Gemini) postergado para apos T2.9 (artista disponivel). 3 testes existentes continuam passando.
 - **2026-05-12** — T5.2 + T5.3 + T5.4 concluidas (codigo). Pipeline de publicacao no YouTube fechado: `ffmpeg_service.audio_to_mp4` (capa estatica + audio, otimizado `-r 1 -c:a copy`), `youtube_service.upload_video` (google-api-python-client, refresh automatico do access_token, publishAt para agendamento, thumbnail custom em try/except, trunca titulo/desc/tags nos limites do YouTube), `workers/publish.py` (baixa MP3+capa via signed URL, gera MP4, sobe no YouTube, atualiza youtube_video_id/url/published_at no post, idempotente). Migration 007 adiciona `posts.privacy_status` (public/unlisted, default public). PATCH /posts dispara `dispatch_publish_job` quando recebe status='scheduled'. UI da /review tem toggle Publico/Nao listado. Decisoes confirmadas com Gustavo: (a) envia pro YouTube imediato com publishAt no futuro (YouTube agenda), (b) user escolhe visibilidade na review, (c) scheduled_at no passado vira upload imediato (modo de teste). Pendente: aplicar migration 007 no Supabase Studio, garantir env vars no Railway, validar pipeline com upload real. Teste antigo `test_convert_arquivo_ausente_marca_failed` arrumado (esperava `{status:failed}` mas codigo agora salva `error_message` junto). 3/3 testes verdes, typecheck verde.
+- **2026-05-13** — T6.6 concluida. Gustavo notou durante uso real que `/youtube` e `/configuracoes` eram dois lugares pra "mesma coisa" (perfil do produtor). Unificado: /configuracoes agora tem 2 secoes (Perfil + Canal do YouTube), sidebar reduzida pra 3 itens (Upload/Beats/Configuracoes), callback OAuth do backend (`api/app/routes/youtube.py`) redireciona pra /configuracoes?connected=1, /youtube deletado, middleware atualizado. Decisao consciente de NAO adicionar campos novos (BeatStars/Twitter/TikTok) nesta etapa. T5.5 (quota YouTube) adiada — exige nome da plataforma + dominio proprio + privacy/ToS + auditoria YouTube (4-8 semanas Google), sera retomada quando socio definir nome. Typecheck verde.
 - **2026-05-12** — T5.2+T5.3+T5.4 testadas em PRODUCAO ate funcionar ponta-a-ponta. 7 bugs resolvidos durante validacao com beats reais (FAVELA DREAM, VAMP SEASON publicados com sucesso): (1) `FileNotFoundError: 'ffmpeg'` — nixpacks declara ffmpeg em nixPkgs mas nao fica no PATH runtime, resolvido com `imageio-ffmpeg` no requirements; (2) `rc=-9` SIGKILL/OOM do ffmpeg em 1920x1080 — libx264 preset veryfast estourava 512MB do Railway free; resolvido com `preset ultrafast + bf 0 + g 1 + profile baseline` (pico <100MB); (3) video caia em Shorts — YouTube classifica <=3min + 1:1 como Shorts automaticamente; resolvido renderizando MP4 em 1920x1080 com pillarbox preto; (4) capa pequena no meio do video — `img.thumbnail()` so faz downscale, capas <1080 ficavam com margem em cima/baixo tambem; resolvido com `img.resize()` forcando altura 1080 sempre (LANCZOS); (5) bug timezone no input `datetime-local` — agendamento de 19:16 BRT reabria mostrando 22:16 UTC; resolvido convertendo UTC↔local no carregar/salvar; (6) card nao virava "Postado" apos publishAt — YouTube nao tem webhook; resolvido tratando no frontend (scheduled+scheduled_at<=now mostra Postado); (7) links externos nao clicaveis na descricao — exige Recursos avancados ativados no canal (verificacao por video selfie), conta de teste estava `Qualificado` mas nao `Ativado`; Gustavo vai fazer a verificacao. UI extra: aviso amber na review quando link `beatstars.com/beat/...` longo (recomenda `bsta.rs/XXX` que cabe na previa truncada do YouTube). Doc completa: `docs/sessoes/2026-05-12-t52-t53-t54-publicacao-youtube.md`.

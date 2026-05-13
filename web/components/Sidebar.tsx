@@ -7,7 +7,6 @@ import { createClient } from '@/lib/supabase/client'
 const itens = [
   { href: '/upload', label: 'Upload' },
   { href: '/beats', label: 'Beats' },
-  { href: '/youtube', label: 'YouTube' },
   { href: '/configuracoes', label: 'Configurações' },
 ]
 

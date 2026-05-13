@@ -25,7 +25,7 @@ def _build_return_url(status: str, detail: str | None = None) -> str:
     params = {"connected": status}
     if detail:
         params["detail"] = detail
-    return f"{_web_url()}/youtube?{urlencode(params)}"
+    return f"{_web_url()}/configuracoes?{urlencode(params)}"
 
 
 @router.get("/auth")
