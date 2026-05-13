@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Loader2, Save, CalendarClock, CheckCircle2, Tag, X, ExternalLink, Trash2, Globe, EyeOff } from 'lucide-react'
+import { Loader2, Save, CalendarClock, CheckCircle2, Tag, X, ExternalLink, Trash2, Globe, EyeOff, Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { fetchPost, patchPost, deleteBeat } from '@/lib/api'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { DateTimePicker } from '@/components/DateTimePicker'
 
 const PLACEHOLDER_LINK = '[insira seu link de venda]'
 
@@ -34,16 +35,80 @@ interface Post {
 
 type PrivacyStatus = 'public' | 'unlisted'
 
-function toLocalDatetimeInput(d: Date): string {
-  // formato datetime-local: YYYY-MM-DDTHH:MM no fuso do navegador
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-function defaultScheduledAt(): string {
+function defaultScheduledAt(): Date {
   const d = new Date()
   d.setHours(18, 0, 0, 0)
-  return toLocalDatetimeInput(d)
+  // Se já passou das 18h hoje, vai pra 18h de amanhã
+  if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1)
+  return d
+}
+
+interface PresetOption {
+  label: string
+  build: () => Date
+}
+
+const PRESETS: PresetOption[] = [
+  {
+    label: 'Agora',
+    build: () => new Date(Date.now() + 60_000), // +1 min pra garantir que YouTube aceita
+  },
+  {
+    label: 'Hoje 18h',
+    build: () => {
+      const d = new Date()
+      d.setHours(18, 0, 0, 0)
+      return d
+    },
+  },
+  {
+    label: 'Amanhã 18h',
+    build: () => {
+      const d = new Date()
+      d.setDate(d.getDate() + 1)
+      d.setHours(18, 0, 0, 0)
+      return d
+    },
+  },
+  {
+    label: 'Em 3 dias',
+    build: () => {
+      const d = new Date()
+      d.setDate(d.getDate() + 3)
+      d.setHours(18, 0, 0, 0)
+      return d
+    },
+  },
+  {
+    label: 'Em 7 dias',
+    build: () => {
+      const d = new Date()
+      d.setDate(d.getDate() + 7)
+      d.setHours(18, 0, 0, 0)
+      return d
+    },
+  },
+]
+
+function descreveTempoRelativo(d: Date): string {
+  const agora = new Date()
+  const diffMs = d.getTime() - agora.getTime()
+  const diffMin = Math.round(diffMs / 60_000)
+  const diffH = Math.round(diffMs / 3_600_000)
+  const diffDias = Math.round(diffMs / 86_400_000)
+
+  if (diffMs < 0) return 'Vai publicar agora (data no passado — modo teste)'
+  if (diffMin < 5) return 'Vai publicar agora (em segundos)'
+  if (diffMin < 60) return `Vai publicar em ${diffMin} min`
+  if (diffH < 24) return `Vai publicar daqui a ${diffH}h`
+  if (diffDias === 1) return 'Vai publicar amanhã'
+  if (diffDias < 7) return `Vai publicar em ${diffDias} dias`
+  if (diffDias < 14) return 'Vai publicar na próxima semana'
+  return `Vai publicar em ${diffDias} dias`
+}
+
+function ehMesmoMomento(a: Date, b: Date): boolean {
+  return Math.abs(a.getTime() - b.getTime()) < 60_000
 }
 
 export default function ReviewPage() {
@@ -59,7 +124,7 @@ export default function ReviewPage() {
   const [descricao, setDescricao] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [purchaseLink, setPurchaseLink] = useState('')
-  const [scheduledAt, setScheduledAt] = useState(defaultScheduledAt())
+  const [scheduledAt, setScheduledAt] = useState<Date>(defaultScheduledAt())
   const [privacyStatus, setPrivacyStatus] = useState<PrivacyStatus>('public')
   const [newTag, setNewTag] = useState('')
 
@@ -81,9 +146,8 @@ export default function ReviewPage() {
         setTags(Array.isArray(data.tags) ? data.tags : [])
         setPurchaseLink(data.purchase_link ?? '')
         if (data.scheduled_at) {
-          // Banco guarda em UTC; converte pro fuso local pro input datetime-local
           const localDate = new Date(data.scheduled_at)
-          if (!isNaN(localDate.getTime())) setScheduledAt(toLocalDatetimeInput(localDate))
+          if (!isNaN(localDate.getTime())) setScheduledAt(localDate)
         }
         if (data.privacy_status === 'public' || data.privacy_status === 'unlisted') {
           setPrivacyStatus(data.privacy_status)
@@ -134,7 +198,7 @@ export default function ReviewPage() {
         descricao: descSincronizada,
         tags,
         purchase_link: purchaseLink || undefined,
-        scheduled_at: new Date(scheduledAt).toISOString(),
+        scheduled_at: scheduledAt.toISOString(),
         status: 'scheduled',
         privacy_status: privacyStatus,
       })
@@ -377,15 +441,48 @@ export default function ReviewPage() {
           <CalendarClock className="h-5 w-5 text-violet-400" />
           <h2 className="text-base font-semibold text-white">Agendar publicação</h2>
         </div>
-        <p className="text-xs text-zinc-500">
-          Escolha a data e horário para publicar o vídeo no YouTube.
-        </p>
-        <input
-          type="datetime-local"
-          value={scheduledAt}
-          onChange={(e) => setScheduledAt(e.target.value)}
-          className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
-        />
+
+        {/* Presets rápidos */}
+        <div className="space-y-2">
+          <label className="block text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+            Escolha rápida
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {PRESETS.map((preset) => {
+              const presetDate = preset.build()
+              const ativo = ehMesmoMomento(presetDate, scheduledAt)
+              return (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => setScheduledAt(preset.build())}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                    ativo
+                      ? 'border-violet-500 bg-violet-500/15 text-white'
+                      : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800'
+                  }`}
+                >
+                  {preset.label === 'Agora' && <Zap className="h-3 w-3" />}
+                  {preset.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Picker custom */}
+        <div className="space-y-2">
+          <label className="block text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+            Ou data específica
+          </label>
+          <DateTimePicker value={scheduledAt} onChange={setScheduledAt} />
+        </div>
+
+        {/* Texto humano de confirmação */}
+        <div className="flex items-center gap-2 rounded-lg border border-green-500/20 bg-green-500/5 px-3 py-2 text-xs text-green-400">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <span>{descreveTempoRelativo(scheduledAt)}</span>
+        </div>
 
         <div className="space-y-2 pt-2">
           <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
@@ -428,7 +525,7 @@ export default function ReviewPage() {
         <button
           type="button"
           onClick={handleSchedule}
-          disabled={scheduling || !scheduledAt}
+          disabled={scheduling}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {scheduling ? (
