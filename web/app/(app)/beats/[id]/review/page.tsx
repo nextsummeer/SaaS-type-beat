@@ -35,14 +35,6 @@ interface Post {
 
 type PrivacyStatus = 'public' | 'unlisted'
 
-function defaultScheduledAt(): Date {
-  const d = new Date()
-  d.setHours(18, 0, 0, 0)
-  // Se já passou das 18h hoje, vai pra 18h de amanhã
-  if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1)
-  return d
-}
-
 interface PresetOption {
   label: string
   build: () => Date
@@ -107,7 +99,8 @@ function descreveTempoRelativo(d: Date): string {
   return `Vai publicar em ${diffDias} dias`
 }
 
-function ehMesmoMomento(a: Date, b: Date): boolean {
+function ehMesmoMomento(a: Date | null, b: Date | null): boolean {
+  if (!a || !b) return false
   return Math.abs(a.getTime() - b.getTime()) < 60_000
 }
 
@@ -124,7 +117,7 @@ export default function ReviewPage() {
   const [descricao, setDescricao] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [purchaseLink, setPurchaseLink] = useState('')
-  const [scheduledAt, setScheduledAt] = useState<Date>(defaultScheduledAt())
+  const [scheduledAt, setScheduledAt] = useState<Date | null>(null)
   const [privacyStatus, setPrivacyStatus] = useState<PrivacyStatus>('public')
   const [newTag, setNewTag] = useState('')
 
@@ -188,6 +181,10 @@ export default function ReviewPage() {
 
   async function handleSchedule() {
     if (!post) return
+    if (!scheduledAt) {
+      setError('Escolha quando publicar antes de confirmar.')
+      return
+    }
     setScheduling(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -479,10 +476,17 @@ export default function ReviewPage() {
         </div>
 
         {/* Texto humano de confirmação */}
-        <div className="flex items-center gap-2 rounded-lg border border-green-500/20 bg-green-500/5 px-3 py-2 text-xs text-green-400">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-          <span>{descreveTempoRelativo(scheduledAt)}</span>
-        </div>
+        {scheduledAt ? (
+          <div className="flex items-center gap-2 rounded-lg border border-green-500/20 bg-green-500/5 px-3 py-2 text-xs text-green-400">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <span>{descreveTempoRelativo(scheduledAt)}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-500">
+            <CalendarClock className="h-4 w-4 shrink-0" />
+            <span>Escolha uma data acima pra publicar.</span>
+          </div>
+        )}
 
         <div className="space-y-2 pt-2">
           <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
@@ -525,7 +529,7 @@ export default function ReviewPage() {
         <button
           type="button"
           onClick={handleSchedule}
-          disabled={scheduling}
+          disabled={scheduling || !scheduledAt}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {scheduling ? (

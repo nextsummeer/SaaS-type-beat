@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface DateTimePickerProps {
-  value: Date
+  value: Date | null
   onChange: (date: Date) => void
   minDate?: Date
+  placeholder?: string
 }
 
 const DIAS_SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
@@ -43,23 +44,32 @@ function gerarGridMes(year: number, month: number): (Date | null)[] {
   return grid
 }
 
-export function DateTimePicker({ value, onChange, minDate }: DateTimePickerProps) {
+export function DateTimePicker({ value, onChange, minDate, placeholder = 'Selecionar data e hora' }: DateTimePickerProps) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  // Fallback quando value=null: usa "hoje 18h" como ponto de partida visual no picker (sem commitar)
+  function fallbackInicial(): Date {
+    const d = new Date()
+    d.setHours(18, 0, 0, 0)
+    return d
+  }
+  const valorRef = value ?? fallbackInicial()
+
   // Estado local enquanto o picker está aberto (só commit no Confirmar)
-  const [mesExibido, setMesExibido] = useState(new Date(value.getFullYear(), value.getMonth(), 1))
-  const [dataSelecionada, setDataSelecionada] = useState<Date>(value)
-  const [hora, setHora] = useState(value.getHours())
-  const [minuto, setMinuto] = useState(value.getMinutes())
+  const [mesExibido, setMesExibido] = useState(new Date(valorRef.getFullYear(), valorRef.getMonth(), 1))
+  const [dataSelecionada, setDataSelecionada] = useState<Date>(valorRef)
+  const [hora, setHora] = useState(valorRef.getHours())
+  const [minuto, setMinuto] = useState(valorRef.getMinutes())
 
   // Reseta estado interno toda vez que abre
   useEffect(() => {
     if (open) {
-      setMesExibido(new Date(value.getFullYear(), value.getMonth(), 1))
-      setDataSelecionada(value)
-      setHora(value.getHours())
-      setMinuto(value.getMinutes())
+      const base = value ?? fallbackInicial()
+      setMesExibido(new Date(base.getFullYear(), base.getMonth(), 1))
+      setDataSelecionada(base)
+      setHora(base.getHours())
+      setMinuto(base.getMinutes())
     }
   }, [open, value])
 
@@ -117,11 +127,13 @@ export function DateTimePicker({ value, onChange, minDate }: DateTimePickerProps
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-3 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white transition hover:border-zinc-600 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+        className="flex w-full items-center justify-between gap-3 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm transition hover:border-zinc-600 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
       >
         <span className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-violet-400" />
-          <span className="capitalize">{formataLabel(value)}</span>
+          <Calendar className={`h-4 w-4 ${value ? 'text-violet-400' : 'text-zinc-500'}`} />
+          <span className={value ? 'capitalize text-white' : 'text-zinc-500'}>
+            {value ? formataLabel(value) : placeholder}
+          </span>
         </span>
         <ChevronRight className={`h-4 w-4 text-zinc-500 transition ${open ? 'rotate-90' : ''}`} />
       </button>
