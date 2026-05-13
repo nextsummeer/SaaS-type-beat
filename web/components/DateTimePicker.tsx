@@ -127,10 +127,10 @@ export function DateTimePicker({ value, onChange, minDate, placeholder = 'Seleci
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-3 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm transition hover:border-zinc-600 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+        className="flex w-full items-center justify-between gap-3 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm transition hover:border-zinc-600 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
       >
         <span className="flex items-center gap-2">
-          <Calendar className={`h-4 w-4 ${value ? 'text-violet-400' : 'text-zinc-500'}`} />
+          <Calendar className={`h-4 w-4 ${value ? 'text-orange-400' : 'text-zinc-500'}`} />
           <span className={value ? 'capitalize text-white' : 'text-zinc-500'}>
             {value ? formataLabel(value) : placeholder}
           </span>
@@ -187,7 +187,7 @@ export function DateTimePicker({ value, onChange, minDate, placeholder = 'Seleci
                   onClick={() => selecionarDia(d)}
                   className={`relative aspect-square rounded-md text-xs transition ${
                     ehSelecionado
-                      ? 'bg-violet-600 font-semibold text-white'
+                      ? 'bg-orange-600 font-semibold text-white'
                       : desabilitado
                       ? 'text-zinc-700'
                       : 'text-zinc-300 hover:bg-zinc-800'
@@ -195,7 +195,7 @@ export function DateTimePicker({ value, onChange, minDate, placeholder = 'Seleci
                 >
                   {d.getDate()}
                   {ehHoje && !ehSelecionado && (
-                    <span className="absolute bottom-1 left-1/2 h-0.5 w-1 -translate-x-1/2 rounded-full bg-violet-400" />
+                    <span className="absolute bottom-1 left-1/2 h-0.5 w-1 -translate-x-1/2 rounded-full bg-orange-400" />
                   )}
                 </button>
               )
@@ -231,7 +231,7 @@ export function DateTimePicker({ value, onChange, minDate, placeholder = 'Seleci
           <button
             type="button"
             onClick={confirmar}
-            className="mt-4 w-full rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-500"
+            className="mt-4 w-full rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-500"
           >
             Confirmar
           </button>
@@ -268,7 +268,7 @@ function TimeField({ value, onIncrement, onDecrement, onChange, max }: TimeField
           const num = parseInt(e.target.value.replace(/\D/g, '') || '0', 10)
           onChange(Math.min(num, max))
         }}
-        className="w-12 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-center text-lg font-semibold tabular-nums text-white outline-none transition focus:border-violet-500"
+        className="w-12 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-center text-lg font-semibold tabular-nums text-white outline-none transition focus:border-orange-500"
       />
       <button
         type="button"

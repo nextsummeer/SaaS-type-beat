@@ -315,7 +315,7 @@ export default function ReviewPage() {
           type="text"
           value={titulo}
           onChange={(e) => setTitulo(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white outline-none transition focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
         />
       </div>
 
@@ -331,21 +331,21 @@ export default function ReviewPage() {
             value={purchaseLink}
             onChange={(e) => setPurchaseLink(e.target.value)}
             placeholder="https://www.beatstars.com/beat/..."
-            className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+            className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
           />
           <button
             type="button"
             onClick={abrirLinkVenda}
             disabled={!purchaseLink.trim()}
             title="Abrir link em nova aba"
-            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-4 text-sm font-medium text-zinc-300 transition hover:border-violet-500/50 hover:bg-violet-500/10 hover:text-violet-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-zinc-700 disabled:hover:bg-zinc-900 disabled:hover:text-zinc-300"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-4 text-sm font-medium text-zinc-300 transition hover:border-orange-500/50 hover:bg-orange-500/10 hover:text-orange-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-zinc-700 disabled:hover:bg-zinc-900 disabled:hover:text-zinc-300"
           >
             <ExternalLink className="h-4 w-4" />
             Abrir
           </button>
         </div>
         {linkVaiAtualizar && (
-          <p className="text-xs text-violet-400">
+          <p className="text-xs text-orange-400">
             ↳ Ao salvar, esse link será aplicado também na descrição do vídeo automaticamente.
           </p>
         )}
@@ -369,7 +369,7 @@ export default function ReviewPage() {
           value={descricao}
           onChange={(e) => setDescricao(e.target.value)}
           rows={16}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 font-mono text-xs text-zinc-200 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 font-mono text-xs text-zinc-200 outline-none transition focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
         />
       </div>
 
@@ -391,7 +391,7 @@ export default function ReviewPage() {
             onChange={(e) => setNewTag(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
             placeholder="Adicionar tag..."
-            className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-violet-500"
+            className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-orange-500"
           />
           <button
             type="button"
@@ -467,7 +467,7 @@ export default function ReviewPage() {
               href={post.youtube_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-500"
+              className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-500"
             >
               <ExternalLink className="h-4 w-4" />
               Ver no YouTube
@@ -476,14 +476,14 @@ export default function ReviewPage() {
           <div className="flex items-start gap-2 rounded-lg border border-zinc-800 bg-zinc-950/50 px-3 py-2 text-xs text-zinc-500">
             <Info className="h-4 w-4 shrink-0 text-zinc-600" />
             <span>
-              Pra mudar título, descrição, tags ou capa do vídeo, edite direto no <a href="https://studio.youtube.com/" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline">YouTube Studio</a>. Edições feitas aqui não sincronizam com o vídeo.
+              Pra mudar título, descrição, tags ou capa do vídeo, edite direto no <a href="https://studio.youtube.com/" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:underline">YouTube Studio</a>. Edições feitas aqui não sincronizam com o vídeo.
             </span>
           </div>
         </div>
       ) : (
       <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
         <div className="flex items-center gap-2">
-          <CalendarClock className="h-5 w-5 text-violet-400" />
+          <CalendarClock className="h-5 w-5 text-orange-400" />
           <h2 className="text-base font-semibold text-white">Agendar publicação</h2>
         </div>
 
@@ -503,7 +503,7 @@ export default function ReviewPage() {
                   onClick={() => setScheduledAt(preset.build())}
                   className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                     ativo
-                      ? 'border-violet-500 bg-violet-500/15 text-white'
+                      ? 'border-orange-500 bg-orange-500/15 text-white'
                       : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800'
                   }`}
                 >
@@ -546,7 +546,7 @@ export default function ReviewPage() {
               onClick={() => setPrivacyStatus('public')}
               className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition ${
                 privacyStatus === 'public'
-                  ? 'border-violet-500 bg-violet-500/10 text-white'
+                  ? 'border-orange-500 bg-orange-500/10 text-white'
                   : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
               }`}
             >
@@ -561,7 +561,7 @@ export default function ReviewPage() {
               onClick={() => setPrivacyStatus('unlisted')}
               className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition ${
                 privacyStatus === 'unlisted'
-                  ? 'border-violet-500 bg-violet-500/10 text-white'
+                  ? 'border-orange-500 bg-orange-500/10 text-white'
                   : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
               }`}
             >
@@ -578,7 +578,7 @@ export default function ReviewPage() {
           type="button"
           onClick={handleSchedule}
           disabled={scheduling || !scheduledAt}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-orange-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {scheduling ? (
             <>

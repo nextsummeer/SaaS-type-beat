@@ -168,15 +168,15 @@ export default function BeatPage() {
               <div className="flex flex-col items-center">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full">
                   {state === 'done' ? (
-                    <CheckCircle2 className="h-7 w-7 text-violet-400" />
+                    <CheckCircle2 className="h-7 w-7 text-orange-400" />
                   ) : state === 'active' ? (
-                    <Loader2 className="h-7 w-7 animate-spin text-violet-500" />
+                    <Loader2 className="h-7 w-7 animate-spin text-orange-500" />
                   ) : (
                     <Circle className="h-7 w-7 text-zinc-700" />
                   )}
                 </div>
                 {!isLast && (
-                  <div className={`w-0.5 flex-1 my-1 rounded-full ${state === 'done' ? 'bg-violet-500/40' : 'bg-zinc-800'}`} />
+                  <div className={`w-0.5 flex-1 my-1 rounded-full ${state === 'done' ? 'bg-orange-500/40' : 'bg-zinc-800'}`} />
                 )}
               </div>
 
@@ -197,7 +197,7 @@ export default function BeatPage() {
       {done && (
         <a
           href={`/beats/${id}/review`}
-          className="mt-2 inline-block rounded-lg bg-violet-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-violet-500"
+          className="mt-2 inline-block rounded-lg bg-orange-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-orange-500"
         >
           Ver títulos e descrições →
         </a>

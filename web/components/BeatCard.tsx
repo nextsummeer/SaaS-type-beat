@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Music, Loader2, AlertCircle, Calendar, Trash2, Check } from 'lucide-react'
+import { Loader2, AlertCircle, Trash2, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { BeatListItem } from '@/lib/api'
 
@@ -16,23 +16,23 @@ interface Props {
 
 export type EstadoVisual = {
   label: string
-  cor: string
+  cor: string          /* token CSS pro LED (color) */
   isLoading?: boolean
 }
 
 export function estadoVisual(beat: BeatListItem): EstadoVisual {
   if (beat.status === 'failed')
-    return { label: 'Falhou', cor: 'bg-red-500/10 text-red-400 border-red-500/30' }
+    return { label: 'FALHOU', cor: 'var(--led-error)' }
   if (beat.post_status === 'published')
-    return { label: 'Postado', cor: 'bg-green-500/10 text-green-400 border-green-500/30' }
+    return { label: 'POSTADO', cor: 'var(--led-success)' }
   if (beat.post_status === 'scheduled') {
     if (beat.scheduled_at && new Date(beat.scheduled_at) <= new Date())
-      return { label: 'Postado', cor: 'bg-green-500/10 text-green-400 border-green-500/30' }
-    return { label: 'Agendado', cor: 'bg-blue-500/10 text-blue-400 border-blue-500/30' }
+      return { label: 'POSTADO', cor: 'var(--led-success)' }
+    return { label: 'AGENDADO', cor: 'var(--led-info)' }
   }
   if (beat.status === 'ready_for_review')
-    return { label: 'Rascunho', cor: 'bg-violet-500/10 text-violet-300 border-violet-500/30' }
-  return { label: 'Processando', cor: 'bg-zinc-700/40 text-zinc-300 border-zinc-600/40', isLoading: true }
+    return { label: 'RASCUNHO', cor: 'var(--led-draft)' }
+  return { label: 'PROCESSANDO', cor: 'var(--led-warning)', isLoading: true }
 }
 
 export function destino(beat: BeatListItem): string {
@@ -93,14 +93,25 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
   return (
     <div
       onClick={handleCardClick}
-      className={`group relative flex cursor-pointer flex-col overflow-hidden transition`}
+      className="group relative flex cursor-pointer flex-col overflow-hidden transition"
       style={{
         background: 'var(--bg-surface)',
-        border: selecionado
-          ? '1px solid var(--accent)'
-          : '1px solid var(--border)',
+        border: selecionado ? '1px solid var(--accent)' : '1px solid var(--border)',
         borderRadius: 'var(--radius-md)',
-        boxShadow: selecionado ? '0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent)' : 'none',
+        boxShadow: selecionado ? '0 0 0 2px var(--accent-muted)' : 'var(--shadow-card)',
+        transition: 'transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
+      }}
+      onMouseEnter={(e) => {
+        if (!selecionado) {
+          e.currentTarget.style.borderColor = 'var(--border-strong)'
+          e.currentTarget.style.transform = 'translateY(-2px)'
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!selecionado) {
+          e.currentTarget.style.borderColor = 'var(--border)'
+          e.currentTarget.style.transform = 'translateY(0)'
+        }
       }}
     >
       {/* Thumbnail */}
@@ -113,58 +124,147 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
             className={`h-full w-full object-cover transition ${modoSelecao ? '' : 'group-hover:scale-105'}`}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900/30 to-transparent">
-            <span className="text-3xl font-bold" style={{ color: 'var(--text-subtle)' }}>{inicial}</span>
+          <div className="flex h-full w-full items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--bg-elevated), var(--bg-overlay))' }}>
+            <span
+              className="font-display text-4xl font-semibold"
+              style={{ color: 'var(--text-subtle)', letterSpacing: '-0.04em' }}
+            >
+              {inicial}
+            </span>
           </div>
         )}
 
+        {/* Overlay de hover discreto */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-100"
+          style={{ background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.5))' }}
+        />
+
         {modoSelecao && selecionado && (
-          <div className="absolute inset-0 bg-violet-600/15" />
+          <div className="absolute inset-0" style={{ background: 'var(--accent-muted)' }} />
         )}
 
+        {/* Checkbox seleção */}
         {modoSelecao && (
           <div
-            className={`absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full border-2 transition ${
-              selecionado ? 'border-violet-400 bg-violet-600 text-white' : 'border-white/50 bg-black/40 backdrop-blur-sm'
-            }`}
+            className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-md transition"
+            style={{
+              background: selecionado ? 'var(--accent)' : 'rgba(0,0,0,0.6)',
+              border: selecionado ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.3)',
+              color: '#fff',
+              backdropFilter: 'blur(8px)',
+            }}
           >
             {selecionado && <Check className="h-3 w-3" strokeWidth={3} />}
           </div>
         )}
 
+        {/* Botão deletar */}
         {!modoSelecao && (
           <button
             type="button"
             onClick={handleDeleteClick}
             title="Deletar beat"
-            className="absolute left-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-black/60 text-zinc-300 opacity-0 backdrop-blur-sm transition hover:border-red-500/40 hover:bg-red-500/20 hover:text-red-400 group-hover:opacity-100"
+            className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-md opacity-0 transition group-hover:opacity-100"
+            style={{
+              background: 'rgba(0,0,0,0.65)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: 'rgba(255,255,255,0.8)',
+              backdropFilter: 'blur(8px)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(239,68,68,0.25)'
+              e.currentTarget.style.color = '#fca5a5'
+              e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(0,0,0,0.65)'
+              e.currentTarget.style.color = 'rgba(255,255,255,0.8)'
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'
+            }}
           >
             <Trash2 className="h-3 w-3" />
           </button>
         )}
 
-        <div className={`absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium backdrop-blur-sm ${estado.cor}`}>
-          {estado.isLoading && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
-          {beat.status === 'failed' && <AlertCircle className="h-2.5 w-2.5" />}
-          {estado.label}
+        {/* Status LED badge */}
+        <div
+          className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-1"
+          style={{
+            background: 'rgba(0,0,0,0.7)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          {estado.isLoading ? (
+            <Loader2 className="h-2.5 w-2.5 animate-spin" style={{ color: estado.cor }} />
+          ) : beat.status === 'failed' ? (
+            <AlertCircle className="h-2.5 w-2.5" style={{ color: estado.cor }} />
+          ) : (
+            <span className="led" style={{ color: estado.cor }} />
+          )}
+          <span
+            className="font-mono text-[9px] font-medium tracking-[0.1em]"
+            style={{ color: estado.cor }}
+          >
+            {estado.label}
+          </span>
         </div>
+
+        {/* BPM/Key floating bottom-left */}
+        {(beat.bpm || beat.music_key) && (
+          <div className="absolute bottom-2 left-2 flex gap-1">
+            {beat.bpm && (
+              <span
+                className="font-mono text-[9px] font-semibold uppercase tracking-wider"
+                style={{
+                  color: 'rgba(255,255,255,0.95)',
+                  background: 'rgba(0,0,0,0.65)',
+                  padding: '2px 6px',
+                  borderRadius: 3,
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  backdropFilter: 'blur(8px)',
+                }}
+              >
+                {beat.bpm} BPM
+              </span>
+            )}
+            {beat.music_key && (
+              <span
+                className="font-mono text-[9px] font-semibold uppercase tracking-wider"
+                style={{
+                  color: 'rgba(255,255,255,0.95)',
+                  background: 'rgba(0,0,0,0.65)',
+                  padding: '2px 6px',
+                  borderRadius: 3,
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  backdropFilter: 'blur(8px)',
+                }}
+              >
+                {beat.music_key}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Info */}
-      <div className="flex flex-1 flex-col gap-1 p-3">
-        <h3 className="line-clamp-2 text-xs font-semibold leading-snug" style={{ color: 'var(--text-primary)' }} title={titulo}>
+      <div className="flex flex-1 flex-col gap-1.5 p-3">
+        <h3
+          className="line-clamp-2 text-[12px] font-semibold leading-snug"
+          style={{ color: 'var(--text-primary)' }}
+          title={titulo}
+        >
           {titulo}
         </h3>
-        <div className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-          <Music className="h-3 w-3 shrink-0" />
-          <span className="truncate">
-            {beat.artista_nome ?? 'sem artista'}
-            {beat.bpm ? ` · ${beat.bpm}` : ''}
-            {beat.music_key ? ` · ${beat.music_key}` : ''}
-          </span>
-        </div>
-        <div className="mt-auto flex items-center gap-1 pt-2 text-[10px]" style={{ color: 'var(--text-subtle)', borderTop: '1px solid var(--border-muted)' }}>
-          <Calendar className="h-2.5 w-2.5" />
+        <p className="truncate text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          {beat.artista_nome ?? 'sem artista'}
+        </p>
+        <div
+          className="mt-auto flex items-center justify-between pt-1.5 font-mono text-[9px] uppercase tracking-wider"
+          style={{ color: 'var(--text-subtle)', borderTop: '1px solid var(--border-muted)' }}
+        >
           <span className="truncate">{formataData(beat.created_at)}</span>
         </div>
       </div>

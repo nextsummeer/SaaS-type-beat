@@ -145,7 +145,7 @@ export function UploadForm() {
                   onChange={(e) => setArtista(idx, e.target.value)}
                   disabled={uploading}
                   placeholder={idx === 0 ? 'Ex: Drake, Travis Scott...' : 'Outro artista'}
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 pr-9 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500 disabled:opacity-50"
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 pr-9 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-orange-500 focus:ring-1 focus:ring-orange-500 disabled:opacity-50"
                 />
                 {idx > 0 && (
                   <button
@@ -165,7 +165,7 @@ export function UploadForm() {
                 type="button"
                 onClick={adicionarArtista}
                 disabled={uploading}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-zinc-700 bg-zinc-900/50 px-3 py-3 text-sm font-medium text-zinc-400 transition hover:border-violet-500 hover:bg-zinc-800 hover:text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-zinc-700 bg-zinc-900/50 px-3 py-3 text-sm font-medium text-zinc-400 transition hover:border-orange-500 hover:bg-zinc-800 hover:text-white disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" />
                 Adicionar
@@ -189,7 +189,7 @@ export function UploadForm() {
             min={40}
             max={300}
             placeholder="140"
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500 disabled:opacity-50"
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-orange-500 focus:ring-1 focus:ring-orange-500 disabled:opacity-50"
           />
         </div>
       </div>
@@ -202,7 +202,7 @@ export function UploadForm() {
             checked={jaPublicado}
             onChange={(e) => setJaPublicado(e.target.checked)}
             disabled={uploading}
-            className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-violet-600 focus:ring-violet-500"
+            className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-orange-600 focus:ring-orange-500"
           />
           Já publiquei esse beat em uma loja (BeatStars, Airbit, etc)
         </label>
@@ -214,7 +214,7 @@ export function UploadForm() {
               onChange={(e) => setStoreLink(e.target.value)}
               disabled={uploading}
               placeholder="https://www.beatstars.com/beat/..."
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500 disabled:opacity-50"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-orange-500 focus:ring-1 focus:ring-orange-500 disabled:opacity-50"
             />
             <p className="mt-1 text-xs text-zinc-500">Esse link vai aparecer na descrição do vídeo no YouTube.</p>
           </div>
@@ -230,11 +230,11 @@ export function UploadForm() {
           type="button"
           onClick={() => audioRef.current?.click()}
           disabled={uploading}
-          className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed border-zinc-700 bg-zinc-900 px-6 py-8 text-center transition hover:border-violet-500 hover:bg-zinc-800/50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed border-zinc-700 bg-zinc-900 px-6 py-8 text-center transition hover:border-orange-500 hover:bg-zinc-800/50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {audioFile ? (
             <>
-              <Music className="h-8 w-8 text-violet-400" />
+              <Music className="h-8 w-8 text-orange-400" />
               <div>
                 <p className="text-sm font-medium text-white">{audioFile.name}</p>
                 <p className="text-xs text-zinc-400">{(audioFile.size / 1024 / 1024).toFixed(1)} MB</p>
@@ -268,7 +268,7 @@ export function UploadForm() {
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
             <div
-              className="h-full rounded-full bg-violet-600 transition-all duration-300"
+              className="h-full rounded-full bg-orange-600 transition-all duration-300"
               style={{ width: `${audioProgress}%` }}
             />
           </div>
@@ -284,11 +284,11 @@ export function UploadForm() {
           type="button"
           onClick={() => coverRef.current?.click()}
           disabled={uploading}
-          className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed border-zinc-700 bg-zinc-900 px-6 py-5 text-center transition hover:border-violet-500 hover:bg-zinc-800/50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed border-zinc-700 bg-zinc-900 px-6 py-5 text-center transition hover:border-orange-500 hover:bg-zinc-800/50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {coverFile ? (
             <>
-              <Image className="h-6 w-6 text-violet-400" />
+              <Image className="h-6 w-6 text-orange-400" />
               <p className="text-sm font-medium text-white">{coverFile.name}</p>
             </>
           ) : (
@@ -319,7 +319,7 @@ export function UploadForm() {
       <button
         type="submit"
         disabled={!canSubmit || uploading}
-        className="rounded-lg bg-violet-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-lg bg-orange-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {uploading ? 'Enviando...' : 'Fazer upload'}
       </button>

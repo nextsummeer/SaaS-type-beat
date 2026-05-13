@@ -1,16 +1,28 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Bricolage_Grotesque, Geist, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const geist = Geist({
+  variable: "--font-geist",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const jetbrains = JetBrains_Mono({
+  variable: "--font-jetbrains",
   subsets: ["latin"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "BeatPost",
-  description: "Automatize seus uploads de type beats no YouTube.",
+  title: "BeatPost — Producer Hub",
+  description: "Upload, IA gera tudo, publica no YouTube. Para beatmakers de type beats.",
 };
 
 export default function RootLayout({
@@ -19,7 +31,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} h-full antialiased`}>
+    <html
+      lang="pt-BR"
+      className={`${bricolage.variable} ${geist.variable} ${jetbrains.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

@@ -1,96 +1,288 @@
 import Link from 'next/link'
 import { healthCheck } from '@/lib/api'
-import { Upload, Music, BarChart2, Clock } from 'lucide-react'
+import {
+  Upload,
+  Music2,
+  Eye,
+  CalendarClock,
+  Zap,
+  ArrowUpRight,
+  ChevronRight,
+  Activity,
+  Headphones,
+} from 'lucide-react'
+import { DashboardGreeting } from '@/components/DashboardGreeting'
+
+type Stat = {
+  label: string
+  value: string
+  icon: typeof Music2
+  spark: number[]
+}
+
+const stats: Stat[] = [
+  {
+    label: 'Beats publicados',
+    value: '—',
+    icon: Music2,
+    spark: [4, 8, 6, 12, 10, 14, 18],
+  },
+  {
+    label: 'Views totais',
+    value: '—',
+    icon: Eye,
+    spark: [6, 10, 8, 14, 12, 16, 20],
+  },
+  {
+    label: 'Em fila',
+    value: '—',
+    icon: Activity,
+    spark: [2, 4, 3, 6, 5, 7, 4],
+  },
+  {
+    label: 'Agendados',
+    value: '—',
+    icon: CalendarClock,
+    spark: [1, 2, 3, 2, 4, 3, 5],
+  },
+]
+
+function Sparkline({ data }: { data: number[] }) {
+  const max = Math.max(...data, 1)
+  const w = 80
+  const h = 24
+  const step = w / (data.length - 1)
+  const points = data
+    .map((v, i) => `${i * step},${h - (v / max) * h}`)
+    .join(' ')
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="opacity-70">
+      <polyline
+        fill="none"
+        stroke="var(--accent)"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={points}
+      />
+    </svg>
+  )
+}
 
 export default async function DashboardPage() {
   const api = await healthCheck()
 
-  const statCards = [
-    { label: 'Beats publicados', value: '—', icon: Music, desc: 'Em breve' },
-    { label: 'Views totais', value: '—', icon: BarChart2, desc: 'Em breve' },
-    { label: 'Agendados', value: '—', icon: Clock, desc: 'Em breve' },
-  ]
-
   return (
-    <div className="space-y-8">
-      {/* Header de boas-vindas */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            Bom ver você por aqui
-          </h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Faça upload de um beat e a IA gera tudo pra publicar no YouTube.
-          </p>
-        </div>
-        <Link
-          href="/upload"
-          className="inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition"
-          style={{ background: 'var(--accent)' }}
-        >
-          <Upload className="h-4 w-4" />
+    <div className="space-y-10">
+      {/* HERO */}
+      <section className="flex flex-col gap-6 rise rise-1 md:flex-row md:items-end md:justify-between">
+        <DashboardGreeting />
+        <Link href="/upload" className="btn-primary group shrink-0">
+          <Upload size={15} strokeWidth={2.2} />
           Novo beat
+          <ArrowUpRight
+            size={14}
+            strokeWidth={2.4}
+            className="transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+          />
         </Link>
-      </div>
+      </section>
 
-      {/* Cards de métricas (placeholders para Fase 2) */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {statCards.map((card) => {
-          const Icon = card.icon
+      {/* STATS GRID */}
+      <section className="grid grid-cols-1 gap-3 rise rise-2 sm:grid-cols-2 lg:grid-cols-4">
+        {stats.map((s) => {
+          const Icon = s.icon
           return (
             <div
-              key={card.label}
-              className="rounded-xl border p-5"
-              style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+              key={s.label}
+              className="group relative overflow-hidden rounded-xl p-5 transition"
+              style={{
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-card)',
+              }}
             >
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-subtle)' }}>
-                  {card.label}
+              <div className="flex items-start justify-between">
+                <p
+                  className="font-mono text-[10px] font-medium uppercase tracking-[0.18em]"
+                  style={{ color: 'var(--text-subtle)' }}
+                >
+                  {s.label}
                 </p>
-                <Icon className="h-4 w-4" style={{ color: 'var(--text-subtle)' }} />
+                <div
+                  className="flex h-7 w-7 items-center justify-center rounded-md transition group-hover:scale-110"
+                  style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-muted)' }}
+                >
+                  <Icon size={13} style={{ color: 'var(--text-muted)' }} />
+                </div>
               </div>
-              <p className="mt-3 text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>{card.value}</p>
-              <p className="mt-1 text-xs" style={{ color: 'var(--text-subtle)' }}>{card.desc}</p>
+
+              <p className="num-hero mt-4 text-[36px]" style={{ color: 'var(--text-primary)' }}>
+                {s.value}
+              </p>
+
+              <div className="mt-3 flex items-center justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-subtle)' }}>
+                  últimos 7 dias
+                </span>
+                <Sparkline data={s.spark} />
+              </div>
+
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-px opacity-0 transition group-hover:opacity-100"
+                style={{ background: 'linear-gradient(90deg, transparent, var(--accent), transparent)' }}
+              />
             </div>
           )
         })}
-      </div>
+      </section>
 
-      {/* Card de ação principal */}
-      <div
-        className="flex items-center gap-6 rounded-xl border p-6"
-        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+      {/* AÇÃO PRINCIPAL — upload */}
+      <section
+        className="relative overflow-hidden rounded-2xl p-8 rise rise-3"
+        style={{
+          background: 'linear-gradient(135deg, var(--bg-surface), var(--bg-elevated))',
+          border: '1px solid var(--border)',
+        }}
       >
         <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: 'var(--accent-muted)' }}
+          aria-hidden
+          className="pointer-events-none absolute right-8 top-1/2 hidden -translate-y-1/2 md:block"
+          style={{ color: 'var(--accent)', opacity: 0.18 }}
         >
-          <Upload className="h-6 w-6" style={{ color: 'var(--accent)' }} />
+          <svg width="280" height="120" viewBox="0 0 280 120" fill="none">
+            {Array.from({ length: 36 }).map((_, i) => {
+              const h = 10 + Math.abs(Math.sin(i * 0.6) * 50) + Math.abs(Math.cos(i * 1.2) * 30)
+              const x = i * 8
+              return (
+                <rect key={i} x={x} y={(120 - h) / 2} width={3} height={h} rx={1.5} fill="currentColor" />
+              )
+            })}
+          </svg>
         </div>
-        <div className="flex-1">
-          <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>Comece fazendo upload de um beat</p>
-          <p className="mt-0.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-            MP3 com sua tag gravada → IA analisa → você revisa → publicado no YouTube.
-          </p>
-        </div>
-        <Link
-          href="/upload"
-          className="shrink-0 rounded-lg border px-4 py-2 text-sm font-medium transition"
-          style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'var(--bg-elevated)' }}
-        >
-          Fazer upload
-        </Link>
-      </div>
 
-      {/* Status da API */}
-      <div className="flex items-center gap-2">
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${api.ok ? 'bg-green-500' : 'bg-red-500'}`}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-20 -top-20 h-60 w-60 rounded-full"
+          style={{ background: 'radial-gradient(circle, var(--accent-glow), transparent 70%)', opacity: 0.45 }}
         />
-        <span className="text-xs" style={{ color: 'var(--text-subtle)' }}>
-          API {api.ok ? `online${api.version ? ` · v${api.version}` : ''}` : 'offline'}
-        </span>
-      </div>
+
+        <div className="relative flex max-w-2xl flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <Zap size={13} style={{ color: 'var(--accent)' }} />
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--accent)' }}>
+              próximo passo
+            </span>
+          </div>
+          <h2
+            className="font-display text-[28px] font-semibold leading-tight tracking-tight"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            Suba seu próximo beat.<br />
+            <span style={{ color: 'var(--text-muted)' }}>Deixa o resto com a gente.</span>
+          </h2>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            MP3 com sua tag → IA analisa BPM, key e gera variações de título + descrição + tags + capa.
+            Você revisa, agenda e publica no YouTube. Tempo médio: <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>1m48s</span>.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <Link href="/upload" className="btn-primary">
+              <Upload size={14} strokeWidth={2.2} />
+              Subir beat agora
+            </Link>
+            <Link
+              href="/beats"
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium transition"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Ver biblioteca
+              <ChevronRight size={14} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* RODAPÉ — pipeline + api status */}
+      <section className="grid grid-cols-1 gap-4 rise rise-4 md:grid-cols-3">
+        <div
+          className="col-span-1 rounded-xl p-5 md:col-span-2"
+          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Headphones size={13} style={{ color: 'var(--text-muted)' }} />
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>
+                pipeline de produção
+              </p>
+            </div>
+            <span className="font-mono text-[10px]" style={{ color: 'var(--text-subtle)' }}>
+              auto · idempotente
+            </span>
+          </div>
+
+          <ol className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-5">
+            {[
+              { n: '01', t: 'Upload' },
+              { n: '02', t: 'Convert' },
+              { n: '03', t: 'Analyze' },
+              { n: '04', t: 'Generate' },
+              { n: '05', t: 'Publish' },
+            ].map((s, i, arr) => (
+              <li key={s.n} className="relative flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="flex h-6 w-6 items-center justify-center rounded-md font-mono text-[10px] font-semibold"
+                    style={{
+                      background: i === 0 ? 'var(--accent-muted)' : 'var(--bg-elevated)',
+                      color: i === 0 ? 'var(--accent)' : 'var(--text-muted)',
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    {s.n}
+                  </span>
+                  {i < arr.length - 1 && (
+                    <span
+                      aria-hidden
+                      className="hidden flex-1 md:block"
+                      style={{ height: 1, background: 'var(--border-muted)' }}
+                    />
+                  )}
+                </div>
+                <p className="text-[12px] font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {s.t}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div
+          className="flex flex-col gap-3 rounded-xl p-5"
+          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+        >
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>
+            system health
+          </p>
+          <div className="flex items-center gap-2">
+            <span
+              className={api.ok ? 'led led-pulse' : 'led'}
+              style={{ color: api.ok ? 'var(--led-success)' : 'var(--led-error)' }}
+            />
+            <p className="text-[14px] font-medium" style={{ color: 'var(--text-primary)' }}>
+              API {api.ok ? 'operacional' : 'offline'}
+            </p>
+          </div>
+          <div className="flex items-center justify-between text-[11px]" style={{ color: 'var(--text-subtle)' }}>
+            <span className="font-mono uppercase tracking-wider">versão</span>
+            <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>v{api.version ?? '?'}</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px]" style={{ color: 'var(--text-subtle)' }}>
+            <span className="font-mono uppercase tracking-wider">latência</span>
+            <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>{api.ok ? '< 100ms' : '—'}</span>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }
