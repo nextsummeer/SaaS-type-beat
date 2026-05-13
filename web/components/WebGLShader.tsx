@@ -138,7 +138,15 @@ export function WebGLShader() {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed top-0 left-0 -z-10 block h-full w-full"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        display: 'block',
+        zIndex: 0,
+      }}
     />
   )
 }
