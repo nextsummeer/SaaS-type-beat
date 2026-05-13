@@ -314,12 +314,18 @@ function ConfiguracoesContent() {
           ) : account ? (
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
               <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-500/10">
-                  <Tv2 className="h-6 w-6 text-red-400" />
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-800">
+                  <Tv2 className="h-6 w-6 text-zinc-400" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs uppercase tracking-wide text-zinc-500">Canal conectado</p>
-                  <h3 className="mt-0.5 text-lg font-semibold text-white">{account.channel_title}</h3>
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-400 ring-1 ring-inset ring-green-500/20">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
+                    </span>
+                    Conectado
+                  </div>
+                  <h3 className="mt-2 text-lg font-semibold text-white">{account.channel_title}</h3>
                   <p className="mt-1 text-xs text-zinc-500">ID: {account.channel_id}</p>
                   <div className="mt-3 flex items-center gap-1.5 text-xs text-zinc-400">
                     <Calendar className="h-3 w-3" />
