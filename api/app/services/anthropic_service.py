@@ -41,7 +41,9 @@ def generate_metadata(
     top_tracks_str = ", ".join(f'"{t}"' for t in top_tracks) if top_tracks else "(não disponível)"
     trending_str = ", ".join(trending_tags[:20]) if trending_tags else "(não disponível)"
     nome_str = producer_nome or "[Nome do Produtor]"
-    instagram_str = f"@{producer_instagram}" if producer_instagram else "@seuinstagram"
+    instagram_handle = producer_instagram.lstrip("@") if producer_instagram else ""
+    instagram_str = f"@{instagram_handle}" if instagram_handle else "@seuinstagram"
+    instagram_link = f"https://instagram.com/{instagram_handle}" if instagram_handle else "https://instagram.com/seuinstagram"
     email_str = producer_email or "seuemail@gmail.com"
     link_str = store_link.strip() if store_link else "[insira seu link de venda]"
 
@@ -83,6 +85,7 @@ BEAT_NAME
 
 Contact me here:
 Instagram - {instagram_str}
+📷 {instagram_link}
 E-mail - {email_str}
 
 #{artista_nome.lower().replace(" ", "")}typebeat #trapbeat #{bpm_str}bpm

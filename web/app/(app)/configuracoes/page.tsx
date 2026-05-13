@@ -27,6 +27,13 @@ interface Profile {
   email_contato: string | null
 }
 
+function sanitizeInstagramHandle(input: string): string {
+  let v = input.trim()
+  const urlMatch = v.match(/instagram\.com\/([^\/\?#]+)/i)
+  if (urlMatch) v = urlMatch[1]
+  return v.replace(/[^a-zA-Z0-9._]/g, '')
+}
+
 function formataData(iso: string | null): string {
   if (!iso) return '-'
   try {
@@ -100,7 +107,7 @@ function ConfiguracoesContent() {
 
         if (!cancelado && data) {
           setNome(data.nome ?? '')
-          setInstagram(data.instagram ?? '')
+          setInstagram(sanitizeInstagramHandle(data.instagram ?? ''))
           setEmailContato(data.email_contato ?? '')
         }
       } catch (e) {
@@ -135,7 +142,7 @@ function ConfiguracoesContent() {
       const { error: upsertError } = await supabase
         .from('user_profiles')
         .upsert(
-          { user_id: user.id, nome: nome.trim() || null, instagram: instagram.trim().replace(/^@/, '') || null, email_contato: emailContato.trim() || null },
+          { user_id: user.id, nome: nome.trim() || null, instagram: sanitizeInstagramHandle(instagram) || null, email_contato: emailContato.trim() || null },
           { onConflict: 'user_id' },
         )
 
@@ -231,14 +238,14 @@ function ConfiguracoesContent() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-300">
-                  Instagram <span className="text-zinc-500">(sem o @)</span>
+                  Instagram
                 </label>
                 <div className="flex items-center gap-0 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500">
                   <span className="pl-4 text-sm text-zinc-500">@</span>
                   <input
                     type="text"
                     value={instagram}
-                    onChange={(e) => setInstagram(e.target.value.replace(/^@/, ''))}
+                    onChange={(e) => setInstagram(sanitizeInstagramHandle(e.target.value))}
                     placeholder="seuinstagram"
                     className="flex-1 bg-transparent py-3 pr-4 text-sm text-white placeholder-zinc-600 outline-none"
                   />
