@@ -2,11 +2,13 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { UploadCloud, AlertCircle, Music, Image } from 'lucide-react'
+import { UploadCloud, AlertCircle, Music, Image, Plus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { uploadWithProgress } from '@/lib/storage'
 
 type Status = 'idle' | 'uploading' | 'error'
+
+const MAX_ARTISTAS = 4
 
 export function UploadForm() {
   const router = useRouter()
@@ -16,7 +18,7 @@ export function UploadForm() {
 
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
-  const [artistaNome, setArtistaNome] = useState('')
+  const [artistas, setArtistas] = useState<string[]>([''])
   const [bpm, setBpm] = useState('')
   const [jaPublicado, setJaPublicado] = useState(false)
   const [storeLink, setStoreLink] = useState('')
@@ -26,12 +28,34 @@ export function UploadForm() {
 
   const bpmNum = Number(bpm)
   const bpmValid = Number.isFinite(bpmNum) && bpmNum >= 40 && bpmNum <= 300
+  const artistasLimpos = artistas.map((a) => a.trim()).filter((a) => a.length > 0)
+  // Remove duplicatas (case-insensitive)
+  const artistasUnicos = artistasLimpos.filter(
+    (a, i) => artistasLimpos.findIndex((b) => b.toLowerCase() === a.toLowerCase()) === i,
+  )
   const canSubmit =
     !!audioFile &&
     !!coverFile &&
-    artistaNome.trim().length > 0 &&
+    artistasUnicos.length > 0 &&
     bpmValid &&
     (!jaPublicado || storeLink.trim().length > 0)
+
+  function setArtista(idx: number, valor: string) {
+    setArtistas((prev) => prev.map((a, i) => (i === idx ? valor : a)))
+  }
+
+  function adicionarArtista() {
+    setArtistas((prev) => (prev.length < MAX_ARTISTAS ? [...prev, ''] : prev))
+  }
+
+  function removerArtista(idx: number) {
+    setArtistas((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  const labelArtistas =
+    artistas.length === 1
+      ? 'Type beat de quem?'
+      : `Type beat de ${Array(artistas.length).fill('quem').join(' x ')}?`
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -82,7 +106,8 @@ export function UploadForm() {
           body: JSON.stringify({
             audio_path: audioPath,
             cover_path: coverPath,
-            artista_nome: artistaNome.trim(),
+            artistas: artistasUnicos,
+            artista_nome: artistasUnicos.join(' x '),
             bpm: bpmNum,
             store_link: jaPublicado ? storeLink.trim() : null,
           }),
@@ -105,22 +130,54 @@ export function UploadForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex max-w-lg flex-col gap-6">
-      {/* Artista + BPM lado a lado */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2">
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
-            Type beat de quem? <span className="text-red-400">*</span>
-          </label>
-          <input
-            type="text"
-            value={artistaNome}
-            onChange={(e) => setArtistaNome(e.target.value)}
-            disabled={uploading}
-            placeholder="Ex: Drake, Nettspend, Travis Scott..."
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500 disabled:opacity-50"
-          />
-        </div>
+      {/* Artistas (lista) + BPM */}
+      <div className="space-y-4">
         <div>
+          <label className="mb-2 block text-sm font-medium text-zinc-300">
+            {labelArtistas} <span className="text-red-400">*</span>
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            {artistas.map((valor, idx) => (
+              <div key={idx} className="relative flex min-w-[160px] flex-1 items-center">
+                <input
+                  type="text"
+                  value={valor}
+                  onChange={(e) => setArtista(idx, e.target.value)}
+                  disabled={uploading}
+                  placeholder={idx === 0 ? 'Ex: Drake, Travis Scott...' : 'Outro artista'}
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 pr-9 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500 disabled:opacity-50"
+                />
+                {idx > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => removerArtista(idx)}
+                    disabled={uploading}
+                    aria-label={`Remover artista ${idx + 1}`}
+                    className="absolute right-2 flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 transition hover:bg-zinc-800 hover:text-red-400 disabled:opacity-50"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+            {artistas.length < MAX_ARTISTAS && (
+              <button
+                type="button"
+                onClick={adicionarArtista}
+                disabled={uploading}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-zinc-700 bg-zinc-900/50 px-3 py-3 text-sm font-medium text-zinc-400 transition hover:border-violet-500 hover:bg-zinc-800 hover:text-white disabled:opacity-50"
+              >
+                <Plus className="h-4 w-4" />
+                Adicionar
+              </button>
+            )}
+          </div>
+          {artistasLimpos.length > artistasUnicos.length && (
+            <p className="mt-1 text-xs text-amber-400">Artista duplicado ignorado.</p>
+          )}
+        </div>
+
+        <div className="max-w-[140px]">
           <label className="mb-2 block text-sm font-medium text-zinc-300">
             BPM <span className="text-red-400">*</span>
           </label>

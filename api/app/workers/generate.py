@@ -51,6 +51,9 @@ def generate_beat(beat_id: str):
 
     try:
         artista_nome = beat.get("artista_nome") or "type beat"
+        # Reconstroi lista de artistas a partir do nome composto ("A x B" -> ["A", "B"])
+        artistas = [a.strip() for a in artista_nome.split(" x ") if a.strip()] or [artista_nome]
+        artista_principal = artistas[0]
         bpm = beat.get("bpm")
         music_key = beat.get("music_key")
         user_id = beat["user_id"]
@@ -60,14 +63,15 @@ def generate_beat(beat_id: str):
         profile = profile_result.data[0] if profile_result.data else {}
         producer_email = profile.get("email_contato")
 
-        # 1+2. Spotify + Gemini em paralelo — shutdown(wait=False) evita bloqueio
+        # 1+2. Spotify (usa só o primeiro — top_tracks combinados confundem o BEAT_NAME)
+        #      + Gemini (usa nome composto — Google entende "A x B type beat")
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
-        fut_spotify = executor.submit(get_top_tracks, artista_nome)
+        fut_spotify = executor.submit(get_top_tracks, artista_principal)
         fut_gemini = executor.submit(search_trending_tags, artista_nome)
         try:
             top_tracks = fut_spotify.result(timeout=15)
         except Exception as exc:
-            logger.warning("Spotify falhou para '%s': %s", artista_nome, exc)
+            logger.warning("Spotify falhou para '%s': %s", artista_principal, exc)
             top_tracks = []
         try:
             trending_tags = fut_gemini.result(timeout=25)
@@ -76,9 +80,9 @@ def generate_beat(beat_id: str):
             trending_tags = []
         executor.shutdown(wait=False, cancel_futures=True)
 
-        # 3. Claude: gera título, descrição e tags
+        # 3. Claude: gera título, descrição e tags (recebe lista pra gerar tags individuais)
         metadata = generate_metadata(
-            artista_nome=artista_nome,
+            artistas=artistas,
             bpm=bpm,
             music_key=music_key,
             top_tracks=top_tracks,

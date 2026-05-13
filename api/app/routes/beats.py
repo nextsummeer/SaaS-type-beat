@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
@@ -15,6 +15,7 @@ class CreateBeatRequest(BaseModel):
     audio_path: str
     cover_path: Optional[str] = None
     artista_nome: Optional[str] = None
+    artistas: Optional[List[str]] = None
     bpm: int
     store_link: Optional[str] = None
 
@@ -101,6 +102,18 @@ def create_beat(
     except Exception:
         raise HTTPException(status_code=401, detail="Token inválido ou expirado")
 
+    # Reconcilia artistas: prioriza lista nova, cai pra string antiga
+    artistas_clean: list[str] = []
+    if body.artistas:
+        artistas_clean = [a.strip() for a in body.artistas if a and a.strip()]
+        # Remove duplicatas preservando ordem (case-insensitive)
+        seen = set()
+        artistas_clean = [
+            a for a in artistas_clean
+            if not (a.lower() in seen or seen.add(a.lower()))
+        ]
+    artista_nome = " x ".join(artistas_clean) if artistas_clean else (body.artista_nome or None)
+
     client = get_admin_client()
     result = (
         client.table("beats")
@@ -109,7 +122,7 @@ def create_beat(
                 "user_id": str(user.id),
                 "audio_path": body.audio_path,
                 "cover_path": body.cover_path,
-                "artista_nome": body.artista_nome,
+                "artista_nome": artista_nome,
                 "bpm": body.bpm,
                 "store_link": body.store_link,
                 "status": "uploaded",

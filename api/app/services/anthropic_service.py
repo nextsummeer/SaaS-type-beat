@@ -9,7 +9,7 @@ MODEL = "claude-sonnet-4-6"
 
 
 def generate_metadata(
-    artista_nome: str,
+    artistas: list[str],
     bpm: int | None,
     music_key: str | None,
     top_tracks: list[str],
@@ -36,6 +36,21 @@ def generate_metadata(
 
     client = Anthropic(api_key=ANTHROPIC_API_KEY)
 
+    # Normaliza lista de artistas
+    artistas_clean = [a.strip() for a in (artistas or []) if a and a.strip()] or ["type beat"]
+    artista_nome = " x ".join(artistas_clean)
+    artista_principal = artistas_clean[0]
+    eh_colab = len(artistas_clean) >= 2
+    artistas_lista_str = ", ".join(f'"{a}"' for a in artistas_clean)
+
+    # Hashtags do template: tag por artista + (se colab) tag composta
+    def _slug(s: str) -> str:
+        return s.lower().replace(" ", "")
+    hashtags = [f"#{_slug(a)}typebeat" for a in artistas_clean]
+    if eh_colab:
+        hashtags.append(f"#{'x'.join(_slug(a) for a in artistas_clean)}typebeat")
+    hashtags_str = " ".join(hashtags) + f" #trapbeat #{bpm if bpm else '140'}bpm"
+
     bpm_str = str(bpm) if bpm else "?"
     key_str = music_key or "?"
     top_tracks_str = ", ".join(f'"{t}"' for t in top_tracks) if top_tracks else "(não disponível)"
@@ -47,14 +62,22 @@ def generate_metadata(
     email_str = producer_email or "seuemail@gmail.com"
     link_str = store_link.strip() if store_link else "[insira seu link de venda]"
 
+    multi_artist_note = (
+        f"\n\nIMPORTANTE: este beat é uma COLABORAÇÃO com {len(artistas_clean)} artistas: {artistas_lista_str}."
+        f" O artista PRINCIPAL (que inspira o BEAT_NAME e cuja estética guia o título) é '{artista_principal}'."
+        f" Os outros são colaboradores — apareçam no título no formato 'A x B x C', e ganhem tags próprias."
+        if eh_colab else ""
+    )
+
     prompt = f"""Você é um especialista em SEO para type beats no YouTube. Preciso que você gere o conteúdo completo para um vídeo de type beat.
 
 DADOS DO BEAT:
-- Artista de referência: {artista_nome}
+- Artista(s) de referência: {artista_nome}
+- Lista de artistas: [{artistas_lista_str}]
 - BPM: {bpm_str}
 - Tom: {key_str}
-- Top musicas do artista no Spotify: {top_tracks_str}
-- Termos trending no YouTube para este artista: {trending_str}
+- Top musicas do artista principal ({artista_principal}) no Spotify: {top_tracks_str}
+- Termos trending no YouTube para este beat: {trending_str}{multi_artist_note}
 
 DADOS DO PRODUTOR:
 - Nome: {nome_str}
@@ -63,7 +86,7 @@ DADOS DO PRODUTOR:
 
 INSTRUÇÕES:
 
-1. BEAT_NAME: Crie um nome criativo e curto (1-3 palavras, MAIÚSCULAS) no estilo lexical do artista, INSPIRADO (não cópia exata) nos títulos das músicas dele. Ex para Drake: "GOD MODE", "FEELINGS", "WORTH IT". Ex para Nettspend: "COLD NIGHTS", "SPIN THE BLOCK", "OK OK".
+1. BEAT_NAME: Crie um nome criativo e curto (1-3 palavras, MAIÚSCULAS) no estilo lexical do artista PRINCIPAL ({artista_principal}), INSPIRADO (não cópia exata) nos títulos das músicas dele. Ex para Drake: "GOD MODE", "FEELINGS", "WORTH IT". Ex para Nettspend: "COLD NIGHTS", "SPIN THE BLOCK", "OK OK".
 
 2. TITULO: Monte o título do vídeo neste formato exato:
    [FREE] {artista_nome} type beat "BEAT_NAME"
@@ -88,7 +111,7 @@ Instagram - {instagram_str}
 📷 {instagram_link}
 E-mail - {email_str}
 
-#{artista_nome.lower().replace(" ", "")}typebeat #trapbeat #{bpm_str}bpm
+{hashtags_str}
 
 IDEOTAGS:
 [AQUI VOCÊ VAI COLOCAR O BLOCO DE IDEOTAGS — veja instrução 4]
@@ -104,15 +127,15 @@ IDEOTAGS:
    Tudo em lowercase, sem # neste bloco.
 
 5. TAGS (para o CAMPO TAGS oficial do YouTube — limite 500 chars TOTAIS): Retorne um array JSON com 12 a 15 tags FORTES e SELECIONADAS (não é a mesma lista das IDEOTAGS). Devem ser as keywords mais valiosas para SEO, somadas (com vírgulas) caber em ~450 chars. Priorize:
-   - "[artista] type beat" (sempre incluir)
-   - "type beat [artista]"
-   - "free [artista] type beat"
-   - "[artista] [bpm] bpm type beat"
-   - "[artista] type beat 2025"
-   - 1-2 cruzamentos com artistas dos top tracks
+   - "[artista] type beat" — UMA VARIAÇÃO POR ARTISTA da lista (essencial)
+   - "type beat [artista]" — UMA por artista
+   - "free [artista] type beat" — UMA por artista
+   - "[artista1] x [artista2] type beat" — se há colaboração, incluir o cruzamento
+   - "[artista principal] [bpm] bpm type beat"
+   - "[artista principal] type beat 2025"
    - 1-2 do trending
    - Variação de gênero principal
-   Tudo em lowercase. Mantenha tags curtas (2-4 palavras) para caber em 500 chars no total.
+   Tudo em lowercase. Mantenha tags curtas (2-4 palavras) para caber em 500 chars no total. Distribua tags entre todos os artistas da lista — não foque só no principal.
 
 Responda APENAS com JSON válido neste formato exato:
 {{
@@ -146,7 +169,7 @@ Responda APENAS com JSON válido neste formato exato:
             raise ValueError(f"Claude não retornou campo obrigatório: {key}")
 
     logger.info(
-        "Claude gerou beat_name='%s' com %d tags para artista='%s'",
-        data["beat_name"], len(data["tags"]), artista_nome,
+        "Claude gerou beat_name='%s' com %d tags para artistas=%s",
+        data["beat_name"], len(data["tags"]), artistas_clean,
     )
     return data
