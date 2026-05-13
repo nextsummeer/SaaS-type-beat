@@ -54,7 +54,7 @@ export function ForgotPasswordForm() {
             <button
               type="button"
               onClick={() => setEnviado(false)}
-              className="font-medium text-purple-400 hover:text-purple-300"
+              className="font-medium text-white hover:text-white/70"
             >
               tente de novo
             </button>
@@ -81,7 +81,7 @@ export function ForgotPasswordForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="E-mail da conta"
-              className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-3 text-sm text-white placeholder-white/60 outline-none transition focus:border-purple-500/50"
+              className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-3 text-sm text-white placeholder-white/60 outline-none transition focus:border-white/50"
             />
           </div>
 
@@ -94,7 +94,7 @@ export function ForgotPasswordForm() {
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition hover:-translate-y-0.5 hover:bg-purple-500 hover:shadow-purple-500/40 disabled:translate-y-0 disabled:opacity-70"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-semibold text-black shadow-lg shadow-white/20 transition hover:-translate-y-0.5 hover:bg-zinc-200 hover:shadow-white/40 disabled:translate-y-0 disabled:opacity-70"
           >
             {loading ? (
               <>

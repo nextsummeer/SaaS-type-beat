@@ -79,7 +79,7 @@ export function ResetPasswordForm() {
           </p>
           <Link
             href="/forgot-password"
-            className="rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-500"
+            className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
           >
             Solicitar novo link
           </Link>
@@ -104,7 +104,7 @@ export function ResetPasswordForm() {
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
               placeholder="Nova senha (mínimo 6 caracteres)"
-              className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-10 text-sm text-white placeholder-white/60 outline-none transition focus:border-purple-500/50"
+              className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-10 text-sm text-white placeholder-white/60 outline-none transition focus:border-white/50"
             />
             <button
               type="button"
@@ -128,7 +128,7 @@ export function ResetPasswordForm() {
               value={confirmaSenha}
               onChange={(e) => setConfirmaSenha(e.target.value)}
               placeholder="Confirme a senha"
-              className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-3 text-sm text-white placeholder-white/60 outline-none transition focus:border-purple-500/50"
+              className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-3 text-sm text-white placeholder-white/60 outline-none transition focus:border-white/50"
             />
           </div>
 
@@ -141,7 +141,7 @@ export function ResetPasswordForm() {
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition hover:-translate-y-0.5 hover:bg-purple-500 hover:shadow-purple-500/40 disabled:translate-y-0 disabled:opacity-70"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-semibold text-black shadow-lg shadow-white/20 transition hover:-translate-y-0.5 hover:bg-zinc-200 hover:shadow-white/40 disabled:translate-y-0 disabled:opacity-70"
           >
             {loading ? (
               <>

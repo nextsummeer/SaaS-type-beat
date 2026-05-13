@@ -92,7 +92,7 @@ export function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
-            className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-3 text-sm text-white placeholder-white/60 outline-none transition focus:border-purple-500/50"
+            className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-3 text-sm text-white placeholder-white/60 outline-none transition focus:border-white/50"
           />
         </div>
 
@@ -108,7 +108,7 @@ export function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Senha"
-            className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-10 text-sm text-white placeholder-white/60 outline-none transition focus:border-purple-500/50"
+            className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-10 text-sm text-white placeholder-white/60 outline-none transition focus:border-white/50"
           />
           <button
             type="button"
@@ -131,12 +131,12 @@ export function LoginForm() {
               <span className="relative inline-block h-5 w-10">
                 <span
                   className={`absolute inset-0 rounded-full transition-colors duration-200 ${
-                    remember ? 'bg-purple-600' : 'bg-white/20'
+                    remember ? 'bg-white' : 'bg-white/20'
                   }`}
                 />
                 <span
-                  className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform duration-200 ${
-                    remember ? 'translate-x-5' : ''
+                  className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full transition-all duration-200 ${
+                    remember ? 'translate-x-5 bg-black' : 'bg-white'
                   }`}
                 />
               </span>
@@ -167,7 +167,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition hover:-translate-y-0.5 hover:bg-purple-500 hover:shadow-purple-500/40 disabled:translate-y-0 disabled:opacity-70"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-semibold text-black shadow-lg shadow-white/20 transition hover:-translate-y-0.5 hover:bg-zinc-200 hover:shadow-white/40 disabled:translate-y-0 disabled:opacity-70"
         >
           {loading ? (
             <>
@@ -211,7 +211,7 @@ export function LoginForm() {
             setError(null)
             setMessage(null)
           }}
-          className="font-medium text-white transition hover:text-purple-300"
+          className="font-medium text-white transition hover:text-white/70"
         >
           {mode === 'login' ? 'Criar conta' : 'Entrar'}
         </button>
