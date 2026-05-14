@@ -6,7 +6,7 @@
 
 **Iniciado:** 2026-05-14
 **Status:** em-execucao
-**Proximo passo:** T7.1 deployada em producao. Gustavo testar fluxo de reautorizacao em https://saa-s-type-beat.vercel.app/configuracoes (deve aparecer banner laranja "Libere o acesso ao Analytics"). Quando confirmar OK, avancar para T7.2.
+**Proximo passo:** T7.1 concluida e validada em producao (2026-05-14, conta NEXT SUMMER MUSIK). Proxima: T7.2 (service youtube_analytics.py + tabela analytics_cache + cache 24h).
 **Tags:** beatpost, fase2-produto, analytics, youtube-analytics-api, backend-primeiro
 
 ## Contexto
@@ -52,7 +52,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 
 ### Bloco A — OAuth + Service backend
 
-#### `[~]` T7.1 — Adicionar scope `yt-analytics.readonly` ao OAuth flow
+#### `[x]` T7.1 — Adicionar scope `yt-analytics.readonly` ao OAuth flow
 
 - **Arquivos:**
   - `api/app/routes/oauth.py` (ou onde estiver o fluxo atual do YouTube OAuth)
