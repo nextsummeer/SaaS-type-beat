@@ -5,7 +5,7 @@ import { Music2, Eye, Activity, CalendarClock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
   fetchBeats,
-  fetchAnalyticsMyBeats,
+  fetchAnalyticsOverview,
   type BeatListItem,
 } from '@/lib/api'
 
@@ -80,7 +80,7 @@ function calculaStats(beats: BeatListItem[], totalViews: number): StatItem[] {
       label: 'Views totais',
       value: formataNumero(totalViews),
       icon: Eye,
-      hint: 'últimos 90 dias',
+      hint: 'canal · últimos 90d',
       spark: [6, 10, 8, 14, 12, 16, Math.max(20, Math.min(40, totalViews / 5))],
     },
     {
@@ -116,10 +116,11 @@ export function DashboardStats() {
         // Carrega beats sempre. Analytics pode falhar (sem canal/scope) — não bloqueia.
         const beats = await fetchBeats(session.access_token)
 
+        // Views = agregado do canal (consistente com cards do topo de /analytics)
         let totalViews = 0
         try {
-          const analytics = await fetchAnalyticsMyBeats(session.access_token, '90d')
-          totalViews = analytics.items.reduce((acc, b) => acc + b.views, 0)
+          const overview = await fetchAnalyticsOverview(session.access_token, '90d')
+          totalViews = overview.views.value
         } catch {
           // Sem canal conectado ou erro temporário do YT — mostra 0 e segue
         }
