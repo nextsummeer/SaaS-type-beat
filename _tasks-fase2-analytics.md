@@ -6,7 +6,7 @@
 
 **Iniciado:** 2026-05-14
 **Status:** em-execucao
-**Proximo passo:** T7.1 concluida e validada em producao (2026-05-14, conta NEXT SUMMER MUSIK). Proxima: T7.2 (service youtube_analytics.py + tabela analytics_cache + cache 24h).
+**Proximo passo:** T7.2 concluida (service + cache + 8 testes mockados verde). Proxima: T7.3 (endpoint REST `/api/analytics/overview`).
 **Tags:** beatpost, fase2-produto, analytics, youtube-analytics-api, backend-primeiro
 
 ## Contexto
@@ -70,7 +70,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
   - Teste manual: tentar chamar Analytics API sem o scope retorna erro especifico que UI captura
 - **Dependencia:** —
 
-#### `[ ]` T7.2 — Service `youtube_analytics.py` + cache 24h
+#### `[x]` T7.2 — Service `youtube_analytics.py` + cache 24h
 
 - **Arquivos:**
   - `api/app/services/youtube_analytics.py` (novo)

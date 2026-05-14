@@ -223,6 +223,47 @@ def get_connected_account(user_id: str) -> Optional[dict]:
     }
 
 
+def get_access_token(user_id: str) -> str:
+    """Decifra o refresh_token do user e troca por um access_token novo.
+
+    Cada chamada gera um access_token novo (Google libera muitos por minuto).
+    O refresh_token nunca sai cifrado do banco — função SQL `get_youtube_refresh_token`
+    faz o pgp_sym_decrypt com a SUPABASE_VAULT_KEY passada em parâmetro.
+
+    Raises:
+        ValueError: se o user não tem canal conectado.
+        RuntimeError: se o Google rejeitar o refresh.
+    """
+    client = get_admin_client()
+    result = client.rpc(
+        "get_youtube_refresh_token",
+        {"p_user_id": user_id, "p_vault_key": _vault_key()},
+    ).execute()
+    refresh_token = result.data
+    if not refresh_token:
+        raise ValueError(f"User {user_id} não tem canal YouTube conectado")
+
+    resp = requests.post(
+        GOOGLE_TOKEN_URL,
+        data={
+            "client_id": _client_id(),
+            "client_secret": _client_secret(),
+            "refresh_token": refresh_token,
+            "grant_type": "refresh_token",
+        },
+        timeout=15,
+    )
+    if not resp.ok:
+        logger.error("Falha ao trocar refresh_token: %s %s", resp.status_code, resp.text)
+        raise RuntimeError(f"Google rejeitou refresh_token: {resp.status_code}")
+
+    body = resp.json()
+    access_token = body.get("access_token")
+    if not access_token:
+        raise RuntimeError(f"Google não retornou access_token: {list(body.keys())}")
+    return access_token
+
+
 def disconnect_account(user_id: str) -> bool:
     """Revoga e remove o canal conectado. Retorna True se algo foi removido."""
     client = get_admin_client()
