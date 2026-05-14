@@ -19,11 +19,7 @@ import {
   disconnectYoutubeAccount,
   getYoutubeAuthUrl,
   precisaReautorizarAnalytics,
-  fetchAnalyticsOverview,
-  fetchAnalyticsTopBeats,
   type YoutubeAccount,
-  type AnalyticsOverview,
-  type AnalyticsTopBeats,
 } from '@/lib/api'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 
@@ -86,12 +82,6 @@ function ConfiguracoesContent() {
   const [confirmandoDisconnect, setConfirmandoDisconnect] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
 
-  // DEBUG TEMPORÁRIO — testar endpoints de analytics (T7.3, T7.4)
-  // TODO: remover assim que confirmar que funciona em produção
-  const [debugLoading, setDebugLoading] = useState(false)
-  const [debugResult, setDebugResult] = useState<AnalyticsOverview | null>(null)
-  const [debugError, setDebugError] = useState<string | null>(null)
-  const [topBeatsResult, setTopBeatsResult] = useState<AnalyticsTopBeats | null>(null)
 
   useEffect(() => {
     const connected = searchParams.get('connected')
@@ -195,40 +185,6 @@ function ConfiguracoesContent() {
       setOauthError(e instanceof Error ? e.message : 'Erro ao desconectar')
     } finally {
       setDisconnecting(false)
-    }
-  }
-
-  async function handleTestarAnalytics(periodo: '7d' | '30d' | '90d') {
-    setDebugLoading(true)
-    setDebugError(null)
-    setDebugResult(null)
-    setTopBeatsResult(null)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.push('/login'); return }
-      const data = await fetchAnalyticsOverview(session.access_token, periodo, true)
-      setDebugResult(data)
-    } catch (e) {
-      setDebugError(e instanceof Error ? e.message : 'Erro desconhecido')
-    } finally {
-      setDebugLoading(false)
-    }
-  }
-
-  async function handleTestarTopBeats(periodo: '7d' | '30d' | '90d') {
-    setDebugLoading(true)
-    setDebugError(null)
-    setDebugResult(null)
-    setTopBeatsResult(null)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.push('/login'); return }
-      const data = await fetchAnalyticsTopBeats(session.access_token, periodo, 10)
-      setTopBeatsResult(data)
-    } catch (e) {
-      setDebugError(e instanceof Error ? e.message : 'Erro desconhecido')
-    } finally {
-      setDebugLoading(false)
     }
   }
 
@@ -527,153 +483,6 @@ function ConfiguracoesContent() {
               </a>.
             </p>
           </div>
-        </section>
-
-        {/* DEBUG TEMPORÁRIO — testar endpoint /analytics/overview (T7.3) */}
-        <section
-          className="rounded-xl border p-6 space-y-4"
-          style={{ background: 'var(--bg-surface)', borderColor: 'rgba(255,90,31,0.3)' }}
-        >
-          <div className="pb-1" style={{ borderBottom: '1px solid var(--border-muted)' }}>
-            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--accent)' }}>
-              Debug temporário · Analytics
-            </p>
-            <p className="mt-0.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-              Botão pra testar o endpoint <code className="rounded px-1" style={{ background: 'var(--bg-base)' }}>/analytics/overview</code> com seu canal real. Esta seção será removida quando Analytics estiver completa.
-            </p>
-          </div>
-
-          <div>
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-subtle)' }}>
-              /overview (agregado do canal)
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {(['7d', '30d', '90d'] as const).map((periodo) => (
-                <button
-                  key={`ov-${periodo}`}
-                  type="button"
-                  onClick={() => handleTestarAnalytics(periodo)}
-                  disabled={debugLoading}
-                  className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-50"
-                  style={{ background: 'var(--accent)' }}
-                >
-                  {debugLoading ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" />Buscando…</>
-                  ) : (
-                    <><BarChart3 className="h-4 w-4" />Overview {periodo}</>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-subtle)' }}>
-              /top-beats (views por vídeo individual)
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {(['7d', '30d', '90d'] as const).map((periodo) => (
-                <button
-                  key={`tb-${periodo}`}
-                  type="button"
-                  onClick={() => handleTestarTopBeats(periodo)}
-                  disabled={debugLoading}
-                  className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition disabled:opacity-50"
-                  style={{ borderColor: 'var(--accent)', color: 'var(--accent)', background: 'transparent' }}
-                >
-                  {debugLoading ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" />Buscando…</>
-                  ) : (
-                    <><BarChart3 className="h-4 w-4" />Top beats {periodo}</>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {debugError && (
-            <div className="flex items-start gap-3 rounded-lg border px-4 py-3 text-sm" style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)', color: '#f87171' }}>
-              <AlertCircle className="h-5 w-5 shrink-0" />
-              <span className="break-all">{debugError}</span>
-            </div>
-          )}
-
-          {debugResult && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-lg border p-3" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-subtle)' }}>Views</p>
-                  <p className="mt-1 text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{debugResult.views.value.toLocaleString('pt-BR')}</p>
-                  <p className="text-[11px]" style={{ color: debugResult.views.delta_pct >= 0 ? '#4ade80' : '#f87171' }}>
-                    {debugResult.views.delta_pct >= 0 ? '↑' : '↓'} {Math.abs(debugResult.views.delta_pct)}% vs anterior ({debugResult.views.previous})
-                  </p>
-                </div>
-                <div className="rounded-lg border p-3" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-subtle)' }}>Inscritos</p>
-                  <p className="mt-1 text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{debugResult.subscribers_gained.value > 0 ? '+' : ''}{debugResult.subscribers_gained.value}</p>
-                  <p className="text-[11px]" style={{ color: debugResult.subscribers_gained.delta_pct >= 0 ? '#4ade80' : '#f87171' }}>
-                    {debugResult.subscribers_gained.delta_pct >= 0 ? '↑' : '↓'} {Math.abs(debugResult.subscribers_gained.delta_pct)}% vs anterior ({debugResult.subscribers_gained.previous})
-                  </p>
-                </div>
-                <div className="rounded-lg border p-3" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-subtle)' }}>Retenção</p>
-                  <p className="mt-1 text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{debugResult.retention.value}%</p>
-                  <p className="text-[11px]" style={{ color: debugResult.retention.delta_pct >= 0 ? '#4ade80' : '#f87171' }}>
-                    {debugResult.retention.delta_pct >= 0 ? '↑' : '↓'} {Math.abs(debugResult.retention.delta_pct)}% vs anterior ({debugResult.retention.previous}%)
-                  </p>
-                </div>
-              </div>
-              <details className="text-xs" style={{ color: 'var(--text-subtle)' }}>
-                <summary className="cursor-pointer">Ver JSON cru da resposta</summary>
-                <pre className="mt-2 overflow-auto rounded p-3 font-mono" style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}>
-                  {JSON.stringify(debugResult, null, 2)}
-                </pre>
-              </details>
-            </div>
-          )}
-
-          {topBeatsResult && (
-            <div className="space-y-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-subtle)' }}>
-                Resultado /top-beats ({topBeatsResult.period})
-              </p>
-              {topBeatsResult.items.length === 0 ? (
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                  Nenhum vídeo com views nesse período (rows vazio).
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {topBeatsResult.items.map((item, i) => (
-                    <div
-                      key={item.video_id}
-                      className="flex items-center gap-3 rounded-lg border p-3"
-                      style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
-                    >
-                      <span className="font-mono text-[11px]" style={{ color: 'var(--text-subtle)' }}>#{i + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                          {item.beat?.titulo ?? <span style={{ color: 'var(--text-subtle)' }}>(beat não está no nosso banco)</span>}
-                        </p>
-                        <p className="truncate text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                          video_id: <code>{item.video_id}</code>
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold" style={{ color: 'var(--accent)' }}>{item.views.toLocaleString('pt-BR')}</p>
-                        <p className="text-[10px]" style={{ color: 'var(--text-subtle)' }}>views · {item.retention_pct}% ret.</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <details className="text-xs" style={{ color: 'var(--text-subtle)' }}>
-                <summary className="cursor-pointer">Ver JSON cru da resposta</summary>
-                <pre className="mt-2 overflow-auto rounded p-3 font-mono" style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}>
-                  {JSON.stringify(topBeatsResult, null, 2)}
-                </pre>
-              </details>
-            </div>
-          )}
         </section>
       </div>
 
