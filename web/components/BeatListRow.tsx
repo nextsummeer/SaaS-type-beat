@@ -77,7 +77,12 @@ export function BeatListRow({ beat, modoSelecao, selecionado, onToggleSelecionad
       >
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={coverUrl} alt={titulo} className="h-full w-full object-cover" />
+          <img
+            src={coverUrl}
+            alt={titulo}
+            className="h-full w-full object-cover"
+            style={beat.youtube_deleted_at ? { filter: 'grayscale(0.8) opacity(0.55)' } : undefined}
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--bg-elevated), var(--bg-overlay))' }}>
             <span className="font-display text-base font-semibold" style={{ color: 'var(--text-subtle)' }}>{inicial}</span>

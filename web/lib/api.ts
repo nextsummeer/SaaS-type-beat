@@ -24,6 +24,7 @@ export interface BeatListItem {
   post_status: string | null
   scheduled_at: string | null
   youtube_url: string | null
+  youtube_deleted_at: string | null
 }
 
 export async function fetchBeats(token: string): Promise<BeatListItem[]> {

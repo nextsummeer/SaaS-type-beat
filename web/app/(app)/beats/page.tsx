@@ -10,7 +10,7 @@ import { BeatCard } from '@/components/BeatCard'
 import { BeatListRow } from '@/components/BeatListRow'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 
-type FiltroKey = 'todos' | 'processando' | 'rascunho' | 'agendado' | 'postado' | 'falhou'
+type FiltroKey = 'todos' | 'processando' | 'rascunho' | 'agendado' | 'postado' | 'removido' | 'falhou'
 
 interface Filtro {
   key: FiltroKey
@@ -21,11 +21,17 @@ interface Filtro {
 
 /** Considera "postado" tanto published quanto scheduled cuja data já chegou. */
 function estaPostado(b: BeatListItem): boolean {
+  if (b.youtube_deleted_at) return false // removidos do YT não contam mais como "postados ativos"
   if (b.post_status === 'published') return true
   if (b.post_status === 'scheduled' && b.scheduled_at && new Date(b.scheduled_at) <= new Date()) {
     return true
   }
   return false
+}
+
+/** Vídeo já foi pro YouTube mas o produtor removeu manualmente de lá. */
+function foiRemovido(b: BeatListItem): boolean {
+  return !!b.youtube_deleted_at
 }
 
 /** Agendado de verdade: scheduled mas ainda no futuro. */
@@ -60,6 +66,7 @@ const FILTROS: Filtro[] = [
   },
   { key: 'agendado', label: 'Agendados', cor: 'var(--led-info)', match: estaAgendadoFuturo },
   { key: 'postado', label: 'Postados', cor: 'var(--led-success)', match: estaPostado },
+  { key: 'removido', label: 'Removidos', cor: 'var(--text-subtle)', match: foiRemovido },
   { key: 'falhou', label: 'Falhou', cor: 'var(--led-error)', match: (b) => b.status === 'failed' },
 ]
 
@@ -116,7 +123,7 @@ export default function BeatsPage() {
   }, [modoSelecao])
 
   const contagens = useMemo(() => {
-    const out: Record<FiltroKey, number> = { todos: 0, processando: 0, rascunho: 0, agendado: 0, postado: 0, falhou: 0 }
+    const out: Record<FiltroKey, number> = { todos: 0, processando: 0, rascunho: 0, agendado: 0, postado: 0, removido: 0, falhou: 0 }
     for (const b of beats) {
       for (const f of FILTROS) if (f.match(b)) out[f.key] += 1
     }

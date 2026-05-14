@@ -21,6 +21,9 @@ export type EstadoVisual = {
 }
 
 export function estadoVisual(beat: BeatListItem): EstadoVisual {
+  // Vídeo deletado do YouTube tem precedência: já foi publicado mas o produtor removeu de lá
+  if (beat.youtube_deleted_at)
+    return { label: 'REMOVIDO', cor: 'var(--text-subtle)' }
   if (beat.status === 'failed')
     return { label: 'FALHOU', cor: 'var(--led-error)' }
   if (beat.post_status === 'published')
@@ -120,6 +123,7 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
             src={coverUrl}
             alt={titulo}
             className="h-full w-full object-cover"
+            style={beat.youtube_deleted_at ? { filter: 'grayscale(0.8) opacity(0.55)' } : undefined}
           />
         ) : (
           <div
