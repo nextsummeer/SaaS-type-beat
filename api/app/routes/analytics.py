@@ -81,17 +81,24 @@ def my_beats(
     from app.services.supabase_service import get_admin_client
 
     client = get_admin_client()
-    posts_data = (
-        client.table("posts")
-        .select(
-            "youtube_video_id, youtube_url, beats!inner(id, titulo, artista_nome, cover_path)"
+    try:
+        posts_data = (
+            client.table("posts")
+            .select(
+                "youtube_video_id, youtube_url, beat_id, beats(id, titulo, artista_nome, cover_path)"
+            )
+            .eq("user_id", user_id)
+            .execute()
         )
-        .eq("user_id", user_id)
-        .not_.is_("youtube_video_id", "null")
-        .execute()
-    )
+    except Exception as exc:
+        logger.error("my-beats: falha ao buscar posts user=%s: %s", user_id, exc)
+        raise HTTPException(status_code=500, detail=f"Erro ao consultar banco: {exc}")
 
-    posts_lista = posts_data.data or []
+    # Filtrar manualmente os posts com video_id e beat válido
+    posts_lista = [
+        p for p in (posts_data.data or [])
+        if p.get("youtube_video_id") and p.get("beats")
+    ]
     if not posts_lista:
         return {"period": periodo, "items": []}
 
@@ -99,10 +106,8 @@ def my_beats(
     beat_por_video: dict[str, dict] = {}
     video_ids: list[str] = []
     for p in posts_lista:
-        vid = p.get("youtube_video_id")
-        beat = p.get("beats")
-        if not vid or not beat:
-            continue
+        vid = p["youtube_video_id"]
+        beat = p["beats"]
         video_ids.append(vid)
         beat_por_video[vid] = {
             "beat_id": beat["id"],
