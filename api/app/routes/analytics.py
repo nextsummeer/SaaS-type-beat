@@ -45,6 +45,7 @@ def _valida_periodo(periodo: str) -> str:
 @router.get("/overview")
 def overview(
     period: str = Query("7d", description="7d, 30d ou 90d"),
+    debug: bool = Query(False, description="Se true, inclui JSON cru da API do YouTube"),
     authorization: str = Header(...),
 ):
     """KPIs do canal: views, inscritos ganhos, retenção — com delta vs período anterior.
@@ -56,6 +57,9 @@ def overview(
           "subscribers_gained": { "value": 3,   "previous": 1,   "delta_pct": 200.0 },
           "retention":          { "value": 47.5, "previous": 42.1, "delta_pct": 12.8 }
         }
+
+    Se `debug=true`, adiciona `raw_atual` e `raw_anterior` com o JSON
+    literal devolvido pela YouTube Analytics API (sem cache, sem parse).
     """
     user_id = _autentica(authorization)
     periodo = _valida_periodo(period)
@@ -75,7 +79,7 @@ def overview(
     atual = youtube_analytics.parse_overview_row(atual_raw)
     anterior = youtube_analytics.parse_overview_row(anterior_raw)
 
-    return {
+    resposta = {
         "period": periodo,
         "views": {
             "value": atual["views"],
@@ -99,3 +103,21 @@ def overview(
             ),
         },
     }
+
+    if debug:
+        from datetime import date, timedelta
+
+        dias = youtube_analytics.PERIODOS[periodo]
+        end_atual = date.today()
+        start_atual = end_atual - timedelta(days=dias)
+        end_ant = end_atual - timedelta(days=dias)
+        start_ant = end_ant - timedelta(days=dias)
+        resposta["_debug"] = {
+            "data_hoje": date.today().isoformat(),
+            "intervalo_atual": f"{start_atual} → {end_atual}",
+            "intervalo_anterior": f"{start_ant} → {end_ant}",
+            "raw_atual": atual_raw,
+            "raw_anterior": anterior_raw,
+        }
+
+    return resposta

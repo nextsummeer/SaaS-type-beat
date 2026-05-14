@@ -202,7 +202,7 @@ function ConfiguracoesContent() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/login'); return }
-      const data = await fetchAnalyticsOverview(session.access_token, periodo)
+      const data = await fetchAnalyticsOverview(session.access_token, periodo, true)
       setDebugResult(data)
     } catch (e) {
       setDebugError(e instanceof Error ? e.message : 'Erro desconhecido')

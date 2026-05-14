@@ -66,14 +66,23 @@ export interface AnalyticsOverview {
   views: AnalyticsOverviewMetric
   subscribers_gained: AnalyticsOverviewMetric
   retention: AnalyticsOverviewMetric
+  _debug?: {
+    data_hoje: string
+    intervalo_atual: string
+    intervalo_anterior: string
+    raw_atual: unknown
+    raw_anterior: unknown
+  }
 }
 
 /** Busca KPIs do canal no período. T7.3. */
 export async function fetchAnalyticsOverview(
   token: string,
   period: '7d' | '30d' | '90d' = '7d',
+  debug = false,
 ): Promise<AnalyticsOverview> {
-  const res = await fetch(`${API_URL}/analytics/overview?period=${period}`, {
+  const url = `${API_URL}/analytics/overview?period=${period}${debug ? '&debug=true' : ''}`
+  const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',
   })
