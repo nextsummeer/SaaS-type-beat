@@ -5,8 +5,22 @@
 **Outcome:** Produtor entra em `/analytics`, autoriza o scope adicional do YouTube Analytics, e ve metricas reais do canal (views, inscritos, retencao), top 5 beats da semana, grafico de views por dia e tracos de trafego por fonte. Sem IA / sem insights / sem comparacoes externas nesta primeira entrega — so a base funcionando com dados reais cacheados por 24h.
 
 **Iniciado:** 2026-05-14
-**Status:** em-execucao
-**Proximo passo:** T7.3 concluida (endpoint overview + delta % vs periodo anterior + 16 testes verde). Proxima: T7.4 (endpoint `/api/analytics/top-beats`).
+**Status:** em-execucao (pausada — limite semanal Gustavo esgotado, reset em ~4 dias a partir de 2026-05-14)
+**Proximo passo:** Quando voltar, rodar no Supabase SQL Editor:
+  `DELETE FROM analytics_cache WHERE cache_key LIKE 'overview:7d%';`
+Depois testar /configuracoes → "Testar 7d". Se vier com numeros (~171 views,
+batendo com YT Studio), T7.3 fica oficialmente fechada e partimos pra T7.4.
+Se vier zerado de novo, investigar Brand Account (channel==MINE vs channel_id
+especifico).
+
+Contexto da pausa (2026-05-14):
+- T7.1, T7.2, T7.3 deployadas e funcionais
+- Teste 30d retornou 8 views, 90d retornou 124 views (API funcionando)
+- Teste 7d retornou 0 mas YT Studio mostra 171 views
+- Diagnostico: cache stale — primeira chamada do 7d cacheou snapshot
+  zerado antes do YT Analytics propagar dados (delay natural 24-48h)
+- Cache TTL = 24h, entao DELETE manual desbloqueia teste
+- Botão debug em /configuracoes ainda presente (vai sair em T7.11)
 **Tags:** beatpost, fase2-produto, analytics, youtube-analytics-api, backend-primeiro
 
 ## Contexto
