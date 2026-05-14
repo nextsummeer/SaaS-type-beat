@@ -128,6 +128,39 @@ export async function fetchAnalyticsTopBeats(
   return res.json()
 }
 
+export interface AnalyticsMyBeatItem {
+  beat_id: string
+  video_id: string
+  titulo: string | null
+  artista_nome: string | null
+  cover_path: string | null
+  youtube_url: string | null
+  views: number
+  retention_pct: number
+}
+
+export interface AnalyticsMyBeats {
+  period: string
+  items: AnalyticsMyBeatItem[]
+}
+
+/** Lista beats publicados pelo BeatPost com stats individuais. */
+export async function fetchAnalyticsMyBeats(
+  token: string,
+  period: '7d' | '30d' | '90d' = '7d',
+): Promise<AnalyticsMyBeats> {
+  const url = `${API_URL}/analytics/my-beats?period=${period}`
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao buscar my-beats`)
+  }
+  return res.json()
+}
+
 export async function fetchYoutubeAccount(token: string): Promise<YoutubeAccount | null> {
   const res = await fetch(`${API_URL}/youtube/me`, {
     headers: { Authorization: `Bearer ${token}` },

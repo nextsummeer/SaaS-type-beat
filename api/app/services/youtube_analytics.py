@@ -243,6 +243,42 @@ def calcula_delta_pct(atual: float, anterior: float) -> float:
     return round(((atual - anterior) / anterior) * 100, 1)
 
 
+def get_beats_stats(user_id: str, video_ids: list[str], periodo: str = "7d") -> dict:
+    """Stats por vídeo individual, filtrado pelos video_ids fornecidos.
+
+    Usado pra mostrar APENAS os beats que estão no nosso banco
+    (ignora videos antigos do canal que nao passaram pelo BeatPost).
+
+    Retorna payload bruto da API com rows = [[video_id, views, retention], ...].
+    Se video_ids for vazio, retorna estrutura vazia sem chamar a API.
+    """
+    if not video_ids:
+        return {"columnHeaders": [], "rows": []}
+
+    start, end = _periodo_para_datas(periodo)
+    # Cache key inclui hash dos video_ids ordenados (mesma lista = mesmo cache)
+    ids_key = ",".join(sorted(video_ids))
+    cache_key = f"my-beats:{periodo}:{ids_key}"
+
+    def fetcher(access_token: str, channel_id: str) -> dict:
+        return _reports_query(
+            access_token,
+            channel_id,
+            {
+                "startDate": start.isoformat(),
+                "endDate": end.isoformat(),
+                "dimensions": "video",
+                "metrics": "views,averageViewPercentage",
+                # YT Analytics API: separador de valores no filter é vírgula
+                "filters": f"video=={','.join(video_ids)}",
+                "sort": "-views",
+                "maxResults": min(len(video_ids), 200),
+            },
+        )
+
+    return _get_or_fetch(user_id, cache_key, fetcher)
+
+
 def get_top_beats(user_id: str, periodo: str = "7d", limite: int = 5) -> dict:
     """Top vídeos por views no período (até `limite`)."""
     if not (1 <= limite <= 20):

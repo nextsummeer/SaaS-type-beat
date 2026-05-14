@@ -42,6 +42,122 @@ def _valida_periodo(periodo: str) -> str:
     return periodo
 
 
+@router.get("/my-beats")
+def my_beats(
+    period: str = Query("7d", description="7d, 30d ou 90d"),
+    authorization: str = Header(...),
+):
+    """Lista beats publicados pelo BeatPost com suas stats individuais.
+
+    Diferente de /top-beats que pega TOP global do canal, esse filtra
+    APENAS pelos beats que existem na tabela `posts` do user (ou seja,
+    beats publicados via BeatPost). Ignora videos antigos do canal.
+
+    Beats que ainda não têm views (api retorna 0 ou nem retorna) entram
+    na lista mesmo assim, com views=0, pra UI mostrar tudo que foi publicado.
+
+    Retorna:
+        {
+          "period": "7d",
+          "items": [
+            {
+              "beat_id": "uuid",
+              "video_id": "yt-id",
+              "titulo": "...",
+              "artista_nome": "...",
+              "cover_path": "...",
+              "youtube_url": "https://...",
+              "views": 1243,
+              "retention_pct": 52.0
+            },
+            ...
+          ]
+        }
+    """
+    user_id = _autentica(authorization)
+    periodo = _valida_periodo(period)
+
+    # Buscar todos os beats publicados (posts com youtube_video_id)
+    from app.services.supabase_service import get_admin_client
+
+    client = get_admin_client()
+    posts_data = (
+        client.table("posts")
+        .select(
+            "youtube_video_id, youtube_url, beats!inner(id, titulo, artista_nome, cover_path)"
+        )
+        .eq("user_id", user_id)
+        .not_.is_("youtube_video_id", "null")
+        .execute()
+    )
+
+    posts_lista = posts_data.data or []
+    if not posts_lista:
+        return {"period": periodo, "items": []}
+
+    # Mapear video_id → beat info
+    beat_por_video: dict[str, dict] = {}
+    video_ids: list[str] = []
+    for p in posts_lista:
+        vid = p.get("youtube_video_id")
+        beat = p.get("beats")
+        if not vid or not beat:
+            continue
+        video_ids.append(vid)
+        beat_por_video[vid] = {
+            "beat_id": beat["id"],
+            "titulo": beat.get("titulo"),
+            "artista_nome": beat.get("artista_nome"),
+            "cover_path": beat.get("cover_path"),
+            "youtube_url": p.get("youtube_url"),
+        }
+
+    if not video_ids:
+        return {"period": periodo, "items": []}
+
+    # Buscar stats do YouTube Analytics filtrado por esses video_ids
+    try:
+        raw = youtube_analytics.get_beats_stats(user_id, video_ids, periodo)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except RuntimeError as exc:
+        logger.error("my-beats falhou no Google pra user=%s: %s", user_id, exc)
+        # Em vez de retornar 502, retorna a lista com zeros pra UI nao quebrar
+        raw = {"columnHeaders": [], "rows": []}
+
+    # Parse: mapear video_id → stats
+    headers = [h["name"] for h in raw.get("columnHeaders", [])]
+    stats_por_video: dict[str, dict] = {}
+    for row in raw.get("rows") or []:
+        valores = dict(zip(headers, row))
+        vid = valores.get("video")
+        if vid:
+            stats_por_video[vid] = {
+                "views": int(valores.get("views") or 0),
+                "retention_pct": round(float(valores.get("averageViewPercentage") or 0), 1),
+            }
+
+    # Montar lista final: TODOS os beats publicados (mesmo sem views)
+    items = []
+    for vid, info in beat_por_video.items():
+        stats = stats_por_video.get(vid, {"views": 0, "retention_pct": 0.0})
+        items.append({
+            "beat_id": info["beat_id"],
+            "video_id": vid,
+            "titulo": info["titulo"],
+            "artista_nome": info["artista_nome"],
+            "cover_path": info["cover_path"],
+            "youtube_url": info["youtube_url"],
+            "views": stats["views"],
+            "retention_pct": stats["retention_pct"],
+        })
+
+    # Ordenar por views desc, depois por título
+    items.sort(key=lambda x: (-x["views"], (x["titulo"] or "").lower()))
+
+    return {"period": periodo, "items": items}
+
+
 @router.get("/top-beats")
 def top_beats(
     period: str = Query("7d", description="7d, 30d ou 90d"),

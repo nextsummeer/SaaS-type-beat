@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Upload,
   Music,
+  BarChart3,
   Settings,
   ChevronRight,
 } from 'lucide-react'
@@ -22,6 +23,7 @@ const navPrincipal: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/upload', label: 'Novo beat', icon: Upload },
   { href: '/beats', label: 'Meus beats', icon: Music },
+  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
 ]
 
 const navSecundaria: NavItem[] = [
