@@ -21,6 +21,7 @@ import {
 import { AnalyticsPeriodSelector, type Periodo } from '@/components/AnalyticsPeriodSelector'
 import { AnalyticsDelayBanner } from '@/components/AnalyticsDelayBanner'
 import { AnalyticsViewsTimeline } from '@/components/AnalyticsViewsTimeline'
+import { AnalyticsScopeNote } from '@/components/AnalyticsScopeNote'
 
 export default function AnalyticsOverviewPage() {
   const router = useRouter()
@@ -96,7 +97,8 @@ export default function AnalyticsOverviewPage() {
             Como seus beats estão indo<span style={{ color: 'var(--accent)' }}>.</span>
           </h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Visão geral do seu canal nos últimos {periodo === '7d' ? '7 dias' : periodo === '30d' ? '30 dias' : '90 dias'}.
+            Métricas agregadas do seu canal no YouTube nos últimos{' '}
+            {periodo === '7d' ? '7 dias' : periodo === '30d' ? '30 dias' : '90 dias'}.
           </p>
         </div>
 
@@ -120,6 +122,13 @@ export default function AnalyticsOverviewPage() {
         >
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span className="text-sm break-all">{erro}</span>
+        </div>
+      )}
+
+      {/* Nota de escopo */}
+      {!loading && overview && (
+        <div className="rise rise-3">
+          <AnalyticsScopeNote variant="channel" />
         </div>
       )}
 

@@ -16,6 +16,7 @@ import {
 } from '@/lib/api'
 import { AnalyticsPeriodSelector, type Periodo } from '@/components/AnalyticsPeriodSelector'
 import { AnalyticsDelayBanner } from '@/components/AnalyticsDelayBanner'
+import { AnalyticsScopeNote } from '@/components/AnalyticsScopeNote'
 
 type SortKey = 'views' | 'retention' | 'titulo'
 
@@ -186,7 +187,7 @@ export default function AnalyticsBeatsPage() {
             Meus beats em detalhe<span style={{ color: 'var(--accent)' }}>.</span>
           </h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Cada beat publicado pelo BeatPost, com views e retenção do período.
+            Apenas beats publicados pela plataforma, com views e retenção do período.
           </p>
         </div>
 
@@ -210,6 +211,13 @@ export default function AnalyticsBeatsPage() {
         >
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span className="text-sm break-all">{erro}</span>
+        </div>
+      )}
+
+      {/* Nota de escopo */}
+      {data && data.items.length > 0 && (
+        <div className="rise rise-3">
+          <AnalyticsScopeNote variant="beatpost" />
         </div>
       )}
 
