@@ -88,7 +88,6 @@ export function AnalyticsViewsTimeline({ data }: { data: TimelineData }) {
     const svg = svgRef.current
     if (!svg) return
     const rect = svg.getBoundingClientRect()
-    // Posição relativa no SVG (em unidades do viewBox)
     const xPx = e.clientX - rect.left
     const xSvg = (xPx / rect.width) * W
 
@@ -97,7 +96,6 @@ export function AnalyticsViewsTimeline({ data }: { data: TimelineData }) {
       return
     }
 
-    // Acha o índice do ponto mais próximo no eixo X
     let idx = Math.round((xSvg - PAD_X) / step)
     if (idx < 0) idx = 0
     if (idx > coords.length - 1) idx = coords.length - 1
@@ -105,12 +103,31 @@ export function AnalyticsViewsTimeline({ data }: { data: TimelineData }) {
     setHover({
       x: coords[idx].x,
       idx,
-      clientX: e.clientX - rect.left,
-      clientY: e.clientY - rect.top,
+      clientX: 0,
+      clientY: 0,
     })
   }
 
   const pontoHover = hover ? coords[hover.idx] : null
+
+  // Posicionamento inteligente do tooltip SVG:
+  // - 110px de largura
+  // - Se ponto perto da borda esquerda, alinha à direita
+  // - Se perto da direita, alinha à esquerda
+  // - Senão, centralizado
+  const TT_W = 110
+  const TT_H = 52
+  let ttX = 0
+  let ttY = 0
+  if (pontoHover) {
+    // Centralizar X no ponto
+    ttX = pontoHover.x - TT_W / 2
+    if (ttX < PAD_X) ttX = PAD_X
+    if (ttX + TT_W > W - PAD_X) ttX = W - PAD_X - TT_W
+    // Posicionar Y acima do ponto, mas se ficar muito perto do topo, joga abaixo
+    ttY = pontoHover.y - TT_H - 10
+    if (ttY < PAD_TOP) ttY = pontoHover.y + 14
+  }
 
   return (
     <div
@@ -224,42 +241,51 @@ export function AnalyticsViewsTimeline({ data }: { data: TimelineData }) {
               </text>
             )
           })}
-        </svg>
 
-        {/* Tooltip flutuante que segue o cursor */}
-        {hover && pontoHover && (
-          <div
-            className="pointer-events-none absolute z-10 rounded-lg px-3 py-2 shadow-lg"
-            style={{
-              left: `${(hover.x / W) * 100}%`,
-              top: 0,
-              transform: `translate(-50%, -110%)`,
-              background: 'var(--bg-overlay)',
-              border: '1px solid var(--border-strong)',
-              boxShadow: '0 6px 20px -4px rgba(0,0,0,0.5)',
-              minWidth: '120px',
-            }}
-          >
-            <p
-              className="font-mono text-[10px] uppercase tracking-wider"
-              style={{ color: 'var(--text-subtle)' }}
-            >
-              {formataDataLonga(pontoHover.date, data.granularity)}
-            </p>
-            <p
-              className="mt-0.5 font-display text-[18px] font-semibold leading-none tabular"
-              style={{ color: 'var(--accent)' }}
-            >
-              {pontoHover.views.toLocaleString('pt-BR')}
-            </p>
-            <p
-              className="mt-0.5 text-[10px]"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              {pontoHover.views === 1 ? 'view' : 'views'}
-            </p>
-          </div>
-        )}
+          {/* Tooltip SVG — dentro do viewBox, escala junto, nunca corta */}
+          {pontoHover && (
+            <g pointerEvents="none">
+              <rect
+                x={ttX}
+                y={ttY}
+                width={TT_W}
+                height={TT_H}
+                rx={8}
+                fill="var(--bg-overlay)"
+                stroke="var(--border-strong)"
+                strokeWidth="1"
+              />
+              <text
+                x={ttX + 10}
+                y={ttY + 16}
+                fontSize="9"
+                fill="var(--text-subtle)"
+                fontFamily="var(--font-mono)"
+                style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}
+              >
+                {formataDataLonga(pontoHover.date, data.granularity)}
+              </text>
+              <text
+                x={ttX + 10}
+                y={ttY + 36}
+                fontSize="16"
+                fontWeight="600"
+                fill="var(--accent)"
+                fontFamily="var(--font-display)"
+              >
+                {pontoHover.views.toLocaleString('pt-BR')}
+              </text>
+              <text
+                x={ttX + 10}
+                y={ttY + 46}
+                fontSize="8"
+                fill="var(--text-muted)"
+              >
+                {pontoHover.views === 1 ? 'view' : 'views'}
+              </text>
+            </g>
+          )}
+        </svg>
       </div>
     </div>
   )
