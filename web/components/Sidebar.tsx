@@ -9,6 +9,7 @@ import {
   Upload,
   Music,
   BarChart3,
+  Trophy,
   Settings,
   ChevronRight,
 } from 'lucide-react'
@@ -41,6 +42,7 @@ const navPrincipal: NavItem[] = [
       { href: '/analytics/fontes', label: 'De onde vêm' },
     ],
   },
+  { href: '/conquistas', label: 'Conquistas', icon: Trophy, exact: true },
 ]
 
 const navSecundaria: NavItem[] = [

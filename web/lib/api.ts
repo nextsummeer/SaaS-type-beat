@@ -306,3 +306,44 @@ export async function patchPost(
   }
   return res.json()
 }
+
+// ──────────────────────────────────────────────────────────────────────
+// Conquistas (gamificação)
+// ──────────────────────────────────────────────────────────────────────
+
+export type AchievementTier = 'bronze' | 'silver' | 'gold'
+export type AchievementCategory = 'streak' | 'volume' | 'views' | 'hit' | 'secret'
+
+export interface Achievement {
+  key: string
+  title: string
+  description: string
+  category: AchievementCategory
+  tier: AchievementTier
+  target: number
+  current: number
+  unlocked: boolean
+  newly_unlocked: boolean
+  progress_pct: number
+  unlocked_at: string | null
+}
+
+export interface AchievementsResponse {
+  achievements: Achievement[]
+  newly_unlocked_keys: string[]
+  total: number
+  unlocked_count: number
+}
+
+/** Lista todas as conquistas com estado pro usuário. */
+export async function fetchAchievements(token: string): Promise<AchievementsResponse> {
+  const res = await fetch(`${API_URL}/achievements`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao buscar conquistas`)
+  }
+  return res.json()
+}
