@@ -100,24 +100,32 @@ def top_beats(
 
     # Enriquecer com dados do nosso banco (titulo, cover, artista)
     # video_id mora em posts; beats traz metadados via join
+    # IMPORTANTE: nunca deixar o join quebrar a request — se Supabase falhar,
+    # retorna items com beat=null e loga, mas a UI ainda recebe video_id+views
     video_ids = [p["video_id"] for p in parsed if p["video_id"]]
     beats_por_video: dict[str, dict] = {}
     if video_ids:
-        from app.services.supabase_service import get_admin_client
+        try:
+            from app.services.supabase_service import get_admin_client
 
-        client = get_admin_client()
-        posts_data = (
-            client.table("posts")
-            .select("youtube_video_id, beats(id, titulo, artista_nome, cover_path)")
-            .eq("user_id", user_id)
-            .in_("youtube_video_id", video_ids)
-            .execute()
-        )
-        for p in posts_data.data or []:
-            vid = p.get("youtube_video_id")
-            beat = p.get("beats")
-            if vid and beat:
-                beats_por_video[vid] = beat
+            client = get_admin_client()
+            posts_data = (
+                client.table("posts")
+                .select("youtube_video_id, beats(id, titulo, artista_nome, cover_path)")
+                .eq("user_id", user_id)
+                .in_("youtube_video_id", video_ids)
+                .execute()
+            )
+            for p in posts_data.data or []:
+                vid = p.get("youtube_video_id")
+                beat = p.get("beats")
+                if vid and beat:
+                    beats_por_video[vid] = beat
+        except Exception as exc:
+            logger.warning(
+                "Falha no join posts/beats em /top-beats user=%s: %s",
+                user_id, exc,
+            )
 
     for item in parsed:
         item["beat"] = beats_por_video.get(item["video_id"])
