@@ -29,12 +29,16 @@ export default function AnalyticsOverviewPage() {
   const [periodo, setPeriodo] = useState<Periodo>('7d')
   const [metricaTimeline, setMetricaTimeline] = useState<AnalyticsTimelineMetric>('views')
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null)
-  const [timeline, setTimeline] = useState<TimelineData | null>(null)
+  // Cache local das duas métricas — troca entre elas vira instantânea
+  const [timelines, setTimelines] = useState<{
+    views: TimelineData | null
+    subscribersGained: TimelineData | null
+  }>({ views: null, subscribersGained: null })
   const [loading, setLoading] = useState(true)
-  const [loadingTimeline, setLoadingTimeline] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
-  // Carga inicial + mudança de período
+  // Carga inicial + mudança de período: pré-busca AMBAS as métricas em paralelo.
+  // Backend tem cache de 24h, então o custo extra é só na primeira vez do dia.
   useEffect(() => {
     let cancelado = false
     async function carrega() {
@@ -46,13 +50,14 @@ export default function AnalyticsOverviewPage() {
           router.push('/login')
           return
         }
-        const [ov, tl] = await Promise.all([
+        const [ov, tlViews, tlSubs] = await Promise.all([
           fetchAnalyticsOverview(session.access_token, periodo).catch(() => null),
-          fetchAnalyticsViewsTimeline(session.access_token, periodo, metricaTimeline).catch(() => null),
+          fetchAnalyticsViewsTimeline(session.access_token, periodo, 'views').catch(() => null),
+          fetchAnalyticsViewsTimeline(session.access_token, periodo, 'subscribersGained').catch(() => null),
         ])
         if (!cancelado) {
           setOverview(ov)
-          setTimeline(tl)
+          setTimelines({ views: tlViews, subscribersGained: tlSubs })
         }
       } catch (e) {
         if (!cancelado) setErro(e instanceof Error ? e.message : 'Erro desconhecido')
@@ -66,22 +71,12 @@ export default function AnalyticsOverviewPage() {
     }
   }, [periodo])
 
-  // Refetch só da timeline quando muda a métrica (sem reload dos KPIs)
-  async function trocarMetricaTimeline(m: AnalyticsTimelineMetric) {
-    if (m === metricaTimeline) return
+  // Trocar métrica é só mudar o state local — dados já estão carregados.
+  function trocarMetricaTimeline(m: AnalyticsTimelineMetric) {
     setMetricaTimeline(m)
-    setLoadingTimeline(true)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      const tl = await fetchAnalyticsViewsTimeline(session.access_token, periodo, m)
-      setTimeline(tl)
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao trocar métrica')
-    } finally {
-      setLoadingTimeline(false)
-    }
   }
+
+  const timeline = timelines[metricaTimeline]
 
   return (
     <div className="space-y-7">
@@ -195,10 +190,7 @@ export default function AnalyticsOverviewPage() {
 
       {/* Timeline */}
       {!loading && timeline && (
-        <section
-          className="rise rise-4"
-          style={{ opacity: loadingTimeline ? 0.6 : 1, transition: 'opacity 0.2s' }}
-        >
+        <section className="rise rise-4">
           <AnalyticsViewsTimeline
             data={timeline}
             metric={metricaTimeline}
