@@ -82,10 +82,11 @@ def my_beats(
 
     client = get_admin_client()
     try:
+        # titulo mora em posts (escolhido pela IA na revisão); artista_nome e cover_path moram em beats
         posts_data = (
             client.table("posts")
             .select(
-                "youtube_video_id, youtube_url, beat_id, beats(id, titulo, artista_nome, cover_path)"
+                "youtube_video_id, youtube_url, titulo, beats(id, artista_nome, cover_path)"
             )
             .eq("user_id", user_id)
             .execute()
@@ -111,7 +112,7 @@ def my_beats(
         video_ids.append(vid)
         beat_por_video[vid] = {
             "beat_id": beat["id"],
-            "titulo": beat.get("titulo"),
+            "titulo": p.get("titulo"),
             "artista_nome": beat.get("artista_nome"),
             "cover_path": beat.get("cover_path"),
             "youtube_url": p.get("youtube_url"),
