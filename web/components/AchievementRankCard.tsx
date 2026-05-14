@@ -2,59 +2,90 @@
 
 import type { AchievementRank, AchievementRankKey } from '@/lib/api'
 
-// Gradientes únicos por rank (não confundir com tier de conquista individual)
-const RANK_GRADIENTS: Record<
-  AchievementRankKey,
-  { c1: string; c2: string; c3: string; glow: string; accentText: string }
-> = {
+// Cada rank tem uma paleta iridescente (4-5 cores que se misturam no orb).
+// Inspiração: bolhas de sabão / metaball 3D / orbs holográficas.
+type RankPalette = {
+  c1: string // cor principal (centro/topo)
+  c2: string // secundária
+  c3: string // contraste
+  c4: string // acento
+  c5: string // reflexo
+  glow: string
+  accentText: string
+}
+
+const RANK_PALETTES: Record<AchievementRankKey, RankPalette> = {
   aprendiz: {
-    c1: '#5a5a63',
-    c2: '#3a3a44',
-    c3: '#1c1c22',
-    glow: 'rgba(120, 120, 130, 0.35)',
-    accentText: '#a8a8b3',
+    c1: '#9aa0aa',
+    c2: '#6c707a',
+    c3: '#4a4d56',
+    c4: '#2a2c33',
+    c5: '#c5c7cf',
+    glow: 'rgba(154, 160, 170, 0.35)',
+    accentText: '#b8bcc4',
   },
   bronze: {
-    c1: '#ff8c5a',
-    c2: '#c4621f',
-    c3: '#6b2f0e',
-    glow: 'rgba(255, 140, 90, 0.5)',
-    accentText: '#ffaa78',
+    c1: '#ffa572',
+    c2: '#e87a3a',
+    c3: '#b04a0e',
+    c4: '#6b2f0e',
+    c5: '#ffd6b2',
+    glow: 'rgba(232, 122, 58, 0.55)',
+    accentText: '#ffb380',
   },
   prata: {
-    c1: '#e8eef5',
-    c2: '#94a3b8',
-    c3: '#475569',
-    glow: 'rgba(180, 195, 215, 0.55)',
-    accentText: '#cbd5e1',
+    c1: '#f5f7fa',
+    c2: '#c8d4e0',
+    c3: '#7a8a99',
+    c4: '#3a4655',
+    c5: '#e0e8f0',
+    glow: 'rgba(200, 212, 224, 0.55)',
+    accentText: '#dde5ed',
   },
   ouro: {
-    c1: '#ffd76b',
-    c2: '#ff8a1a',
-    c3: '#a83a00',
-    glow: 'rgba(255, 138, 26, 0.65)',
-    accentText: '#ffc862',
+    c1: '#ffe88a',
+    c2: '#ffb04a',
+    c3: '#e07012',
+    c4: '#8a3a00',
+    c5: '#fff2b8',
+    glow: 'rgba(255, 176, 74, 0.65)',
+    accentText: '#ffd56b',
   },
   platina: {
-    c1: '#a8e1f0',
-    c2: '#5fb3c9',
-    c3: '#1e6a82',
-    glow: 'rgba(95, 179, 201, 0.55)',
-    accentText: '#94d4e6',
+    c1: '#c2efff',
+    c2: '#6fcde0',
+    c3: '#3a8aa8',
+    c4: '#1e4d62',
+    c5: '#e0f5ff',
+    glow: 'rgba(111, 205, 224, 0.6)',
+    accentText: '#a8e0ee',
   },
   lenda: {
-    // Multicolor: rosa → roxo → laranja (visual épico estilo Opal)
-    c1: '#ff6ec7',
-    c2: '#a855f7',
-    c3: '#3b1255',
-    glow: 'rgba(168, 85, 247, 0.6)',
-    accentText: '#e9a5ff',
+    // Iridescente épico — rosa / magenta / roxo / ciano / dourado
+    c1: '#ff7ad9',
+    c2: '#b65cf5',
+    c3: '#5cb0ff',
+    c4: '#3b1255',
+    c5: '#ffd06b',
+    glow: 'rgba(182, 92, 245, 0.7)',
+    accentText: '#f0a8ff',
   },
 }
 
 export function AchievementRankCard({ rank }: { rank: AchievementRank }) {
-  const colors = RANK_GRADIENTS[rank.key]
-  const orbSize = 132
+  const p = RANK_PALETTES[rank.key]
+  const orbSize = 140
+
+  // Múltiplas camadas de radial-gradient empilhadas criam efeito iridescente.
+  // Cada blob de cor sai de um canto diferente, simulando reflexos de orb fluida.
+  const orbBackground = `
+    radial-gradient(circle at 28% 22%, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0) 22%),
+    radial-gradient(circle at 65% 75%, ${p.c5} 0%, transparent 35%),
+    radial-gradient(circle at 75% 30%, ${p.c1} 0%, transparent 45%),
+    radial-gradient(circle at 25% 65%, ${p.c2} 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, ${p.c3} 0%, transparent 70%),
+    conic-gradient(from 200deg at 50% 50%, ${p.c1}, ${p.c2}, ${p.c4}, ${p.c3}, ${p.c1})
+  `.trim()
 
   return (
     <div
@@ -64,66 +95,58 @@ export function AchievementRankCard({ rank }: { rank: AchievementRank }) {
         border: '1px solid var(--border)',
       }}
     >
-      {/* Glow sutil de fundo na cor do rank */}
+      {/* Glow ambient atrás de tudo */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-20 -top-20 h-72 w-72 rounded-full blur-3xl"
-        style={{ background: colors.glow, opacity: 0.4 }}
+        className="pointer-events-none absolute -left-24 -top-24 h-80 w-80 rounded-full blur-3xl"
+        style={{ background: p.glow, opacity: 0.45 }}
       />
 
-      <div className="relative flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-7">
-        {/* Esfera grande do rank */}
+      <div className="relative flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
+        {/* Orb fluido do rank */}
         <div
           className="relative shrink-0"
           style={{ width: orbSize, height: orbSize }}
         >
-          {/* Glow externo */}
+          {/* Halo externo difuso */}
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 rounded-full blur-2xl"
             style={{
-              background: colors.glow,
-              transform: 'scale(1.3)',
-              opacity: 0.8,
+              background: p.glow,
+              transform: 'scale(1.35)',
+              opacity: 0.85,
             }}
           />
-          <svg
-            width={orbSize}
-            height={orbSize}
-            viewBox={`0 0 ${orbSize} ${orbSize}`}
-            className="relative"
-            style={{ filter: 'drop-shadow(0 0 16px ' + colors.glow + ')' }}
-          >
-            <defs>
-              <radialGradient id={`rank-grad-${rank.key}`} cx="35%" cy="28%" r="78%">
-                <stop offset="0%" stopColor={colors.c1} />
-                <stop offset="55%" stopColor={colors.c2} />
-                <stop offset="100%" stopColor={colors.c3} />
-              </radialGradient>
-              <radialGradient id={`rank-highlight-${rank.key}`} cx="35%" cy="22%" r="32%">
-                <stop offset="0%" stopColor="white" stopOpacity="0.65" />
-                <stop offset="100%" stopColor="white" stopOpacity="0" />
-              </radialGradient>
-            </defs>
-            <circle
-              cx={orbSize / 2}
-              cy={orbSize / 2}
-              r={orbSize / 2 - 2}
-              fill={`url(#rank-grad-${rank.key})`}
-              stroke={colors.c2}
-              strokeOpacity="0.5"
-              strokeWidth="1"
-            />
-            <circle
-              cx={orbSize / 2}
-              cy={orbSize / 2}
-              r={orbSize / 2 - 2}
-              fill={`url(#rank-highlight-${rank.key})`}
-            />
-          </svg>
+
+          {/* Orb principal: forma orgânica que morpha lentamente */}
+          <div
+            className="animate-orb-morph relative h-full w-full"
+            style={{
+              background: orbBackground,
+              boxShadow: [
+                `0 8px 32px ${p.glow}`,
+                `inset 0 -8px 24px rgba(0,0,0,0.35)`,
+                `inset 4px 6px 18px rgba(255,255,255,0.15)`,
+              ].join(', '),
+              filter: 'saturate(1.15) contrast(1.05)',
+            }}
+          />
+
+          {/* Camada de "vidro" com highlight superior — fica fixa pra parecer reflexo */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-full"
+            style={{
+              background:
+                'radial-gradient(ellipse 60% 35% at 30% 18%, rgba(255,255,255,0.6) 0%, transparent 60%)',
+              mixBlendMode: 'screen',
+              borderRadius: 'inherit',
+            }}
+          />
         </div>
 
-        {/* Info do rank */}
+        {/* Info textual do rank */}
         <div className="flex-1 text-center sm:text-left">
           <p
             className="font-mono text-[10px] uppercase tracking-[0.22em]"
@@ -132,8 +155,8 @@ export function AchievementRankCard({ rank }: { rank: AchievementRank }) {
             seu rank atual
           </p>
           <p
-            className="mt-1 font-display text-[42px] font-semibold leading-none tracking-tight"
-            style={{ color: colors.accentText }}
+            className="mt-1 font-display text-[44px] font-semibold leading-none tracking-tight"
+            style={{ color: p.accentText, textShadow: `0 0 24px ${p.glow}` }}
           >
             {rank.name}
           </p>
@@ -144,7 +167,6 @@ export function AchievementRankCard({ rank }: { rank: AchievementRank }) {
             {rank.description}
           </p>
 
-          {/* Barra de progresso pro próximo rank */}
           {!rank.is_max_rank && rank.next_rank_name && (
             <div className="mt-4 max-w-sm">
               <div className="flex items-baseline justify-between gap-2">
@@ -153,8 +175,8 @@ export function AchievementRankCard({ rank }: { rank: AchievementRank }) {
                   style={{ color: 'var(--text-subtle)' }}
                 >
                   faltam{' '}
-                  <span style={{ color: colors.accentText }}>{rank.to_next}</span>
-                  {' '}pra {rank.next_rank_name}
+                  <span style={{ color: p.accentText }}>{rank.to_next}</span>{' '}
+                  pra {rank.next_rank_name}
                 </span>
                 <span
                   className="font-mono text-[10px]"
@@ -171,8 +193,8 @@ export function AchievementRankCard({ rank }: { rank: AchievementRank }) {
                   className="h-full rounded-full transition-all"
                   style={{
                     width: `${rank.progress_pct}%`,
-                    background: `linear-gradient(90deg, ${colors.c2}, ${colors.c1})`,
-                    boxShadow: `0 0 10px ${colors.glow}`,
+                    background: `linear-gradient(90deg, ${p.c3}, ${p.c1})`,
+                    boxShadow: `0 0 12px ${p.glow}`,
                   }}
                 />
               </div>
@@ -182,7 +204,7 @@ export function AchievementRankCard({ rank }: { rank: AchievementRank }) {
           {rank.is_max_rank && (
             <p
               className="mt-3 font-mono text-[11px] uppercase tracking-[0.18em]"
-              style={{ color: colors.accentText }}
+              style={{ color: p.accentText }}
             >
               👑 Rank máximo atingido
             </p>

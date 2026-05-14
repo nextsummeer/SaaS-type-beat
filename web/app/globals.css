@@ -226,6 +226,19 @@ input::placeholder, textarea::placeholder {
 }
 .animate-pulse-slow { animation: pulse-slow 2.5s ease-in-out infinite; }
 
+/* ─── Orb fluido (rank card) — morpha entre formas organicas ──────────── */
+@keyframes orb-morph {
+  0%   { border-radius: 52% 48% 55% 45% / 50% 55% 45% 50%; transform: rotate(0deg); }
+  25%  { border-radius: 48% 52% 45% 55% / 55% 50% 50% 45%; }
+  50%  { border-radius: 55% 45% 50% 50% / 45% 55% 45% 55%; transform: rotate(2deg); }
+  75%  { border-radius: 45% 55% 55% 45% / 52% 48% 55% 45%; }
+  100% { border-radius: 52% 48% 55% 45% / 50% 55% 45% 50%; transform: rotate(0deg); }
+}
+.animate-orb-morph {
+  animation: orb-morph 14s ease-in-out infinite;
+  border-radius: 52% 48% 55% 45% / 50% 55% 45% 50%;
+}
+
 /* ─── Stagger reveal on page load ──────────────────────────── */
 @keyframes rise {
   from { opacity: 0; transform: translateY(8px); }
