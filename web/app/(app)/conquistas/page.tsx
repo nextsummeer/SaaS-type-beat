@@ -12,6 +12,7 @@ import {
 } from '@/lib/api'
 import { AchievementBadge } from '@/components/AchievementBadge'
 import { AchievementRankCard } from '@/components/AchievementRankCard'
+import { RanksGallery } from '@/components/RanksGallery'
 
 const CATEGORIA_LABELS: Record<AchievementCategory, { titulo: string; emoji: string; desc: string }> = {
   streak: {
@@ -180,6 +181,13 @@ export default function ConquistasPage() {
         >
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span className="text-sm">{erro}</span>
+        </div>
+      )}
+
+      {/* Galeria com TODOS os ranks pro produtor enxergar a jornada */}
+      {data && (
+        <div className="rise rise-3">
+          <RanksGallery current={data.rank} />
         </div>
       )}
 
