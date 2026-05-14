@@ -128,6 +128,8 @@ export async function fetchAnalyticsTopBeats(
   return res.json()
 }
 
+export type YoutubePrivacyStatus = 'public' | 'private' | 'unlisted'
+
 export interface AnalyticsMyBeatItem {
   beat_id: string
   video_id: string
@@ -135,6 +137,7 @@ export interface AnalyticsMyBeatItem {
   artista_nome: string | null
   cover_path: string | null
   youtube_url: string | null
+  privacy_status: YoutubePrivacyStatus
   views: number
   retention_pct: number
 }

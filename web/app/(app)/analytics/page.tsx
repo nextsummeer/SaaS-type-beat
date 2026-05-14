@@ -349,12 +349,26 @@ export default function AnalyticsPage() {
                 <BeatThumbnail item={beat} />
 
                 <div className="min-w-0 flex-1">
-                  <p
-                    className="truncate text-[14.5px] font-medium"
-                    style={{ color: 'var(--text-primary)' }}
-                  >
-                    {beat.titulo ?? '(sem título)'}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p
+                      className="truncate text-[14.5px] font-medium"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      {beat.titulo ?? '(sem título)'}
+                    </p>
+                    {beat.privacy_status !== 'public' && (
+                      <span
+                        className="shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[9px] font-medium uppercase tracking-wider"
+                        style={{
+                          background: 'var(--bg-elevated)',
+                          color: 'var(--text-muted)',
+                          border: '1px solid var(--border)',
+                        }}
+                      >
+                        {beat.privacy_status === 'private' ? 'Privado' : 'Não listado'}
+                      </span>
+                    )}
+                  </div>
                   <p
                     className="truncate text-[12px]"
                     style={{ color: 'var(--text-muted)' }}

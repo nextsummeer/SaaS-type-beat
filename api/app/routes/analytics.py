@@ -86,7 +86,7 @@ def my_beats(
         posts_data = (
             client.table("posts")
             .select(
-                "youtube_video_id, youtube_url, titulo, beats(id, artista_nome, cover_path)"
+                "id, youtube_video_id, youtube_url, titulo, youtube_deleted_at, beats(id, artista_nome, cover_path)"
             )
             .eq("user_id", user_id)
             .execute()
@@ -95,21 +95,23 @@ def my_beats(
         logger.error("my-beats: falha ao buscar posts user=%s: %s", user_id, exc)
         raise HTTPException(status_code=500, detail=f"Erro ao consultar banco: {exc}")
 
-    # Filtrar manualmente os posts com video_id e beat válido
+    # Filtrar manualmente os posts com video_id e beat válido, e que ainda existem no YouTube
     posts_lista = [
         p for p in (posts_data.data or [])
-        if p.get("youtube_video_id") and p.get("beats")
+        if p.get("youtube_video_id") and p.get("beats") and not p.get("youtube_deleted_at")
     ]
     if not posts_lista:
         return {"period": periodo, "items": []}
 
     # Mapear video_id → beat info
     beat_por_video: dict[str, dict] = {}
+    post_id_por_video: dict[str, str] = {}
     video_ids: list[str] = []
     for p in posts_lista:
         vid = p["youtube_video_id"]
         beat = p["beats"]
         video_ids.append(vid)
+        post_id_por_video[vid] = p["id"]
         beat_por_video[vid] = {
             "beat_id": beat["id"],
             "titulo": p.get("titulo"),
@@ -117,6 +119,47 @@ def my_beats(
             "cover_path": beat.get("cover_path"),
             "youtube_url": p.get("youtube_url"),
         }
+
+    # Verificar estado atual de cada video no YouTube.
+    # Custa 1 unit (videos.list até 50 IDs). Aqui:
+    #   - retorna privacy_status atual (public/private/unlisted)
+    #   - se video sumiu da resposta, foi deletado → persiste em youtube_deleted_at
+    privacy_por_video: dict[str, str] = {}
+    try:
+        from app.services import youtube_service
+
+        status_map = youtube_service.list_videos_status(user_id, video_ids)
+        deletados_agora: list[str] = []
+        for vid, status in status_map.items():
+            if status is None:
+                deletados_agora.append(vid)
+            else:
+                privacy_por_video[vid] = status
+
+        # Persistir os deletados pra próxima vez nem precisar consultar
+        if deletados_agora:
+            from datetime import datetime, timezone
+            agora_iso = datetime.now(timezone.utc).isoformat()
+            for vid in deletados_agora:
+                post_id = post_id_por_video.get(vid)
+                if not post_id:
+                    continue
+                try:
+                    client.table("posts").update(
+                        {"youtube_deleted_at": agora_iso}
+                    ).eq("id", post_id).execute()
+                    # Remove da listagem
+                    beat_por_video.pop(vid, None)
+                except Exception as exc:
+                    logger.warning(
+                        "my-beats: falha ao marcar deleted vid=%s post=%s: %s",
+                        vid, post_id, exc,
+                    )
+            # Atualiza video_ids pra chamada do Analytics ignorar os deletados
+            video_ids = [v for v in video_ids if v not in deletados_agora]
+    except Exception as exc:
+        # Não derrubar o endpoint inteiro se a checagem de status falhar
+        logger.warning("my-beats: falha em list_videos_status user=%s: %s", user_id, exc)
 
     if not video_ids:
         return {"period": periodo, "items": []}
@@ -154,6 +197,7 @@ def my_beats(
             "artista_nome": info["artista_nome"],
             "cover_path": info["cover_path"],
             "youtube_url": info["youtube_url"],
+            "privacy_status": privacy_por_video.get(vid, "public"),
             "views": stats["views"],
             "retention_pct": stats["retention_pct"],
         })

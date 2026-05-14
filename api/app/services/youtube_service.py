@@ -138,6 +138,46 @@ def _build_status(privacy_status: str, scheduled_at: Optional[datetime]) -> dict
     return status
 
 
+def list_videos_status(user_id: str, video_ids: list[str]) -> dict[str, Optional[str]]:
+    """Verifica estado atual de cada video no YouTube.
+
+    Custo: 1 unit por chamada (videos.list aceita ate 50 IDs por request).
+
+    Returns:
+        dict mapeando video_id → privacy_status ('public'|'private'|'unlisted')
+        OU None se o video foi deletado (nao apareceu na resposta).
+    """
+    if not video_ids:
+        return {}
+
+    account = _load_account(user_id)
+    credentials = _build_credentials(account)
+    if not credentials.valid:
+        credentials.refresh(GoogleRequest())
+        _persist_refreshed_token(account["account_id"], credentials)
+
+    youtube = build("youtube", "v3", credentials=credentials, cache_discovery=False)
+
+    resultado: dict[str, Optional[str]] = {}
+    # API aceita ate 50 IDs por chamada
+    for i in range(0, len(video_ids), 50):
+        chunk = video_ids[i : i + 50]
+        try:
+            resp = youtube.videos().list(
+                part="status",
+                id=",".join(chunk),
+                maxResults=50,
+            ).execute()
+        except HttpError as exc:
+            logger.error("[YT_LIST] erro ao listar videos: %s", exc)
+            raise
+        encontrados = {item["id"]: item.get("status", {}).get("privacyStatus") for item in resp.get("items", [])}
+        for vid in chunk:
+            # Se nao retornou, foi deletado
+            resultado[vid] = encontrados.get(vid)
+    return resultado
+
+
 def upload_video(
     user_id: str,
     mp4_path: str,
