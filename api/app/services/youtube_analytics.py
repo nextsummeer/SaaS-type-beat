@@ -34,16 +34,22 @@ PERIODOS: dict[str, int] = {"7d": 7, "30d": 30, "90d": 90}
 def _periodo_para_datas(periodo: str, anterior: bool = False) -> tuple[date, date]:
     """Converte '7d'/'30d'/'90d' em (start_date, end_date).
 
-    Se `anterior=True`, retorna o intervalo IMEDIATAMENTE ANTERIOR de mesmo tamanho.
-    Ex: periodo='7d' → atual = (hoje-7, hoje); anterior = (hoje-14, hoje-7).
+    IMPORTANTE: a YouTube Analytics API não consolida dados do dia atual.
+    Se o endDate incluir "hoje", a API tende a retornar zeros pra todo o
+    intervalo. Por isso terminamos em ONTEM, igual ao YT Studio faz.
+
+    Pra periodo='7d':
+      - atual    = (hoje-7, ontem)        — 7 dias completos terminando ontem
+      - anterior = (hoje-14, hoje-8)      — 7 dias antes desses
     """
     dias = PERIODOS.get(periodo)
     if dias is None:
         raise ValueError(f"Período inválido: {periodo!r}. Use {list(PERIODOS)}")
-    end = date.today()
+    # Termina em "ontem" (último dia consolidado)
+    end = date.today() - timedelta(days=1)
     if anterior:
         end = end - timedelta(days=dias)
-    start = end - timedelta(days=dias)
+    start = end - timedelta(days=dias - 1)
     return start, end
 
 

@@ -76,8 +76,24 @@ def _mock_supabase_cache_miss():
 # ──────────────────────────────────────────────
 
 def test_periodo_para_datas_valida():
+    """7d = 7 dias completos terminando ONTEM (start..end inclusivo, diff=6)."""
+    from datetime import date, timedelta
+
     start, end = youtube_analytics._periodo_para_datas("7d")
-    assert (end - start).days == 7
+    # End deve ser ontem (não hoje) pra evitar dia em processamento na API
+    assert end == date.today() - timedelta(days=1)
+    # 7 dias inclusivos = 6 dias de diferença
+    assert (end - start).days == 6
+
+
+def test_periodo_para_datas_anterior():
+    """O período anterior fica imediatamente antes do atual, sem sobreposição."""
+    start_atual, end_atual = youtube_analytics._periodo_para_datas("7d")
+    start_ant, end_ant = youtube_analytics._periodo_para_datas("7d", anterior=True)
+    # End anterior = 1 dia antes do start atual (sem sobreposição)
+    from datetime import timedelta
+    assert end_ant == start_atual - timedelta(days=1)
+    assert (end_ant - start_ant).days == 6
 
 
 def test_periodo_para_datas_invalido():
