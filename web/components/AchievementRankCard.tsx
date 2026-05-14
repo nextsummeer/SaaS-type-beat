@@ -1,6 +1,24 @@
 'use client'
 
+import { Suspense, lazy, useState } from 'react'
 import type { AchievementRank, AchievementRankKey } from '@/lib/api'
+
+// Spline carrega via lazy import — só baixa quando entra na /conquistas
+// (não inflar o bundle das outras páginas).
+const Spline = lazy(() => import('@splinetool/react-spline'))
+
+const SPLINE_SCENE = 'https://prod.spline.design/RnhQamecyf2I2R1B/scene.splinecode'
+
+// Tonalização do orb (cena base é holográfica branca) por rank.
+// hue-rotate desloca matiz; saturate ajusta intensidade.
+const RANK_FILTER: Record<AchievementRankKey, string> = {
+  aprendiz: 'saturate(0.35) brightness(0.95)',
+  bronze:   'hue-rotate(-160deg) saturate(1.4) brightness(1.05)',
+  prata:    'saturate(0.55) brightness(1.05)',
+  ouro:     'hue-rotate(-135deg) saturate(1.6) brightness(1.15)',
+  platina:  'hue-rotate(160deg) saturate(0.9) brightness(1.05)',
+  lenda:    'saturate(1.3) brightness(1.1)', // mantém iridescente original
+}
 
 // Cada rank tem uma paleta iridescente (4-5 cores que se misturam no orb).
 // Inspiração: bolhas de sabão / metaball 3D / orbs holográficas.
@@ -74,11 +92,12 @@ const RANK_PALETTES: Record<AchievementRankKey, RankPalette> = {
 
 export function AchievementRankCard({ rank }: { rank: AchievementRank }) {
   const p = RANK_PALETTES[rank.key]
-  const orbSize = 140
+  const orbSize = 180
+  const [splineLoaded, setSplineLoaded] = useState(false)
 
-  // Múltiplas camadas de radial-gradient empilhadas criam efeito iridescente.
-  // Cada blob de cor sai de um canto diferente, simulando reflexos de orb fluida.
-  const orbBackground = `
+  // Fallback CSS enquanto Spline carrega: múltiplos radial-gradients
+  // simulam orb iridescente. Some quando o 3D real renderiza.
+  const orbBackgroundCSS = `
     radial-gradient(circle at 28% 22%, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0) 22%),
     radial-gradient(circle at 65% 75%, ${p.c5} 0%, transparent 35%),
     radial-gradient(circle at 75% 30%, ${p.c1} 0%, transparent 45%),
@@ -103,47 +122,67 @@ export function AchievementRankCard({ rank }: { rank: AchievementRank }) {
       />
 
       <div className="relative flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
-        {/* Orb fluido do rank */}
+        {/* Orb do rank — Spline 3D real + fallback CSS enquanto carrega */}
         <div
           className="relative shrink-0"
           style={{ width: orbSize, height: orbSize }}
         >
-          {/* Halo externo difuso */}
+          {/* Halo externo difuso (sempre visível, dá profundidade) */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-full blur-2xl"
+            className="pointer-events-none absolute inset-0 rounded-full blur-3xl"
             style={{
               background: p.glow,
-              transform: 'scale(1.35)',
-              opacity: 0.85,
+              transform: 'scale(1.5)',
+              opacity: 0.7,
             }}
           />
 
-          {/* Orb principal: forma orgânica que morpha lentamente */}
-          <div
-            className="animate-orb-morph relative h-full w-full"
-            style={{
-              background: orbBackground,
-              boxShadow: [
-                `0 8px 32px ${p.glow}`,
-                `inset 0 -8px 24px rgba(0,0,0,0.35)`,
-                `inset 4px 6px 18px rgba(255,255,255,0.15)`,
-              ].join(', '),
-              filter: 'saturate(1.15) contrast(1.05)',
-            }}
-          />
+          {/* Fallback CSS — aparece SOMENTE enquanto Spline não terminou de carregar */}
+          {!splineLoaded && (
+            <>
+              <div
+                className="animate-orb-morph absolute inset-0"
+                style={{
+                  background: orbBackgroundCSS,
+                  boxShadow: [
+                    `0 8px 32px ${p.glow}`,
+                    `inset 0 -8px 24px rgba(0,0,0,0.35)`,
+                    `inset 4px 6px 18px rgba(255,255,255,0.15)`,
+                  ].join(', '),
+                  filter: 'saturate(1.15) contrast(1.05)',
+                }}
+              />
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-full"
+                style={{
+                  background:
+                    'radial-gradient(ellipse 60% 35% at 30% 18%, rgba(255,255,255,0.6) 0%, transparent 60%)',
+                  mixBlendMode: 'screen',
+                  borderRadius: 'inherit',
+                }}
+              />
+            </>
+          )}
 
-          {/* Camada de "vidro" com highlight superior — fica fixa pra parecer reflexo */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-full"
-            style={{
-              background:
-                'radial-gradient(ellipse 60% 35% at 30% 18%, rgba(255,255,255,0.6) 0%, transparent 60%)',
-              mixBlendMode: 'screen',
-              borderRadius: 'inherit',
-            }}
-          />
+          {/* Spline 3D — sobrepõe o fallback quando carrega */}
+          <Suspense fallback={null}>
+            <div
+              className="absolute inset-0"
+              style={{
+                filter: RANK_FILTER[rank.key],
+                opacity: splineLoaded ? 1 : 0,
+                transition: 'opacity 0.5s ease',
+              }}
+            >
+              <Spline
+                scene={SPLINE_SCENE}
+                onLoad={() => setSplineLoaded(true)}
+                style={{ width: '100%', height: '100%' }}
+              />
+            </div>
+          </Suspense>
         </div>
 
         {/* Info textual do rank */}
