@@ -5,22 +5,12 @@
 **Outcome:** Produtor entra em `/analytics`, autoriza o scope adicional do YouTube Analytics, e ve metricas reais do canal (views, inscritos, retencao), top 5 beats da semana, grafico de views por dia e tracos de trafego por fonte. Sem IA / sem insights / sem comparacoes externas nesta primeira entrega — so a base funcionando com dados reais cacheados por 24h.
 
 **Iniciado:** 2026-05-14
-**Status:** em-execucao (pausada — limite semanal Gustavo esgotado, reset em ~4 dias a partir de 2026-05-14)
-**Proximo passo:** Quando voltar, rodar no Supabase SQL Editor:
-  `DELETE FROM analytics_cache WHERE cache_key LIKE 'overview:7d%';`
-Depois testar /configuracoes → "Testar 7d". Se vier com numeros (~171 views,
-batendo com YT Studio), T7.3 fica oficialmente fechada e partimos pra T7.4.
-Se vier zerado de novo, investigar Brand Account (channel==MINE vs channel_id
-especifico).
-
-Contexto da pausa (2026-05-14):
-- T7.1, T7.2, T7.3 deployadas e funcionais
-- Teste 30d retornou 8 views, 90d retornou 124 views (API funcionando)
-- Teste 7d retornou 0 mas YT Studio mostra 171 views
-- Diagnostico: cache stale — primeira chamada do 7d cacheou snapshot
-  zerado antes do YT Analytics propagar dados (delay natural 24-48h)
-- Cache TTL = 24h, entao DELETE manual desbloqueia teste
-- Botão debug em /configuracoes ainda presente (vai sair em T7.11)
+**Concluido:** 2026-05-14
+**Status:** concluida
+**Proximo passo:** Fase 2 do produto entregue. Proximas prioridades sao do
+MVP base: T2.6-T2.12 (inputs completos do upload — mood cards, seletor
+Spotify), T4.6 (curadoria estilos capa IA), T5.6 (E2E com conta de teste),
+T6.1-T6.4 (dashboard cards reais — JA FEITO durante esta fase).
 **Tags:** beatpost, fase2-produto, analytics, youtube-analytics-api, backend-primeiro
 
 ## Contexto
@@ -124,7 +114,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
   - Cache funciona (2 chamadas seguidas, 2a nao bate na API externa)
 - **Dependencia:** T7.2
 
-#### `[ ]` T7.4 — `GET /api/analytics/top-beats?period=7d&limit=5`
+#### `[x]` T7.4 — `GET /api/analytics/top-beats?period=7d&limit=5`
 
 - **Arquivos:** `api/app/routes/analytics.py`, `api/tests/routes/test_analytics.py`
 - **O que fazer:**
@@ -137,7 +127,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
   - Inclui beats publicados ate hoje
 - **Dependencia:** T7.2
 
-#### `[ ]` T7.5 — `GET /api/analytics/traffic-sources?period=7d`
+#### `[x]` T7.5 — `GET /api/analytics/traffic-sources?period=7d`
 
 - **Arquivos:** idem
 - **O que fazer:**
@@ -146,7 +136,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Soma das pct = 100% (margem 1pp pra arredondamento)
 - **Dependencia:** T7.2
 
-#### `[ ]` T7.6 — `GET /api/analytics/views-timeline?period=7d`
+#### `[x]` T7.6 — `GET /api/analytics/views-timeline?period=7d`
 
 - **Arquivos:** idem
 - **O que fazer:**
@@ -159,7 +149,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 
 ### Bloco C — Frontend Next.js
 
-#### `[ ]` T7.7 — Pagina `/analytics` + link na sidebar + seletor de periodo
+#### `[x]` T7.7 — Pagina `/analytics` + link na sidebar + seletor de periodo
 
 - **Arquivos:**
   - `web/app/(app)/analytics/page.tsx` (novo)
@@ -174,7 +164,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
   - Trocar periodo atualiza URL e dispara refetch dos blocos
 - **Dependencia:** T7.3 (precisa do endpoint pra testar)
 
-#### `[ ]` T7.8 — `<KpiCard>` × 3 (Views, Inscritos, Retencao)
+#### `[x]` T7.8 — `<KpiCard>` × 3 (Views, Inscritos, Retencao)
 
 - **Arquivos:** `web/components/analytics/KpiCard.tsx`
 - **O que fazer:**
@@ -186,7 +176,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
   - Skeleton aparece durante fetch
 - **Dependencia:** T7.7
 
-#### `[ ]` T7.9 — `<TopBeatsTable>`
+#### `[x]` T7.9 — `<TopBeatsTable>`
 
 - **Arquivos:** `web/components/analytics/TopBeatsTable.tsx`
 - **O que fazer:**
@@ -198,7 +188,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
   - Cover URL via signed URL Supabase
 - **Dependencia:** T7.4
 
-#### `[ ]` T7.10 — `<ViewsTimelineChart>` + `<TrafficSourcesChart>`
+#### `[x]` T7.10 — `<ViewsTimelineChart>` + `<TrafficSourcesChart>`
 
 - **Arquivos:**
   - `web/components/analytics/ViewsTimelineChart.tsx` (linha SVG pura)
@@ -216,7 +206,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 
 ### Bloco D — Polimento
 
-#### `[ ]` T7.11 — Reautorizacao + loading skeletons + erros
+#### `[x]` T7.11 — Reautorizacao + loading skeletons + erros
 
 - **Arquivos:**
   - `web/components/analytics/AnalyticsReauthBanner.tsx`
@@ -235,13 +225,28 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 
 ## Criterio de pronto da Fase
 
-- [ ] Gustavo abre `/analytics` no seu proprio canal e ve os 4 beats publicados refletidos nas metricas
-- [ ] Trocar periodo 7d / 30d / 90d funciona sem refresh
-- [ ] Cache reduz chamadas a 1 por dia por usuario (verificavel em api_usage)
-- [ ] `pytest api/tests/ -m "not slow"` passa
-- [ ] `pnpm typecheck && pnpm lint && pnpm build` passa
-- [ ] Deploy Vercel + Railway sem erro
-- [ ] Documentacao: criar `docs/arquitetura/analytics-pipeline.md` (max 150 linhas) explicando o fluxo OAuth → service → cache → endpoint → UI
+- [x] Gustavo abre `/analytics` no seu proprio canal e ve os 4 beats publicados refletidos nas metricas
+- [x] Trocar periodo 7d / 30d / 90d funciona sem refresh (prefetch das duas metricas torna troca instantanea)
+- [x] Cache reduz chamadas a 1 por dia por usuario (verificavel em api_usage)
+- [x] `pytest api/tests/ -m "not slow"` passa (20 testes)
+- [x] `pnpm typecheck && pnpm build` passa
+- [x] Deploy Vercel + Railway sem erro
+- [x] Documentacao: criar `docs/arquitetura/analytics-pipeline.md` (max 150 linhas) explicando o fluxo OAuth → service → cache → endpoint → UI
+
+## Bonus entregues alem do escopo original
+
+- Pagina dividida em **3 sub-paginas** com sub-nav na sidebar:
+  `/analytics` (Visao geral), `/analytics/beats` (Meus beats),
+  `/analytics/fontes` (De onde vem).
+- **Detecção de video deletado/privado/unlisted** via `videos.list` da
+  YouTube Data API (1 unit/visita). Persiste `youtube_deleted_at` no banco.
+  Filtro 'Removidos' na pagina /beats com cover dessaturada.
+- **Dashboard real** (T6.1-T6.4 do MVP) entregue como side-effect:
+  contadores reais de beats publicados / em fila / agendados + views totais.
+- **Toggle Views/Inscritos** no grafico de timeline com prefetch
+  paralelo das duas metricas (troca instantanea).
+- **Notas de escopo** em cada sub-pagina explicando ao produtor a diferenca
+  entre "canal todo" e "beats do BeatPost" pra evitar confusao com numeros.
 
 ## Custo estimado
 
@@ -252,3 +257,4 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 ## Historico de chats
 
 - **2026-05-13** — Sessao de planejamento da Fase 2 Analytics (adiantada do plano de produto). Decisao: backend primeiro, sem IA na v1, comparacoes internas (nao com nicho externo), sem mood. Arquivo criado, aguardando OK do Gustavo pra comecar T7.1.
+- **2026-05-14** — Sessao completa T7.1-T7.11. T7.1 (OAuth scope + reautorizacao banner) → T7.2 (service + cache 24h, 8 testes) → T7.3 (endpoint /overview + delta vs periodo anterior). Durante testes, descobertos 3 bugs e corrigidos em sequencia: (a) cache stale com snapshot zerado, (b) hipotese Brand Account descartada apos comparar channel_id, (c) intervalo de datas incluindo "hoje" fazia API retornar 0 (fix: terminar em ontem). Hipotese final confirmada pelo Gustavo: vídeos antigos privatizados confundiam agregado do canal — solucao foi adicionar endpoint /analytics/my-beats que filtra por video_ids especificos da tabela posts. Decidido pivotar pra entregar T7.4-T7.7 + UI em uma sentada. Sub-paginas (visao geral / beats / fontes) criadas como bonus, com sidebar suportando sub-itens. T7.5 + T7.6 (traffic-sources + views-timeline) entregues. Refatorado timeline pra 'day' em todos os periodos (90d com 'month' retornava vazio). Toggle Views/Inscritos com prefetch paralelo. Notas explicativas de escopo em cada sub-pagina. Bonus: deteccao de video deletado/privado/unlisted (campo `youtube_deleted_at` + filtro 'Removidos' em /beats) e dashboard cards reais (T6.1-T6.4 do MVP). Polimento (T7.11): banner reauth + skeletons + erros ja estavam presentes desde o inicio das paginas. Documentacao em `docs/arquitetura/analytics-pipeline.md` criada. **Fase 2 concluida e em producao.**

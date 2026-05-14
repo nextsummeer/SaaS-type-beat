@@ -30,6 +30,7 @@
 - `arquitetura/fluxo-oauth-youtube.md` — OAuth + refresh token + multi-canal V2 [ativo]
 - `arquitetura/workers-qstash.md` — Como QStash dispara endpoints + idempotencia [ativo]
 - `arquitetura/integracao-beatstars-futura.md` — 3 caminhos tecnicos pra cobrir BeatStars na nuvem (V1.5+) [planejamento]
+- `arquitetura/analytics-pipeline.md` — YouTube Analytics + cache 24h + deteccao deletado/privado + endpoints + componentes (Fase 2 do produto) [ativo]
 
 ## Referencias
 - `referencias/nextjs.md` — Next.js 15 App Router, middleware, Server Components/Actions [ativo]
