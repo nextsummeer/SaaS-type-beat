@@ -293,14 +293,7 @@ function AchievementCard({ ach }: { ach: Achievement }) {
           <div className="flex flex-col items-center gap-0.5">
             <span
               className="font-mono text-[10px] uppercase tracking-wider"
-              style={{
-                color:
-                  ach.tier === 'gold'
-                    ? '#ffd76b'
-                    : ach.tier === 'silver'
-                      ? '#cbd5e1'
-                      : 'var(--accent)',
-              }}
+              style={{ color: 'var(--led-success)' }}
             >
               ✓ desbloqueada
             </span>
