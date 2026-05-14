@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { Search, Bell, HelpCircle, Command } from 'lucide-react'
+import { SidebarTrigger } from '@/components/ui/sidebar'
 
 const labels: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -18,37 +19,56 @@ function getBreadcrumb(pathname: string): { secao: string; pagina: string } {
   return { secao: 'Studio', pagina: labels[pathname] ?? 'Home' }
 }
 
-export function Topbar() {
+export function SiteHeader() {
   const pathname = usePathname()
   const { secao, pagina } = getBreadcrumb(pathname)
 
   return (
     <header
-      className="flex h-14 shrink-0 items-center gap-4 px-6"
-      style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-base)' }}
+      className="sticky top-0 z-40 flex h-(--header-height) shrink-0 items-center gap-3 px-4"
+      style={{
+        background: 'var(--bg-base)',
+        borderBottom: '1px solid var(--border)',
+      }}
     >
+      <SidebarTrigger
+        className="-ml-1"
+        style={{ color: 'var(--text-muted)' }}
+      />
+
+      <div className="h-5 w-px" style={{ background: 'var(--border)' }} />
+
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-[13px]">
         <span style={{ color: 'var(--text-muted)' }}>{secao}</span>
         <span style={{ color: 'var(--text-subtle)' }}>/</span>
-        <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{pagina}</span>
+        <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+          {pagina}
+        </span>
       </div>
 
-      {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Search (decorativo, ainda sem ação) */}
+      {/* Search (decorativo) */}
       <div
         className="hidden items-center gap-2 rounded-lg px-3 py-1.5 md:flex"
-        style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', minWidth: 280 }}
+        style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border)',
+          minWidth: 280,
+        }}
       >
         <Search size={14} style={{ color: 'var(--text-subtle)' }} />
         <span className="flex-1 text-[12px]" style={{ color: 'var(--text-subtle)' }}>
           Buscar beats, comandos…
         </span>
         <kbd
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px]"
-          style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)', border: '1px solid var(--border-muted)' }}
+          className="flex items-center gap-0.5 rounded px-1.5 py-0.5 font-mono text-[10px]"
+          style={{
+            background: 'var(--bg-elevated)',
+            color: 'var(--text-muted)',
+            border: '1px solid var(--border-muted)',
+          }}
         >
           <Command size={9} />K
         </kbd>
@@ -61,8 +81,14 @@ export function Topbar() {
           title="Ajuda"
           className="flex h-9 w-9 items-center justify-center rounded-lg transition"
           style={{ color: 'var(--text-muted)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface)'; e.currentTarget.style.color = 'var(--text-primary)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--bg-surface)'
+            e.currentTarget.style.color = 'var(--text-primary)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.color = 'var(--text-muted)'
+          }}
         >
           <HelpCircle size={16} />
         </button>
@@ -71,8 +97,14 @@ export function Topbar() {
           title="Notificações"
           className="relative flex h-9 w-9 items-center justify-center rounded-lg transition"
           style={{ color: 'var(--text-muted)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface)'; e.currentTarget.style.color = 'var(--text-primary)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--bg-surface)'
+            e.currentTarget.style.color = 'var(--text-primary)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.color = 'var(--text-muted)'
+          }}
         >
           <Bell size={16} />
           <span
