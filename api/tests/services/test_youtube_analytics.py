@@ -153,35 +153,17 @@ def test_get_top_beats_valida_limite():
         youtube_analytics.get_top_beats(USER_ID, "7d", limite=50)
 
 
-def test_get_views_timeline_usa_month_para_90d():
-    """Em 90d, agregamos por mês pra não retornar 90 pontos."""
-    captured: dict = {}
+def test_get_views_timeline_sempre_usa_day():
+    """Timeline usa granularidade 'day' em todos os períodos.
+
+    Antes usávamos 'month' em 90d, mas a YT Analytics API retornava rows
+    vazio com fração de mês. 'day' é mais confiável e o frontend lida com
+    o número maior de pontos escondendo círculos individuais.
+    """
+    capturas: list[dict] = []
 
     def fake_reports(access_token, channel_id, params):
-        captured["params"] = params
-        captured["channel_id"] = channel_id
-        return {"rows": []}
-
-    with patch.object(
-        youtube_analytics, "get_admin_client", return_value=_mock_supabase_cache_miss()
-    ), patch.object(
-        youtube_analytics.youtube_oauth, "get_access_token", return_value=ACCESS_TOKEN
-    ), patch.object(
-        youtube_analytics, "_get_channel_id", return_value=CHANNEL_ID
-    ), patch.object(
-        youtube_analytics, "_reports_query", side_effect=fake_reports
-    ):
-        youtube_analytics.get_views_timeline(USER_ID, "90d")
-
-    assert captured["params"]["dimensions"] == "month"
-    assert captured["channel_id"] == CHANNEL_ID
-
-
-def test_get_views_timeline_usa_day_para_periodos_curtos():
-    captured: dict = {}
-
-    def fake_reports(access_token, channel_id, params):
-        captured["params"] = params
+        capturas.append(params)
         return {"rows": []}
 
     with patch.object(
@@ -194,8 +176,10 @@ def test_get_views_timeline_usa_day_para_periodos_curtos():
         youtube_analytics, "_reports_query", side_effect=fake_reports
     ):
         youtube_analytics.get_views_timeline(USER_ID, "7d")
+        youtube_analytics.get_views_timeline(USER_ID, "30d")
+        youtube_analytics.get_views_timeline(USER_ID, "90d")
 
-    assert captured["params"]["dimensions"] == "day"
+    assert all(p["dimensions"] == "day" for p in capturas)
 
 
 def test_cache_expirado_e_tratado_como_miss():

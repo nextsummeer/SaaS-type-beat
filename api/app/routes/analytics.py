@@ -493,7 +493,7 @@ def views_timeline(
         logger.error("views-timeline falhou pra user=%s: %s", user_id, exc)
         return {"period": periodo, "granularity": "day", "max_views": 0, "points": []}
 
-    granularity = "month" if periodo == "90d" else "day"
+    granularity = "day"
     headers = [h["name"] for h in raw.get("columnHeaders", [])]
     rows = raw.get("rows") or []
 

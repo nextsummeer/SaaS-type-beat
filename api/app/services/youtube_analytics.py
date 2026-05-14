@@ -325,10 +325,14 @@ def get_traffic_sources(user_id: str, periodo: str = "7d") -> dict:
 
 
 def get_views_timeline(user_id: str, periodo: str = "7d") -> dict:
-    """Série temporal de views (dia a dia em 7d/30d, mês a mês em 90d)."""
+    """Série temporal de views (dia a dia em todos os períodos).
+
+    Antes usávamos `month` pra 90d, mas a YT Analytics API tende a retornar
+    rows vazio quando o intervalo tem fração de mês — mesmo com views reais
+    no período. Usar `day` é mais confiável e o frontend lida com o número
+    maior de pontos escondendo os círculos individuais.
+    """
     start, end = _periodo_para_datas(periodo)
-    # 90d → granularidade mensal pra não retornar 90 pontos no gráfico
-    dimensao = "month" if periodo == "90d" else "day"
     cache_key = f"views-timeline:{periodo}"
 
     def fetcher(access_token: str, channel_id: str) -> dict:
@@ -338,9 +342,9 @@ def get_views_timeline(user_id: str, periodo: str = "7d") -> dict:
             {
                 "startDate": start.isoformat(),
                 "endDate": end.isoformat(),
-                "dimensions": dimensao,
+                "dimensions": "day",
                 "metrics": "views",
-                "sort": dimensao,
+                "sort": "day",
             },
         )
 

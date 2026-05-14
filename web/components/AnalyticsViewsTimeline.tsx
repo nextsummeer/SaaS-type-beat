@@ -208,20 +208,33 @@ export function AnalyticsViewsTimeline({ data }: { data: TimelineData }) {
             strokeLinecap="round"
           />
 
-          {/* Pontos sutis (não interativos individualmente) */}
-          {coords.map((c, i) => (
-            <circle
-              key={i}
-              cx={c.x}
-              cy={c.y}
-              r={hover?.idx === i ? 5 : 3}
-              fill="var(--bg-surface)"
-              stroke="var(--accent)"
-              strokeWidth={hover?.idx === i ? 2.5 : 1.5}
-              style={{ transition: 'r 0.12s, stroke-width 0.12s' }}
-              pointerEvents="none"
-            />
-          ))}
+          {/* Pontos sutis — só mostra com poucos pontos.
+             Com muitos pontos (>14) só destaca o hover pra ficar limpo */}
+          {coords.length <= 14
+            ? coords.map((c, i) => (
+                <circle
+                  key={i}
+                  cx={c.x}
+                  cy={c.y}
+                  r={hover?.idx === i ? 5 : 3}
+                  fill="var(--bg-surface)"
+                  stroke="var(--accent)"
+                  strokeWidth={hover?.idx === i ? 2.5 : 1.5}
+                  style={{ transition: 'r 0.12s, stroke-width 0.12s' }}
+                  pointerEvents="none"
+                />
+              ))
+            : pontoHover && (
+                <circle
+                  cx={pontoHover.x}
+                  cy={pontoHover.y}
+                  r={5}
+                  fill="var(--bg-surface)"
+                  stroke="var(--accent)"
+                  strokeWidth={2.5}
+                  pointerEvents="none"
+                />
+              )}
 
           {/* Labels do eixo X (primeiro, meio, último) */}
           {[0, Math.floor(coords.length / 2), coords.length - 1].map((idx) => {
