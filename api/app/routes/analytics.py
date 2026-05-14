@@ -381,3 +381,135 @@ def overview(
         }
 
     return resposta
+
+
+# Labels amigáveis pros tipos de tráfego do YT Analytics
+TRAFFIC_SOURCE_LABELS = {
+    "YT_SEARCH": "Pesquisa YouTube",
+    "RELATED_VIDEO": "Vídeos sugeridos",
+    "EXT_URL": "Sites externos",
+    "EXT_APP": "Apps externos",
+    "YT_OTHER_PAGE": "Outras páginas YouTube",
+    "YT_CHANNEL": "Página do canal",
+    "YT_PLAYLIST": "Playlists",
+    "SUBSCRIBER": "Notificações de inscrito",
+    "NOTIFICATION": "Notificações",
+    "PLAYLIST": "Playlists",
+    "ADVERTISING": "Anúncios",
+    "NO_LINK_OTHER": "Direto / desconhecido",
+    "NO_LINK_EMBEDDED": "Vídeo incorporado",
+    "SHORTS": "YouTube Shorts",
+    "HASHTAGS": "Hashtags",
+    "END_SCREEN": "Tela final",
+    "ANNOTATION": "Anotação",
+    "CAMPAIGN_CARD": "Cards",
+}
+
+
+@router.get("/traffic-sources")
+def traffic_sources(
+    period: str = Query("7d", description="7d, 30d ou 90d"),
+    authorization: str = Header(...),
+):
+    """Quebra de tráfego por fonte (pesquisa, sugeridos, externo, etc).
+
+    Retorna:
+        {
+          "period": "7d",
+          "total_views": 1243,
+          "sources": [
+            { "key": "YT_SEARCH", "label": "Pesquisa YouTube", "views": 836, "pct": 67.3 },
+            { "key": "RELATED_VIDEO", "label": "Vídeos sugeridos", "views": 273, "pct": 22.0 },
+            ...
+          ]
+        }
+    """
+    user_id = _autentica(authorization)
+    periodo = _valida_periodo(period)
+
+    try:
+        raw = youtube_analytics.get_traffic_sources(user_id, periodo)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except RuntimeError as exc:
+        logger.error("traffic-sources falhou pra user=%s: %s", user_id, exc)
+        return {"period": periodo, "total_views": 0, "sources": []}
+
+    headers = [h["name"] for h in raw.get("columnHeaders", [])]
+    rows = raw.get("rows") or []
+
+    parsed: list[dict] = []
+    total_views = 0
+    for row in rows:
+        valores = dict(zip(headers, row))
+        key = valores.get("insightTrafficSourceType") or "NO_LINK_OTHER"
+        views = int(valores.get("views") or 0)
+        total_views += views
+        parsed.append({
+            "key": key,
+            "label": TRAFFIC_SOURCE_LABELS.get(key, key.replace("_", " ").title()),
+            "views": views,
+        })
+
+    # Calcular % e ordenar desc
+    for item in parsed:
+        item["pct"] = round((item["views"] / total_views * 100) if total_views > 0 else 0, 1)
+    parsed.sort(key=lambda x: -x["views"])
+
+    return {
+        "period": periodo,
+        "total_views": total_views,
+        "sources": parsed,
+    }
+
+
+@router.get("/views-timeline")
+def views_timeline(
+    period: str = Query("7d", description="7d, 30d ou 90d"),
+    authorization: str = Header(...),
+):
+    """Série temporal de views: dia a dia em 7d/30d, mês a mês em 90d.
+
+    Retorna:
+        {
+          "period": "7d",
+          "granularity": "day",
+          "max_views": 187,
+          "points": [
+            { "date": "2026-05-07", "views": 23 },
+            { "date": "2026-05-08", "views": 45 },
+            ...
+          ]
+        }
+    """
+    user_id = _autentica(authorization)
+    periodo = _valida_periodo(period)
+
+    try:
+        raw = youtube_analytics.get_views_timeline(user_id, periodo)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except RuntimeError as exc:
+        logger.error("views-timeline falhou pra user=%s: %s", user_id, exc)
+        return {"period": periodo, "granularity": "day", "max_views": 0, "points": []}
+
+    granularity = "month" if periodo == "90d" else "day"
+    headers = [h["name"] for h in raw.get("columnHeaders", [])]
+    rows = raw.get("rows") or []
+
+    pontos: list[dict] = []
+    max_views = 0
+    for row in rows:
+        valores = dict(zip(headers, row))
+        data_str = valores.get(granularity, "")
+        views = int(valores.get("views") or 0)
+        if views > max_views:
+            max_views = views
+        pontos.append({"date": data_str, "views": views})
+
+    return {
+        "period": periodo,
+        "granularity": granularity,
+        "max_views": max_views,
+        "points": pontos,
+    }

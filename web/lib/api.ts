@@ -165,6 +165,65 @@ export async function fetchAnalyticsMyBeats(
   return res.json()
 }
 
+export interface AnalyticsTrafficSource {
+  key: string
+  label: string
+  views: number
+  pct: number
+}
+
+export interface AnalyticsTrafficSources {
+  period: string
+  total_views: number
+  sources: AnalyticsTrafficSource[]
+}
+
+/** Quebra de tráfego por fonte. T7.5. */
+export async function fetchAnalyticsTrafficSources(
+  token: string,
+  period: '7d' | '30d' | '90d' = '7d',
+): Promise<AnalyticsTrafficSources> {
+  const url = `${API_URL}/analytics/traffic-sources?period=${period}`
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao buscar traffic-sources`)
+  }
+  return res.json()
+}
+
+export interface AnalyticsTimelinePoint {
+  date: string
+  views: number
+}
+
+export interface AnalyticsViewsTimeline {
+  period: string
+  granularity: 'day' | 'month'
+  max_views: number
+  points: AnalyticsTimelinePoint[]
+}
+
+/** Série temporal de views (dia ou mês conforme período). T7.6. */
+export async function fetchAnalyticsViewsTimeline(
+  token: string,
+  period: '7d' | '30d' | '90d' = '7d',
+): Promise<AnalyticsViewsTimeline> {
+  const url = `${API_URL}/analytics/views-timeline?period=${period}`
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao buscar views-timeline`)
+  }
+  return res.json()
+}
+
 export async function fetchYoutubeAccount(token: string): Promise<YoutubeAccount | null> {
   const res = await fetch(`${API_URL}/youtube/me`, {
     headers: { Authorization: `Bearer ${token}` },
