@@ -11,6 +11,7 @@ import {
   type AchievementsResponse,
 } from '@/lib/api'
 import { AchievementBadge } from '@/components/AchievementBadge'
+import { AchievementRankCard } from '@/components/AchievementRankCard'
 
 const CATEGORIA_LABELS: Record<AchievementCategory, { titulo: string; emoji: string; desc: string }> = {
   streak: {
@@ -124,67 +125,47 @@ export default function ConquistasPage() {
         </p>
       </div>
 
-      {/* Resumo */}
+      {/* Card de rank do produtor (esfera grande estilo Opal) */}
+      {data && (
+        <div className="rise rise-2">
+          <AchievementRankCard rank={data.rank} />
+        </div>
+      )}
+
+      {/* Resumo secundário: contagem de conquistas */}
       {data && (
         <div
-          className="flex flex-wrap items-center justify-between gap-4 rounded-2xl p-6 rise rise-2"
-          style={{
-            background: 'linear-gradient(135deg, var(--bg-surface), var(--bg-elevated))',
-            border: '1px solid var(--border)',
-          }}
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl px-5 py-3 rise rise-2"
+          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-4">
-            <div
-              className="flex h-14 w-14 items-center justify-center rounded-2xl"
-              style={{
-                background: 'var(--accent-muted)',
-                border: '1px solid rgba(255,90,31,0.3)',
-              }}
-            >
-              <Trophy className="h-7 w-7" style={{ color: 'var(--accent)' }} />
-            </div>
-            <div>
-              <p
-                className="font-mono text-[10px] uppercase tracking-[0.18em]"
-                style={{ color: 'var(--text-subtle)' }}
-              >
-                progresso geral
-              </p>
-              <p
-                className="font-display text-[28px] font-semibold leading-none"
-                style={{ color: 'var(--text-primary)' }}
-              >
-                <span style={{ color: 'var(--accent)' }}>{data.unlocked_count}</span>
-                <span style={{ color: 'var(--text-muted)' }}> / {data.total}</span>
-              </p>
-              <p className="mt-1 text-[12px]" style={{ color: 'var(--text-muted)' }}>
-                conquistas desbloqueadas
-              </p>
-            </div>
+          <div className="flex items-center gap-2.5">
+            <Trophy className="h-4 w-4" style={{ color: 'var(--accent)' }} />
+            <span className="font-mono text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              Conquistas:{' '}
+              <span style={{ color: 'var(--accent)' }}>{data.unlocked_count}</span>
+              {' '}/ {data.total}
+            </span>
           </div>
-
-          {/* Barra de progresso geral */}
-          <div className="w-full sm:w-72">
+          <div className="flex-1 max-w-md">
             <div
-              className="relative h-2.5 overflow-hidden rounded-full"
+              className="relative h-1.5 overflow-hidden rounded-full"
               style={{ background: 'var(--bg-elevated)' }}
             >
               <div
                 className="h-full rounded-full transition-all"
                 style={{
                   width: `${(data.unlocked_count / data.total) * 100}%`,
-                  background: 'linear-gradient(90deg, var(--accent), #ffaa66)',
-                  boxShadow: '0 0 12px var(--accent-glow)',
+                  background: 'var(--accent)',
                 }}
               />
             </div>
-            <p
-              className="mt-1.5 text-right font-mono text-[10px] uppercase tracking-wider"
-              style={{ color: 'var(--text-subtle)' }}
-            >
-              {Math.round((data.unlocked_count / data.total) * 100)}% completo
-            </p>
           </div>
+          <span
+            className="font-mono text-[10px] uppercase tracking-wider"
+            style={{ color: 'var(--text-subtle)' }}
+          >
+            {Math.round((data.unlocked_count / data.total) * 100)}%
+          </span>
         </div>
       )}
 

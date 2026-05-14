@@ -328,11 +328,28 @@ export interface Achievement {
   unlocked_at: string | null
 }
 
+export type AchievementRankKey = 'aprendiz' | 'bronze' | 'prata' | 'ouro' | 'platina' | 'lenda'
+
+export interface AchievementRank {
+  key: AchievementRankKey
+  name: string
+  description: string
+  unlocked_count: number
+  current_rank_min: number
+  next_rank_key: AchievementRankKey | null
+  next_rank_name: string | null
+  next_rank_at: number | null
+  to_next: number
+  progress_pct: number
+  is_max_rank: boolean
+}
+
 export interface AchievementsResponse {
   achievements: Achievement[]
   newly_unlocked_keys: string[]
   total: number
   unlocked_count: number
+  rank: AchievementRank
 }
 
 /** Lista todas as conquistas com estado pro usuário. */
