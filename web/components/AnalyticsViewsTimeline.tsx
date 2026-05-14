@@ -1,7 +1,15 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import type { AnalyticsViewsTimeline as TimelineData } from '@/lib/api'
+import type {
+  AnalyticsViewsTimeline as TimelineData,
+  AnalyticsTimelineMetric,
+} from '@/lib/api'
+
+const METRICS_LABEL: Record<AnalyticsTimelineMetric, { label: string; suffix: string }> = {
+  views: { label: 'Views', suffix: 'views' },
+  subscribersGained: { label: 'Inscritos', suffix: 'inscritos' },
+}
 
 function formataData(iso: string, granularity: 'day' | 'month'): string {
   // Granularidade day: '2026-05-07'
@@ -42,7 +50,15 @@ const PAD_X = 24
 const PAD_TOP = 20
 const PAD_BOT = 32
 
-export function AnalyticsViewsTimeline({ data }: { data: TimelineData }) {
+export function AnalyticsViewsTimeline({
+  data,
+  metric,
+  onMetricChange,
+}: {
+  data: TimelineData
+  metric: AnalyticsTimelineMetric
+  onMetricChange: (m: AnalyticsTimelineMetric) => void
+}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const [hover, setHover] = useState<{ x: number; idx: number; clientX: number; clientY: number } | null>(null)
@@ -135,18 +151,39 @@ export function AnalyticsViewsTimeline({ data }: { data: TimelineData }) {
       className="relative overflow-hidden rounded-xl p-5"
       style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
     >
-      <div className="mb-3 flex items-center justify-between">
-        <p
-          className="font-mono text-[10px] font-medium uppercase tracking-[0.18em]"
-          style={{ color: 'var(--text-subtle)' }}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        {/* Toggle de métrica */}
+        <div
+          className="inline-flex items-center rounded-md p-0.5"
+          style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-muted)' }}
         >
-          Views por {data.granularity === 'month' ? 'mês' : 'dia'}
-        </p>
+          {(['views', 'subscribersGained'] as const).map((m) => {
+            const ativo = metric === m
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => onMetricChange(m)}
+                className="rounded-md px-3 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.15em] transition-colors"
+                style={{
+                  background: ativo ? 'var(--accent-muted)' : 'transparent',
+                  color: ativo ? 'var(--accent)' : 'var(--text-muted)',
+                }}
+              >
+                {METRICS_LABEL[m].label}
+              </button>
+            )
+          })}
+        </div>
+
         <p
           className="font-mono text-[10px] uppercase tracking-wider"
           style={{ color: 'var(--text-subtle)' }}
         >
-          pico: <span style={{ color: 'var(--text-secondary)' }}>{data.max_views.toLocaleString('pt-BR')}</span>
+          pico:{' '}
+          <span style={{ color: 'var(--text-secondary)' }}>
+            {data.max_views.toLocaleString('pt-BR')}
+          </span>
         </p>
       </div>
 
@@ -294,7 +331,9 @@ export function AnalyticsViewsTimeline({ data }: { data: TimelineData }) {
                 fontSize="8"
                 fill="var(--text-muted)"
               >
-                {pontoHover.views === 1 ? 'view' : 'views'}
+                {pontoHover.views === 1
+                  ? METRICS_LABEL[metric].suffix.replace(/s$/, '')
+                  : METRICS_LABEL[metric].suffix}
               </text>
             </g>
           )}

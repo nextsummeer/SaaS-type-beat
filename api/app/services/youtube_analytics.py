@@ -324,16 +324,29 @@ def get_traffic_sources(user_id: str, periodo: str = "7d") -> dict:
     return _get_or_fetch(user_id, cache_key, fetcher)
 
 
-def get_views_timeline(user_id: str, periodo: str = "7d") -> dict:
-    """Série temporal de views (dia a dia em todos os períodos).
+TIMELINE_METRICS_VALIDAS = {"views", "subscribersGained"}
+
+
+def get_views_timeline(
+    user_id: str,
+    periodo: str = "7d",
+    metric: str = "views",
+) -> dict:
+    """Série temporal de uma métrica (dia a dia em todos os períodos).
+
+    Aceita métrica `views` (default) ou `subscribersGained`. O nome do
+    método mantém 'views' por compatibilidade, mas serve pra qualquer
+    métrica do toggle no front.
 
     Antes usávamos `month` pra 90d, mas a YT Analytics API tende a retornar
-    rows vazio quando o intervalo tem fração de mês — mesmo com views reais
-    no período. Usar `day` é mais confiável e o frontend lida com o número
-    maior de pontos escondendo os círculos individuais.
+    rows vazio com fração de mês. `day` é mais confiável e o frontend
+    esconde círculos individuais quando tem muitos pontos.
     """
+    if metric not in TIMELINE_METRICS_VALIDAS:
+        raise ValueError(f"metric inválida: {metric!r}. Use {sorted(TIMELINE_METRICS_VALIDAS)}")
+
     start, end = _periodo_para_datas(periodo)
-    cache_key = f"views-timeline:{periodo}"
+    cache_key = f"views-timeline:{periodo}:{metric}"
 
     def fetcher(access_token: str, channel_id: str) -> dict:
         return _reports_query(
@@ -343,7 +356,7 @@ def get_views_timeline(user_id: str, periodo: str = "7d") -> dict:
                 "startDate": start.isoformat(),
                 "endDate": end.isoformat(),
                 "dimensions": "day",
-                "metrics": "views",
+                "metrics": metric,
                 "sort": "day",
             },
         )

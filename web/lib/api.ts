@@ -195,6 +195,8 @@ export async function fetchAnalyticsTrafficSources(
   return res.json()
 }
 
+export type AnalyticsTimelineMetric = 'views' | 'subscribersGained'
+
 export interface AnalyticsTimelinePoint {
   date: string
   views: number
@@ -202,17 +204,19 @@ export interface AnalyticsTimelinePoint {
 
 export interface AnalyticsViewsTimeline {
   period: string
+  metric: AnalyticsTimelineMetric
   granularity: 'day' | 'month'
   max_views: number
   points: AnalyticsTimelinePoint[]
 }
 
-/** Série temporal de views (dia ou mês conforme período). T7.6. */
+/** Série temporal de uma métrica (views ou subscribersGained). T7.6. */
 export async function fetchAnalyticsViewsTimeline(
   token: string,
   period: '7d' | '30d' | '90d' = '7d',
+  metric: AnalyticsTimelineMetric = 'views',
 ): Promise<AnalyticsViewsTimeline> {
-  const url = `${API_URL}/analytics/views-timeline?period=${period}`
+  const url = `${API_URL}/analytics/views-timeline?period=${period}&metric=${metric}`
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',

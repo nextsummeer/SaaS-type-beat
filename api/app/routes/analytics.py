@@ -463,35 +463,53 @@ def traffic_sources(
     }
 
 
+METRICS_VALIDAS = {"views", "subscribersGained"}
+
+
 @router.get("/views-timeline")
 def views_timeline(
     period: str = Query("7d", description="7d, 30d ou 90d"),
+    metric: str = Query("views", description="views ou subscribersGained"),
     authorization: str = Header(...),
 ):
-    """Série temporal de views: dia a dia em 7d/30d, mês a mês em 90d.
+    """Série temporal de uma métrica (views ou inscritos) dia a dia.
 
     Retorna:
         {
           "period": "7d",
+          "metric": "views",
           "granularity": "day",
           "max_views": 187,
           "points": [
             { "date": "2026-05-07", "views": 23 },
-            { "date": "2026-05-08", "views": 45 },
             ...
           ]
         }
+
+    O campo `views` no payload representa o VALOR da métrica pedida,
+    seja views ou subscribersGained — nome mantido por simplicidade.
     """
     user_id = _autentica(authorization)
     periodo = _valida_periodo(period)
+    if metric not in METRICS_VALIDAS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"metric inválida. Use uma de: {sorted(METRICS_VALIDAS)}",
+        )
 
     try:
-        raw = youtube_analytics.get_views_timeline(user_id, periodo)
+        raw = youtube_analytics.get_views_timeline(user_id, periodo, metric=metric)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except RuntimeError as exc:
         logger.error("views-timeline falhou pra user=%s: %s", user_id, exc)
-        return {"period": periodo, "granularity": "day", "max_views": 0, "points": []}
+        return {
+            "period": periodo,
+            "metric": metric,
+            "granularity": "day",
+            "max_views": 0,
+            "points": [],
+        }
 
     granularity = "day"
     headers = [h["name"] for h in raw.get("columnHeaders", [])]
@@ -502,13 +520,15 @@ def views_timeline(
     for row in rows:
         valores = dict(zip(headers, row))
         data_str = valores.get(granularity, "")
-        views = int(valores.get("views") or 0)
-        if views > max_views:
-            max_views = views
-        pontos.append({"date": data_str, "views": views})
+        # Campo no JSON da API tem o nome literal da métrica
+        valor = int(valores.get(metric) or 0)
+        if valor > max_views:
+            max_views = valor
+        pontos.append({"date": data_str, "views": valor})
 
     return {
         "period": periodo,
+        "metric": metric,
         "granularity": granularity,
         "max_views": max_views,
         "points": pontos,

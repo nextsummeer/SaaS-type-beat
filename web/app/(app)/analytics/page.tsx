@@ -16,6 +16,7 @@ import {
   fetchAnalyticsViewsTimeline,
   type AnalyticsOverview,
   type AnalyticsViewsTimeline as TimelineData,
+  type AnalyticsTimelineMetric,
 } from '@/lib/api'
 import { AnalyticsPeriodSelector, type Periodo } from '@/components/AnalyticsPeriodSelector'
 import { AnalyticsDelayBanner } from '@/components/AnalyticsDelayBanner'
@@ -26,11 +27,14 @@ export default function AnalyticsOverviewPage() {
   const supabase = createClient()
 
   const [periodo, setPeriodo] = useState<Periodo>('7d')
+  const [metricaTimeline, setMetricaTimeline] = useState<AnalyticsTimelineMetric>('views')
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null)
   const [timeline, setTimeline] = useState<TimelineData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingTimeline, setLoadingTimeline] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
+  // Carga inicial + mudança de período
   useEffect(() => {
     let cancelado = false
     async function carrega() {
@@ -44,7 +48,7 @@ export default function AnalyticsOverviewPage() {
         }
         const [ov, tl] = await Promise.all([
           fetchAnalyticsOverview(session.access_token, periodo).catch(() => null),
-          fetchAnalyticsViewsTimeline(session.access_token, periodo).catch(() => null),
+          fetchAnalyticsViewsTimeline(session.access_token, periodo, metricaTimeline).catch(() => null),
         ])
         if (!cancelado) {
           setOverview(ov)
@@ -61,6 +65,23 @@ export default function AnalyticsOverviewPage() {
       cancelado = true
     }
   }, [periodo])
+
+  // Refetch só da timeline quando muda a métrica (sem reload dos KPIs)
+  async function trocarMetricaTimeline(m: AnalyticsTimelineMetric) {
+    if (m === metricaTimeline) return
+    setMetricaTimeline(m)
+    setLoadingTimeline(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const tl = await fetchAnalyticsViewsTimeline(session.access_token, periodo, m)
+      setTimeline(tl)
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao trocar métrica')
+    } finally {
+      setLoadingTimeline(false)
+    }
+  }
 
   return (
     <div className="space-y-7">
@@ -174,8 +195,15 @@ export default function AnalyticsOverviewPage() {
 
       {/* Timeline */}
       {!loading && timeline && (
-        <section className="rise rise-4">
-          <AnalyticsViewsTimeline data={timeline} />
+        <section
+          className="rise rise-4"
+          style={{ opacity: loadingTimeline ? 0.6 : 1, transition: 'opacity 0.2s' }}
+        >
+          <AnalyticsViewsTimeline
+            data={timeline}
+            metric={metricaTimeline}
+            onMetricChange={trocarMetricaTimeline}
+          />
         </section>
       )}
 
