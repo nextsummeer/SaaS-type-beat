@@ -42,6 +42,92 @@ def _valida_periodo(periodo: str) -> str:
     return periodo
 
 
+@router.get("/top-beats")
+def top_beats(
+    period: str = Query("7d", description="7d, 30d ou 90d"),
+    limit: int = Query(5, ge=1, le=20, description="Quantos beats retornar"),
+    authorization: str = Header(...),
+):
+    """Top vídeos do canal por views no período.
+
+    Cruza dados YT Analytics (video_id → views, retenção) com a tabela
+    `beats` do Supabase pra trazer título + cover URL + artista junto.
+
+    Retorna:
+        {
+          "period": "7d",
+          "items": [
+            {
+              "video_id": "abc123",
+              "views": 1243,
+              "retention_pct": 52.0,
+              "beat": {  // null se YT video não está no nosso banco
+                "id": "uuid",
+                "titulo": "Travis Scott Type Beat - Dark Trap",
+                "artista_nome": "Travis Scott",
+                "cover_path": "user-x/beat-y/cover.jpg"
+              }
+            },
+            ...
+          ]
+        }
+    """
+    user_id = _autentica(authorization)
+    periodo = _valida_periodo(period)
+
+    try:
+        raw = youtube_analytics.get_top_beats(user_id, periodo, limite=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except RuntimeError as exc:
+        logger.error("Top beats falhou no Google pra user=%s: %s", user_id, exc)
+        raise HTTPException(status_code=502, detail="Erro ao falar com YouTube Analytics")
+
+    # Parse das linhas: [video_id, views, averageViewPercentage]
+    headers = [h["name"] for h in raw.get("columnHeaders", [])]
+    rows = raw.get("rows") or []
+    parsed: list[dict] = []
+    for row in rows:
+        valores = dict(zip(headers, row))
+        video_id = valores.get("video") or ""
+        parsed.append(
+            {
+                "video_id": video_id,
+                "views": int(valores.get("views") or 0),
+                "retention_pct": round(float(valores.get("averageViewPercentage") or 0), 1),
+            }
+        )
+
+    # Enriquecer com dados do nosso banco (titulo, cover, artista)
+    # video_id mora em posts; beats traz metadados via join
+    video_ids = [p["video_id"] for p in parsed if p["video_id"]]
+    beats_por_video: dict[str, dict] = {}
+    if video_ids:
+        from app.services.supabase_service import get_admin_client
+
+        client = get_admin_client()
+        posts_data = (
+            client.table("posts")
+            .select("youtube_video_id, beats(id, titulo, artista_nome, cover_path)")
+            .eq("user_id", user_id)
+            .in_("youtube_video_id", video_ids)
+            .execute()
+        )
+        for p in posts_data.data or []:
+            vid = p.get("youtube_video_id")
+            beat = p.get("beats")
+            if vid and beat:
+                beats_por_video[vid] = beat
+
+    for item in parsed:
+        item["beat"] = beats_por_video.get(item["video_id"])
+
+    return {
+        "period": periodo,
+        "items": parsed,
+    }
+
+
 @router.get("/overview")
 def overview(
     period: str = Query("7d", description="7d, 30d ou 90d"),

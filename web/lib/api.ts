@@ -93,6 +93,41 @@ export async function fetchAnalyticsOverview(
   return res.json()
 }
 
+export interface AnalyticsTopBeatItem {
+  video_id: string
+  views: number
+  retention_pct: number
+  beat: {
+    id: string
+    titulo: string
+    artista_nome: string | null
+    cover_path: string | null
+  } | null
+}
+
+export interface AnalyticsTopBeats {
+  period: string
+  items: AnalyticsTopBeatItem[]
+}
+
+/** Busca top beats por views no período. T7.4. */
+export async function fetchAnalyticsTopBeats(
+  token: string,
+  period: '7d' | '30d' | '90d' = '7d',
+  limit = 5,
+): Promise<AnalyticsTopBeats> {
+  const url = `${API_URL}/analytics/top-beats?period=${period}&limit=${limit}`
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao buscar top-beats`)
+  }
+  return res.json()
+}
+
 export async function fetchYoutubeAccount(token: string): Promise<YoutubeAccount | null> {
   const res = await fetch(`${API_URL}/youtube/me`, {
     headers: { Authorization: `Bearer ${token}` },

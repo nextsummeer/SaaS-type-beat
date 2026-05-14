@@ -8,7 +8,7 @@ T7.3 do _tasks-fase2-analytics.md.
 """
 
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -160,3 +160,87 @@ def test_overview_google_rejeitou_da_502():
             headers={"Authorization": f"Bearer {TOKEN}"},
         )
     assert resp.status_code == 502
+
+
+# ──────────────────────────────────────────────
+# /top-beats
+# ──────────────────────────────────────────────
+
+def _top_beats_payload():
+    """Payload sintético da YouTube Analytics API com dimensão video."""
+    return {
+        "columnHeaders": [
+            {"name": "video"},
+            {"name": "views"},
+            {"name": "averageViewPercentage"},
+        ],
+        "rows": [
+            ["abc111", 1243, 52.0],
+            ["def222", 687, 44.0],
+            ["ghi333", 405, 38.5],
+        ],
+    }
+
+
+def test_top_beats_sem_auth_da_401():
+    resp = client.get("/analytics/top-beats", headers={"Authorization": "Token x"})
+    assert resp.status_code == 401
+
+
+def test_top_beats_caminho_feliz_com_join_de_beats():
+    """Endpoint retorna views por vídeo + dados do beat correspondente."""
+    fake_supabase = MagicMock()
+    fake_supabase.table.return_value.select.return_value.eq.return_value.in_.return_value.execute.return_value.data = [
+        {
+            "youtube_video_id": "abc111",
+            "beats": {"id": "uuid-1", "titulo": "Travis Type Beat", "artista_nome": "Travis", "cover_path": "x/y.jpg"},
+        }
+    ]
+
+    with patch("app.routes.analytics.validate_token", return_value=_user()), patch(
+        "app.routes.analytics.youtube_analytics.get_top_beats",
+        return_value=_top_beats_payload(),
+    ), patch(
+        "app.services.supabase_service.get_admin_client",
+        return_value=fake_supabase,
+    ):
+        resp = client.get(
+            "/analytics/top-beats?period=7d&limit=5",
+            headers={"Authorization": f"Bearer {TOKEN}"},
+        )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["period"] == "7d"
+    assert len(body["items"]) == 3
+    assert body["items"][0]["video_id"] == "abc111"
+    assert body["items"][0]["views"] == 1243
+    assert body["items"][0]["retention_pct"] == 52.0
+    # abc111 tem beat correspondente
+    assert body["items"][0]["beat"]["titulo"] == "Travis Type Beat"
+    # def222 e ghi333 não estão no banco → beat=None
+    assert body["items"][1]["beat"] is None
+
+
+def test_top_beats_canal_sem_videos_retorna_lista_vazia():
+    """Canal sem videos publicados → rows: [] → items: []."""
+    with patch("app.routes.analytics.validate_token", return_value=_user()), patch(
+        "app.routes.analytics.youtube_analytics.get_top_beats",
+        return_value={"columnHeaders": [], "rows": []},
+    ):
+        resp = client.get(
+            "/analytics/top-beats",
+            headers={"Authorization": f"Bearer {TOKEN}"},
+        )
+
+    assert resp.status_code == 200
+    assert resp.json()["items"] == []
+
+
+def test_top_beats_period_invalido_da_400():
+    with patch("app.routes.analytics.validate_token", return_value=_user()):
+        resp = client.get(
+            "/analytics/top-beats?period=invalido",
+            headers={"Authorization": f"Bearer {TOKEN}"},
+        )
+    assert resp.status_code == 400
