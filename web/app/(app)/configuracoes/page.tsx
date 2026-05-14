@@ -195,14 +195,14 @@ function ConfiguracoesContent() {
     }
   }
 
-  async function handleTestarAnalytics() {
+  async function handleTestarAnalytics(periodo: '7d' | '30d' | '90d') {
     setDebugLoading(true)
     setDebugError(null)
     setDebugResult(null)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/login'); return }
-      const data = await fetchAnalyticsOverview(session.access_token, '7d')
+      const data = await fetchAnalyticsOverview(session.access_token, periodo)
       setDebugResult(data)
     } catch (e) {
       setDebugError(e instanceof Error ? e.message : 'Erro desconhecido')
@@ -522,19 +522,24 @@ function ConfiguracoesContent() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleTestarAnalytics}
-            disabled={debugLoading}
-            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-50"
-            style={{ background: 'var(--accent)' }}
-          >
-            {debugLoading ? (
-              <><Loader2 className="h-4 w-4 animate-spin" />Buscando…</>
-            ) : (
-              <><BarChart3 className="h-4 w-4" />Testar /analytics/overview (7 dias)</>
-            )}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {(['7d', '30d', '90d'] as const).map((periodo) => (
+              <button
+                key={periodo}
+                type="button"
+                onClick={() => handleTestarAnalytics(periodo)}
+                disabled={debugLoading}
+                className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-50"
+                style={{ background: 'var(--accent)' }}
+              >
+                {debugLoading ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" />Buscando…</>
+                ) : (
+                  <><BarChart3 className="h-4 w-4" />Testar {periodo}</>
+                )}
+              </button>
+            ))}
+          </div>
 
           {debugError && (
             <div className="flex items-start gap-3 rounded-lg border px-4 py-3 text-sm" style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)', color: '#f87171' }}>
