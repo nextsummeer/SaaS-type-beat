@@ -1,24 +1,18 @@
-import { AppSidebar } from '@/components/app-sidebar'
-import { SiteHeader } from '@/components/site-header'
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import { Sidebar } from '@/components/Sidebar'
+import { Topbar } from '@/components/Topbar'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="app-shell [--header-height:calc(--spacing(14))]"
-      style={{ background: 'var(--bg-base)' }}
-    >
-      <SidebarProvider className="flex flex-col">
-        <SiteHeader />
-        <div className="flex flex-1">
-          <AppSidebar />
-          <SidebarInset className="relative z-10" style={{ background: 'var(--bg-base)' }}>
-            <div className="mx-auto w-full max-w-6xl px-6 py-8 md:px-8">
-              {children}
-            </div>
-          </SidebarInset>
-        </div>
-      </SidebarProvider>
+    <div className="app-shell flex h-screen" style={{ background: 'var(--bg-base)' }}>
+      <Sidebar />
+      <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
+        <Topbar />
+        <main className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-6xl px-8 py-8">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   )
 }
