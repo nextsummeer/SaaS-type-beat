@@ -6,7 +6,7 @@
 
 **Iniciado:** 2026-05-14
 **Status:** em-execucao
-**Proximo passo:** T7.2 concluida (service + cache + 8 testes mockados verde). Proxima: T7.3 (endpoint REST `/api/analytics/overview`).
+**Proximo passo:** T7.3 concluida (endpoint overview + delta % vs periodo anterior + 16 testes verde). Proxima: T7.4 (endpoint `/api/analytics/top-beats`).
 **Tags:** beatpost, fase2-produto, analytics, youtube-analytics-api, backend-primeiro
 
 ## Contexto
@@ -93,7 +93,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 
 ### Bloco B — Endpoints REST
 
-#### `[ ]` T7.3 — `GET /api/analytics/overview?period=7d`
+#### `[x]` T7.3 — `GET /api/analytics/overview?period=7d`
 
 - **Arquivos:**
   - `api/app/routes/analytics.py` (novo)

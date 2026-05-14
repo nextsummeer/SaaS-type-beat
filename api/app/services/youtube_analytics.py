@@ -31,12 +31,18 @@ PERIODOS: dict[str, int] = {"7d": 7, "30d": 30, "90d": 90}
 # Helpers internos
 # ──────────────────────────────────────────────────────────────────────
 
-def _periodo_para_datas(periodo: str) -> tuple[date, date]:
-    """Converte '7d'/'30d'/'90d' em (start_date, end_date)."""
+def _periodo_para_datas(periodo: str, anterior: bool = False) -> tuple[date, date]:
+    """Converte '7d'/'30d'/'90d' em (start_date, end_date).
+
+    Se `anterior=True`, retorna o intervalo IMEDIATAMENTE ANTERIOR de mesmo tamanho.
+    Ex: periodo='7d' → atual = (hoje-7, hoje); anterior = (hoje-14, hoje-7).
+    """
     dias = PERIODOS.get(periodo)
     if dias is None:
         raise ValueError(f"Período inválido: {periodo!r}. Use {list(PERIODOS)}")
     end = date.today()
+    if anterior:
+        end = end - timedelta(days=dias)
     start = end - timedelta(days=dias)
     return start, end
 
@@ -144,15 +150,17 @@ def _get_or_fetch(
 # API pública — 4 relatórios
 # ──────────────────────────────────────────────────────────────────────
 
-def get_overview(user_id: str, periodo: str = "7d") -> dict:
+def get_overview(user_id: str, periodo: str = "7d", anterior: bool = False) -> dict:
     """Métricas agregadas do canal no período.
 
     Retorna o JSON cru da API com `rows` contendo
     [views, subscribersGained, averageViewPercentage].
-    Endpoints maiores (T7.3+) interpretam pra montar KPIs com delta.
+
+    Se `anterior=True`, busca o intervalo IMEDIATAMENTE anterior de mesmo
+    tamanho — usado pelo endpoint pra calcular delta % vs período anterior.
     """
-    start, end = _periodo_para_datas(periodo)
-    cache_key = f"overview:{periodo}"
+    start, end = _periodo_para_datas(periodo, anterior=anterior)
+    cache_key = f"overview:{periodo}:anterior" if anterior else f"overview:{periodo}"
 
     def fetcher(access_token: str) -> dict:
         return _reports_query(
@@ -165,6 +173,40 @@ def get_overview(user_id: str, periodo: str = "7d") -> dict:
         )
 
     return _get_or_fetch(user_id, cache_key, fetcher)
+
+
+def parse_overview_row(payload: dict) -> dict[str, float]:
+    """Extrai métricas do payload bruto da API.
+
+    Mapeia `rows[0]` aos `columnHeaders` por nome. Retorna 0 pra cada
+    métrica se `rows` estiver vazio (canal sem atividade no período).
+
+    Métricas esperadas: views, subscribersGained, averageViewPercentage.
+    """
+    rows = payload.get("rows") or []
+    if not rows:
+        return {"views": 0, "subscribersGained": 0, "averageViewPercentage": 0.0}
+
+    headers = [h["name"] for h in payload.get("columnHeaders", [])]
+    row = rows[0]
+    valores = dict(zip(headers, row))
+    return {
+        "views": int(valores.get("views") or 0),
+        "subscribersGained": int(valores.get("subscribersGained") or 0),
+        "averageViewPercentage": float(valores.get("averageViewPercentage") or 0.0),
+    }
+
+
+def calcula_delta_pct(atual: float, anterior: float) -> float:
+    """Calcula delta % entre dois valores.
+
+    - Se anterior == 0 e atual > 0 → 100% (cresceu do zero)
+    - Se ambos == 0 → 0%
+    - Caso normal → arredondado a 1 casa decimal
+    """
+    if anterior == 0:
+        return 100.0 if atual > 0 else 0.0
+    return round(((atual - anterior) / anterior) * 100, 1)
 
 
 def get_top_beats(user_id: str, periodo: str = "7d", limite: int = 5) -> dict:
