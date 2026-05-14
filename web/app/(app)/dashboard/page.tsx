@@ -2,72 +2,13 @@ import Link from 'next/link'
 import { healthCheck } from '@/lib/api'
 import {
   Upload,
-  Music2,
-  Eye,
-  CalendarClock,
   Zap,
   ArrowUpRight,
   ChevronRight,
-  Activity,
   Headphones,
 } from 'lucide-react'
 import { DashboardGreeting } from '@/components/DashboardGreeting'
-
-type Stat = {
-  label: string
-  value: string
-  icon: typeof Music2
-  spark: number[]
-}
-
-const stats: Stat[] = [
-  {
-    label: 'Beats publicados',
-    value: '—',
-    icon: Music2,
-    spark: [4, 8, 6, 12, 10, 14, 18],
-  },
-  {
-    label: 'Views totais',
-    value: '—',
-    icon: Eye,
-    spark: [6, 10, 8, 14, 12, 16, 20],
-  },
-  {
-    label: 'Em fila',
-    value: '—',
-    icon: Activity,
-    spark: [2, 4, 3, 6, 5, 7, 4],
-  },
-  {
-    label: 'Agendados',
-    value: '—',
-    icon: CalendarClock,
-    spark: [1, 2, 3, 2, 4, 3, 5],
-  },
-]
-
-function Sparkline({ data }: { data: number[] }) {
-  const max = Math.max(...data, 1)
-  const w = 80
-  const h = 24
-  const step = w / (data.length - 1)
-  const points = data
-    .map((v, i) => `${i * step},${h - (v / max) * h}`)
-    .join(' ')
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="opacity-70">
-      <polyline
-        fill="none"
-        stroke="var(--accent)"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points={points}
-      />
-    </svg>
-  )
-}
+import { DashboardStats } from '@/components/DashboardStats'
 
 export default async function DashboardPage() {
   const api = await healthCheck()
@@ -88,55 +29,8 @@ export default async function DashboardPage() {
         </Link>
       </section>
 
-      {/* STATS GRID */}
-      <section className="grid grid-cols-1 gap-3 rise rise-2 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((s) => {
-          const Icon = s.icon
-          return (
-            <div
-              key={s.label}
-              className="group relative overflow-hidden rounded-xl p-5 transition"
-              style={{
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border)',
-                boxShadow: 'var(--shadow-card)',
-              }}
-            >
-              <div className="flex items-start justify-between">
-                <p
-                  className="font-mono text-[10px] font-medium uppercase tracking-[0.18em]"
-                  style={{ color: 'var(--text-subtle)' }}
-                >
-                  {s.label}
-                </p>
-                <div
-                  className="flex h-7 w-7 items-center justify-center rounded-md transition group-hover:scale-110"
-                  style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-muted)' }}
-                >
-                  <Icon size={13} style={{ color: 'var(--text-muted)' }} />
-                </div>
-              </div>
-
-              <p className="num-hero mt-4 text-[36px]" style={{ color: 'var(--text-primary)' }}>
-                {s.value}
-              </p>
-
-              <div className="mt-3 flex items-center justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-subtle)' }}>
-                  últimos 7 dias
-                </span>
-                <Sparkline data={s.spark} />
-              </div>
-
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-px opacity-0 transition group-hover:opacity-100"
-                style={{ background: 'linear-gradient(90deg, transparent, var(--accent), transparent)' }}
-              />
-            </div>
-          )
-        })}
-      </section>
+      {/* STATS GRID — dados reais via /beats e /analytics/my-beats */}
+      <DashboardStats />
 
       {/* AÇÃO PRINCIPAL — upload */}
       <section
