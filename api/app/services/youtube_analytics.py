@@ -82,6 +82,26 @@ def _cache_set(user_id: str, cache_key: str, payload: dict) -> None:
     ).execute()
 
 
+def _get_channel_id(user_id: str) -> str:
+    """Busca o channel_id real do canal conectado pelo user.
+
+    Critico pra contas Brand: `channel==MINE` na YouTube Analytics API
+    pega o canal default da conta Google, nao o Brand. Pra evitar isso,
+    sempre passamos o channel_id explicito da tabela youtube_accounts.
+    """
+    client = get_admin_client()
+    result = (
+        client.table("youtube_accounts")
+        .select("channel_id")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    if not result.data:
+        raise ValueError(f"User {user_id} não tem canal YouTube conectado")
+    return result.data[0]["channel_id"]
+
+
 def _log_api_usage(user_id: str, cache_key: str, duration_ms: int) -> None:
     """Registra a chamada paga no api_usage (regra obrigatória do projeto)."""
     try:
@@ -100,11 +120,15 @@ def _log_api_usage(user_id: str, cache_key: str, duration_ms: int) -> None:
         logger.warning("Falha ao registrar api_usage: %s", exc)
 
 
-def _reports_query(access_token: str, params: dict[str, Any]) -> dict:
-    """Chamada genérica ao endpoint /v2/reports da YouTube Analytics API."""
+def _reports_query(access_token: str, channel_id: str, params: dict[str, Any]) -> dict:
+    """Chamada genérica ao endpoint /v2/reports da YouTube Analytics API.
+
+    Usa `channel==<channel_id>` explicito (NÃO `channel==MINE`) pra funcionar
+    com contas Brand (canal padrão diferente do canal real do produtor).
+    """
     resp = requests.get(
         REPORTS_URL,
-        params={"ids": "channel==MINE", **params},
+        params={"ids": f"channel=={channel_id}", **params},
         headers={"Authorization": f"Bearer {access_token}"},
         timeout=15,
     )
@@ -124,11 +148,13 @@ def _reports_query(access_token: str, params: dict[str, Any]) -> dict:
 def _get_or_fetch(
     user_id: str,
     cache_key: str,
-    fetcher: Callable[[str], dict],
+    fetcher: Callable[[str, str], dict],
 ) -> dict:
     """Pattern: cache hit retorna; cache miss chama fetcher + persiste + registra.
 
-    `fetcher` recebe o access_token (já renovado) e devolve o payload bruto.
+    `fetcher` recebe (access_token, channel_id) e devolve o payload bruto.
+    O channel_id é buscado do banco — necessário pra contas Brand onde
+    `channel==MINE` retorna o canal default (vazio) em vez do canal real.
     """
     cached = _cache_get(user_id, cache_key)
     if cached is not None:
@@ -137,8 +163,9 @@ def _get_or_fetch(
 
     logger.info("[analytics] cache MISS user=%s key=%s", user_id, cache_key)
     access_token = youtube_oauth.get_access_token(user_id)
+    channel_id = _get_channel_id(user_id)
     started = time.monotonic()
-    payload = fetcher(access_token)
+    payload = fetcher(access_token, channel_id)
     duration_ms = int((time.monotonic() - started) * 1000)
 
     _cache_set(user_id, cache_key, payload)
@@ -162,9 +189,10 @@ def get_overview(user_id: str, periodo: str = "7d", anterior: bool = False) -> d
     start, end = _periodo_para_datas(periodo, anterior=anterior)
     cache_key = f"overview:{periodo}:anterior" if anterior else f"overview:{periodo}"
 
-    def fetcher(access_token: str) -> dict:
+    def fetcher(access_token: str, channel_id: str) -> dict:
         return _reports_query(
             access_token,
+            channel_id,
             {
                 "startDate": start.isoformat(),
                 "endDate": end.isoformat(),
@@ -216,9 +244,10 @@ def get_top_beats(user_id: str, periodo: str = "7d", limite: int = 5) -> dict:
     start, end = _periodo_para_datas(periodo)
     cache_key = f"top-beats:{periodo}:{limite}"
 
-    def fetcher(access_token: str) -> dict:
+    def fetcher(access_token: str, channel_id: str) -> dict:
         return _reports_query(
             access_token,
+            channel_id,
             {
                 "startDate": start.isoformat(),
                 "endDate": end.isoformat(),
@@ -237,9 +266,10 @@ def get_traffic_sources(user_id: str, periodo: str = "7d") -> dict:
     start, end = _periodo_para_datas(periodo)
     cache_key = f"traffic-sources:{periodo}"
 
-    def fetcher(access_token: str) -> dict:
+    def fetcher(access_token: str, channel_id: str) -> dict:
         return _reports_query(
             access_token,
+            channel_id,
             {
                 "startDate": start.isoformat(),
                 "endDate": end.isoformat(),
@@ -259,9 +289,10 @@ def get_views_timeline(user_id: str, periodo: str = "7d") -> dict:
     dimensao = "month" if periodo == "90d" else "day"
     cache_key = f"views-timeline:{periodo}"
 
-    def fetcher(access_token: str) -> dict:
+    def fetcher(access_token: str, channel_id: str) -> dict:
         return _reports_query(
             access_token,
+            channel_id,
             {
                 "startDate": start.isoformat(),
                 "endDate": end.isoformat(),

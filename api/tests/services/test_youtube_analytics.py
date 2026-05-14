@@ -18,6 +18,7 @@ from app.services import youtube_analytics
 
 USER_ID = "11111111-1111-1111-1111-111111111111"
 ACCESS_TOKEN = "fake-access-token"
+CHANNEL_ID = "UCfakechannel123"
 
 
 # ──────────────────────────────────────────────
@@ -112,16 +113,18 @@ def test_get_overview_cache_miss_chama_api_e_persiste():
     ), patch.object(
         youtube_analytics.youtube_oauth, "get_access_token", return_value=ACCESS_TOKEN
     ) as mock_get_token, patch.object(
+        youtube_analytics, "_get_channel_id", return_value=CHANNEL_ID
+    ) as mock_get_channel, patch.object(
         youtube_analytics, "_reports_query", return_value=fresh_payload
     ) as mock_reports:
         result = youtube_analytics.get_overview(USER_ID, "30d")
 
     assert result == fresh_payload
     mock_get_token.assert_called_once_with(USER_ID)
-    mock_reports.assert_called_once()
+    mock_get_channel.assert_called_once_with(USER_ID)
+    # _reports_query foi chamado com channel_id explicito
+    assert mock_reports.call_args.args[1] == CHANNEL_ID
 
-    # Conferir que houve insert/upsert no analytics_cache + api_usage.
-    # O mesmo mock client é usado pra cache_set e api_usage_log.
     tables_called = [c.args[0] for c in miss_client.table.call_args_list]
     assert "analytics_cache" in tables_called
     assert "api_usage" in tables_called
@@ -138,26 +141,30 @@ def test_get_views_timeline_usa_month_para_90d():
     """Em 90d, agregamos por mês pra não retornar 90 pontos."""
     captured: dict = {}
 
-    def fake_reports(access_token, params):
+    def fake_reports(access_token, channel_id, params):
         captured["params"] = params
+        captured["channel_id"] = channel_id
         return {"rows": []}
 
     with patch.object(
         youtube_analytics, "get_admin_client", return_value=_mock_supabase_cache_miss()
     ), patch.object(
         youtube_analytics.youtube_oauth, "get_access_token", return_value=ACCESS_TOKEN
+    ), patch.object(
+        youtube_analytics, "_get_channel_id", return_value=CHANNEL_ID
     ), patch.object(
         youtube_analytics, "_reports_query", side_effect=fake_reports
     ):
         youtube_analytics.get_views_timeline(USER_ID, "90d")
 
     assert captured["params"]["dimensions"] == "month"
+    assert captured["channel_id"] == CHANNEL_ID
 
 
 def test_get_views_timeline_usa_day_para_periodos_curtos():
     captured: dict = {}
 
-    def fake_reports(access_token, params):
+    def fake_reports(access_token, channel_id, params):
         captured["params"] = params
         return {"rows": []}
 
@@ -165,6 +172,8 @@ def test_get_views_timeline_usa_day_para_periodos_curtos():
         youtube_analytics, "get_admin_client", return_value=_mock_supabase_cache_miss()
     ), patch.object(
         youtube_analytics.youtube_oauth, "get_access_token", return_value=ACCESS_TOKEN
+    ), patch.object(
+        youtube_analytics, "_get_channel_id", return_value=CHANNEL_ID
     ), patch.object(
         youtube_analytics, "_reports_query", side_effect=fake_reports
     ):
@@ -192,6 +201,8 @@ def test_cache_expirado_e_tratado_como_miss():
         youtube_analytics, "get_admin_client", return_value=mock
     ), patch.object(
         youtube_analytics.youtube_oauth, "get_access_token", return_value=ACCESS_TOKEN
+    ), patch.object(
+        youtube_analytics, "_get_channel_id", return_value=CHANNEL_ID
     ), patch.object(
         youtube_analytics, "_reports_query", return_value=fresh
     ):
