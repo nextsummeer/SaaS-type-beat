@@ -78,7 +78,8 @@ DASHBOARD mostra status + links YouTube
 
 - Plano fundador: [../plano-fundador.md](../plano-fundador.md) (copia do plan que originou o projeto, criada na T0.3)
 - Documentacao: `docs/_mapa.md` — **CONSULTAR SEMPRE** antes de buscar ou criar docs
-- Tarefas: `_tasks-mvp.md` — Ledger das fases 1-6 (formato Henrique)
+- Tarefas MVP: `_tasks-mvp.md` — Ledger das fases 1-6 (formato Henrique)
+- Tarefas Fase 2 do produto (Analytics adiantada): `_tasks-fase2-analytics.md` — Ledger paralelo iniciado 2026-05-13
 - Workflow: `.claude/rules/workflow.md`
 - Testes: `.claude/rules/testing.md`
 

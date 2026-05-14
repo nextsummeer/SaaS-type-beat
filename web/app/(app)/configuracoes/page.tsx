@@ -11,12 +11,14 @@ import {
   LinkIcon,
   Unplug,
   Calendar,
+  BarChart3,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
   fetchYoutubeAccount,
   disconnectYoutubeAccount,
   getYoutubeAuthUrl,
+  precisaReautorizarAnalytics,
   type YoutubeAccount,
 } from '@/lib/api'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -373,7 +375,56 @@ function ConfiguracoesContent() {
                 </button>
               </div>
             </div>
-          ) : (
+          ) : null}
+
+          {/* Banner: reautorizar pra liberar Analytics */}
+          {account && precisaReautorizarAnalytics(account) && (
+            <div
+              className="relative overflow-hidden rounded-xl p-5"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255,90,31,0.08), rgba(255,90,31,0.02))',
+                border: '1px solid rgba(255,90,31,0.25)',
+              }}
+            >
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full"
+                style={{ background: 'radial-gradient(circle, var(--accent-glow), transparent 70%)', opacity: 0.4 }}
+              />
+              <div className="relative flex items-start gap-3">
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                  style={{ background: 'var(--accent-muted)', border: '1px solid rgba(255,90,31,0.3)' }}
+                >
+                  <BarChart3 className="h-5 w-5" style={{ color: 'var(--accent)' }} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Libere o acesso ao Analytics
+                  </p>
+                  <p className="mt-1 text-[12px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                    Pra mostrar suas métricas reais do YouTube (views, inscritos ganhos, retenção)
+                    precisamos de uma permissão adicional. Você vai pro Google e confirma — leva 10 segundos.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleConectar}
+                    disabled={connecting}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-semibold text-white transition disabled:opacity-50"
+                    style={{ background: 'var(--accent)' }}
+                  >
+                    {connecting ? (
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin" />Redirecionando...</>
+                    ) : (
+                      <><LinkIcon className="h-3.5 w-3.5" />Autorizar acesso ao Analytics</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!account && !loadingCanal && (
             <div className="rounded-xl border p-8" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
               <div className="flex flex-col items-center text-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full" style={{ background: 'rgba(239,68,68,0.1)' }}>
@@ -381,8 +432,9 @@ function ConfiguracoesContent() {
                 </div>
                 <h3 className="mt-4 font-semibold" style={{ color: 'var(--text-primary)' }}>Conecte seu canal do YouTube</h3>
                 <p className="mt-2 max-w-md text-sm" style={{ color: 'var(--text-muted)' }}>
-                  Você será redirecionado pro Google pra autorizar o BeatPost a publicar vídeos no seu canal.
-                  A gente só pede a permissão de upload — não lê nem altera nada do seu canal.
+                  Você será redirecionado pro Google pra autorizar o BeatPost a publicar vídeos no seu canal
+                  e ler suas métricas (Analytics). A gente nunca altera nem apaga nada — só publica os beats
+                  que você agendou.
                 </p>
                 <button
                   type="button"
@@ -402,10 +454,23 @@ function ConfiguracoesContent() {
           )}
 
           <div className="rounded-lg border px-4 py-3 text-xs" style={{ borderColor: 'var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-subtle)' }}>
-            <p className="font-medium" style={{ color: 'var(--text-muted)' }}>Sobre a permissão solicitada</p>
-            <p className="mt-1">
-              Pedimos apenas o escopo <code className="rounded px-1" style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}>youtube.upload</code>.
-              Ele permite enviar vídeos novos no seu canal — não lê comentários, métricas nem listas. Você pode revogar a qualquer momento aqui ou em{' '}
+            <p className="font-medium" style={{ color: 'var(--text-muted)' }}>Sobre as permissões solicitadas</p>
+            <ul className="mt-1.5 space-y-1">
+              <li>
+                <code className="rounded px-1" style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}>youtube.upload</code>
+                {' '}— publicar os beats agendados no seu canal.
+              </li>
+              <li>
+                <code className="rounded px-1" style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}>youtube.readonly</code>
+                {' '}— ler informações do canal pra mostrar na UI.
+              </li>
+              <li>
+                <code className="rounded px-1" style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}>yt-analytics.readonly</code>
+                {' '}— ler suas métricas (views, retenção) pra mostrar em Analytics.
+              </li>
+            </ul>
+            <p className="mt-2">
+              A gente nunca apaga nem edita vídeos. Você pode revogar a qualquer momento aqui ou em{' '}
               <a
                 href="https://myaccount.google.com/permissions"
                 target="_blank"

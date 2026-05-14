@@ -21,7 +21,8 @@ YOUTUBE_CHANNELS_URL = "https://www.googleapis.com/youtube/v3/channels"
 
 YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
 YOUTUBE_READONLY_SCOPE = "https://www.googleapis.com/auth/youtube.readonly"
-REQUESTED_SCOPES = f"{YOUTUBE_UPLOAD_SCOPE} {YOUTUBE_READONLY_SCOPE}"
+YOUTUBE_ANALYTICS_SCOPE = "https://www.googleapis.com/auth/yt-analytics.readonly"
+REQUESTED_SCOPES = f"{YOUTUBE_UPLOAD_SCOPE} {YOUTUBE_READONLY_SCOPE} {YOUTUBE_ANALYTICS_SCOPE}"
 
 STATE_TTL_SECONDS = 600
 
@@ -196,11 +197,16 @@ def save_account(
 
 
 def get_connected_account(user_id: str) -> Optional[dict]:
-    """Retorna {channel_id, channel_title, connected_at} ou None."""
+    """Retorna {channel_id, channel_title, connected_at, scopes} ou None.
+
+    `scopes` lista os scopes OAuth efetivamente concedidos pelo Google
+    (vem direto do response do token exchange). Usado pra detectar quando
+    o usuário precisa reautorizar pra liberar features novas (ex: Analytics).
+    """
     client = get_admin_client()
     result = (
         client.table("youtube_accounts")
-        .select("channel_id, channel_title, created_at, updated_at")
+        .select("channel_id, channel_title, scopes, created_at, updated_at")
         .eq("user_id", user_id)
         .limit(1)
         .execute()
@@ -211,6 +217,7 @@ def get_connected_account(user_id: str) -> Optional[dict]:
     return {
         "channel_id": row["channel_id"],
         "channel_title": row["channel_title"],
+        "scopes": row.get("scopes") or [],
         "connected_at": row.get("created_at"),
         "updated_at": row.get("updated_at"),
     }

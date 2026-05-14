@@ -41,8 +41,18 @@ export async function fetchBeats(token: string): Promise<BeatListItem[]> {
 export interface YoutubeAccount {
   channel_id: string
   channel_title: string
+  scopes: string[]
   connected_at: string | null
   updated_at: string | null
+}
+
+/** Scope necessário pra ler dados do YouTube Analytics API. */
+export const YT_ANALYTICS_SCOPE = 'https://www.googleapis.com/auth/yt-analytics.readonly'
+
+/** True se a conta conectada ainda não autorizou leitura de Analytics. */
+export function precisaReautorizarAnalytics(account: YoutubeAccount | null): boolean {
+  if (!account) return false
+  return !account.scopes.includes(YT_ANALYTICS_SCOPE)
 }
 
 export async function fetchYoutubeAccount(token: string): Promise<YoutubeAccount | null> {
