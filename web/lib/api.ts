@@ -55,6 +55,35 @@ export function precisaReautorizarAnalytics(account: YoutubeAccount | null): boo
   return !account.scopes.includes(YT_ANALYTICS_SCOPE)
 }
 
+export interface AnalyticsOverviewMetric {
+  value: number
+  previous: number
+  delta_pct: number
+}
+
+export interface AnalyticsOverview {
+  period: string
+  views: AnalyticsOverviewMetric
+  subscribers_gained: AnalyticsOverviewMetric
+  retention: AnalyticsOverviewMetric
+}
+
+/** Busca KPIs do canal no período. T7.3. */
+export async function fetchAnalyticsOverview(
+  token: string,
+  period: '7d' | '30d' | '90d' = '7d',
+): Promise<AnalyticsOverview> {
+  const res = await fetch(`${API_URL}/analytics/overview?period=${period}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao buscar overview`)
+  }
+  return res.json()
+}
+
 export async function fetchYoutubeAccount(token: string): Promise<YoutubeAccount | null> {
   const res = await fetch(`${API_URL}/youtube/me`, {
     headers: { Authorization: `Bearer ${token}` },
