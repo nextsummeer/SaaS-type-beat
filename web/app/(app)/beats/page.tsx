@@ -19,22 +19,47 @@ interface Filtro {
   match: (b: BeatListItem) => boolean
 }
 
+/** Considera "postado" tanto published quanto scheduled cuja data já chegou. */
+function estaPostado(b: BeatListItem): boolean {
+  if (b.post_status === 'published') return true
+  if (b.post_status === 'scheduled' && b.scheduled_at && new Date(b.scheduled_at) <= new Date()) {
+    return true
+  }
+  return false
+}
+
+/** Agendado de verdade: scheduled mas ainda no futuro. */
+function estaAgendadoFuturo(b: BeatListItem): boolean {
+  return (
+    b.post_status === 'scheduled' &&
+    !!b.scheduled_at &&
+    new Date(b.scheduled_at) > new Date()
+  )
+}
+
 const FILTROS: Filtro[] = [
   { key: 'todos', label: 'Todos', cor: 'var(--text-muted)', match: () => true },
   {
     key: 'processando',
     label: 'Processando',
     cor: 'var(--led-warning)',
-    match: (b) => b.status !== 'failed' && b.status !== 'ready_for_review' && b.post_status !== 'scheduled' && b.post_status !== 'published',
+    match: (b) =>
+      b.status !== 'failed' &&
+      b.status !== 'ready_for_review' &&
+      b.post_status !== 'scheduled' &&
+      b.post_status !== 'published',
   },
   {
     key: 'rascunho',
     label: 'Rascunho',
     cor: 'var(--led-draft)',
-    match: (b) => b.status === 'ready_for_review' && b.post_status !== 'scheduled' && b.post_status !== 'published',
+    match: (b) =>
+      b.status === 'ready_for_review' &&
+      b.post_status !== 'scheduled' &&
+      b.post_status !== 'published',
   },
-  { key: 'agendado', label: 'Agendados', cor: 'var(--led-info)', match: (b) => b.post_status === 'scheduled' },
-  { key: 'postado', label: 'Postados', cor: 'var(--led-success)', match: (b) => b.post_status === 'published' },
+  { key: 'agendado', label: 'Agendados', cor: 'var(--led-info)', match: estaAgendadoFuturo },
+  { key: 'postado', label: 'Postados', cor: 'var(--led-success)', match: estaPostado },
   { key: 'falhou', label: 'Falhou', cor: 'var(--led-error)', match: (b) => b.status === 'failed' },
 ]
 
@@ -321,8 +346,8 @@ export default function BeatsPage() {
           )}
         </div>
 
-        {/* Chips de filtro — estilo LED */}
-        <div className="flex flex-wrap gap-1.5 rise rise-2">
+        {/* Chips de filtro */}
+        <div className="flex flex-wrap gap-2 rise rise-2">
           {FILTROS.map((f) => {
             const count = contagens[f.key]
             const ativo = filtro === f.key
@@ -331,27 +356,44 @@ export default function BeatsPage() {
                 key={f.key}
                 type="button"
                 onClick={() => setFiltro(f.key)}
-                className="group inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-[12px] font-medium transition"
+                className="group inline-flex items-center gap-2.5 rounded-full px-4 py-2 text-[14px] transition-colors"
                 style={{
-                  background: ativo ? 'var(--bg-elevated)' : 'var(--bg-surface)',
-                  border: ativo ? '1px solid var(--border-strong)' : '1px solid var(--border)',
+                  background: ativo ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  border: '1px solid',
+                  borderColor: ativo ? 'var(--border-strong)' : 'var(--border)',
                   color: ativo ? 'var(--text-primary)' : 'var(--text-muted)',
+                  fontWeight: ativo ? 500 : 400,
                 }}
                 onMouseEnter={(e) => {
-                  if (!ativo) e.currentTarget.style.background = 'var(--bg-elevated)'
+                  if (!ativo) {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.025)'
+                    e.currentTarget.style.color = 'var(--text-secondary)'
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  if (!ativo) e.currentTarget.style.background = 'var(--bg-surface)'
+                  if (!ativo) {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = 'var(--text-muted)'
+                  }
                 }}
               >
-                <span className="led" style={{ color: f.cor, opacity: ativo ? 1 : 0.5 }} />
-                <span>{f.label}</span>
                 <span
-                  className="font-mono text-[10px] tabular"
-                  style={{ color: ativo ? 'var(--text-secondary)' : 'var(--text-subtle)' }}
-                >
-                  {String(count).padStart(2, '0')}
-                </span>
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{
+                    background: f.cor,
+                    opacity: ativo ? 1 : 0.55,
+                    boxShadow: ativo ? `0 0 8px ${f.cor}` : 'none',
+                  }}
+                />
+                <span>{f.label}</span>
+                {count > 0 && (
+                  <span
+                    className="tabular text-[13px]"
+                    style={{ color: ativo ? 'var(--text-secondary)' : 'var(--text-subtle)' }}
+                  >
+                    {count}
+                  </span>
+                )}
               </button>
             )
           })}
@@ -369,7 +411,7 @@ export default function BeatsPage() {
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Nenhum beat neste estado.</p>
           </div>
         ) : vizualizacao === 'grade' ? (
-          <div className="grid grid-cols-2 gap-3 rise rise-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-7 rise rise-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {visiveis.map((b) => (
               <BeatCard
                 key={b.id}

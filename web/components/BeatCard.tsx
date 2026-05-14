@@ -76,7 +76,7 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
   const estado = estadoVisual(beat)
   const href = destino(beat)
 
-  const titulo = beat.titulo ?? '[Aguardando IA]'
+  const titulo = beat.titulo ?? 'Aguardando IA'
   const inicial = (beat.artista_nome ?? '?').trim().charAt(0).toUpperCase() || '?'
 
   function handleCardClick() {
@@ -93,40 +93,41 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
   return (
     <div
       onClick={handleCardClick}
-      className="group relative flex cursor-pointer flex-col overflow-hidden transition"
+      className="group relative flex cursor-pointer flex-col gap-3 transition-transform"
       style={{
-        background: 'var(--bg-surface)',
-        border: selecionado ? '1px solid var(--accent)' : '1px solid var(--border)',
-        borderRadius: 'var(--radius-md)',
-        boxShadow: selecionado ? '0 0 0 2px var(--accent-muted)' : 'var(--shadow-card)',
-        transition: 'transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
+        transition: 'transform 0.2s ease',
       }}
       onMouseEnter={(e) => {
-        if (!selecionado) {
-          e.currentTarget.style.borderColor = 'var(--border-strong)'
-          e.currentTarget.style.transform = 'translateY(-2px)'
-        }
+        if (!selecionado) e.currentTarget.style.transform = 'translateY(-3px)'
       }}
       onMouseLeave={(e) => {
-        if (!selecionado) {
-          e.currentTarget.style.borderColor = 'var(--border)'
-          e.currentTarget.style.transform = 'translateY(0)'
-        }
+        if (!selecionado) e.currentTarget.style.transform = 'translateY(0)'
       }}
     >
-      {/* Thumbnail */}
-      <div className="relative aspect-square w-full overflow-hidden" style={{ background: 'var(--bg-elevated)' }}>
+      {/* COVER — herói */}
+      <div
+        className="relative aspect-square w-full overflow-hidden"
+        style={{
+          background: 'var(--bg-elevated)',
+          borderRadius: 12,
+          border: selecionado ? '2px solid var(--accent)' : '1px solid var(--border)',
+          boxShadow: selecionado ? '0 0 0 3px var(--accent-muted)' : 'var(--shadow-card)',
+        }}
+      >
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={coverUrl}
             alt={titulo}
-            className={`h-full w-full object-cover transition ${modoSelecao ? '' : 'group-hover:scale-105'}`}
+            className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--bg-elevated), var(--bg-overlay))' }}>
+          <div
+            className="flex h-full w-full items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, var(--bg-elevated), var(--bg-overlay))' }}
+          >
             <span
-              className="font-display text-4xl font-semibold"
+              className="font-display text-5xl font-semibold"
               style={{ color: 'var(--text-subtle)', letterSpacing: '-0.04em' }}
             >
               {inicial}
@@ -134,29 +135,34 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
           </div>
         )}
 
-        {/* Overlay de hover discreto */}
+        {/* Overlay seleção */}
+        {modoSelecao && selecionado && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{ background: 'rgba(255,90,31,0.18)' }}
+          />
+        )}
+
+        {/* Overlay hover sutil */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-100"
-          style={{ background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.5))' }}
+          className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+          style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.35) 100%)' }}
         />
-
-        {modoSelecao && selecionado && (
-          <div className="absolute inset-0" style={{ background: 'var(--accent-muted)' }} />
-        )}
 
         {/* Checkbox seleção */}
         {modoSelecao && (
           <div
-            className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-md transition"
+            className="absolute left-3 top-3 flex h-6 w-6 items-center justify-center rounded-md transition"
             style={{
-              background: selecionado ? 'var(--accent)' : 'rgba(0,0,0,0.6)',
-              border: selecionado ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.3)',
+              background: selecionado ? 'var(--accent)' : 'rgba(0,0,0,0.55)',
+              border: selecionado ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.35)',
               color: '#fff',
               backdropFilter: 'blur(8px)',
             }}
           >
-            {selecionado && <Check className="h-3 w-3" strokeWidth={3} />}
+            {selecionado && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
           </div>
         )}
 
@@ -166,12 +172,12 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
             type="button"
             onClick={handleDeleteClick}
             title="Deletar beat"
-            className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-md opacity-0 transition group-hover:opacity-100"
+            className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg opacity-0 transition group-hover:opacity-100"
             style={{
-              background: 'rgba(0,0,0,0.65)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: 'rgba(255,255,255,0.8)',
-              backdropFilter: 'blur(8px)',
+              background: 'rgba(0,0,0,0.55)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              color: 'rgba(255,255,255,0.85)',
+              backdropFilter: 'blur(10px)',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'rgba(239,68,68,0.25)'
@@ -179,93 +185,63 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
               e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(0,0,0,0.65)'
-              e.currentTarget.style.color = 'rgba(255,255,255,0.8)'
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'
+              e.currentTarget.style.background = 'rgba(0,0,0,0.55)'
+              e.currentTarget.style.color = 'rgba(255,255,255,0.85)'
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'
             }}
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-3.5 w-3.5" />
           </button>
-        )}
-
-        {/* Status LED badge */}
-        <div
-          className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-1"
-          style={{
-            background: 'rgba(0,0,0,0.7)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            backdropFilter: 'blur(8px)',
-          }}
-        >
-          {estado.isLoading ? (
-            <Loader2 className="h-2.5 w-2.5 animate-spin" style={{ color: estado.cor }} />
-          ) : beat.status === 'failed' ? (
-            <AlertCircle className="h-2.5 w-2.5" style={{ color: estado.cor }} />
-          ) : (
-            <span className="led" style={{ color: estado.cor }} />
-          )}
-          <span
-            className="font-mono text-[9px] font-medium tracking-[0.1em]"
-            style={{ color: estado.cor }}
-          >
-            {estado.label}
-          </span>
-        </div>
-
-        {/* BPM/Key floating bottom-left */}
-        {(beat.bpm || beat.music_key) && (
-          <div className="absolute bottom-2 left-2 flex gap-1">
-            {beat.bpm && (
-              <span
-                className="font-mono text-[9px] font-semibold uppercase tracking-wider"
-                style={{
-                  color: 'rgba(255,255,255,0.95)',
-                  background: 'rgba(0,0,0,0.65)',
-                  padding: '2px 6px',
-                  borderRadius: 3,
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
-                {beat.bpm} BPM
-              </span>
-            )}
-            {beat.music_key && (
-              <span
-                className="font-mono text-[9px] font-semibold uppercase tracking-wider"
-                style={{
-                  color: 'rgba(255,255,255,0.95)',
-                  background: 'rgba(0,0,0,0.65)',
-                  padding: '2px 6px',
-                  borderRadius: 3,
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
-                {beat.music_key}
-              </span>
-            )}
-          </div>
         )}
       </div>
 
-      {/* Info */}
-      <div className="flex flex-1 flex-col gap-1.5 p-3">
+      {/* INFO — clean abaixo da cover (estilo Splice) */}
+      <div className="flex flex-col gap-1 px-0.5">
         <h3
-          className="line-clamp-2 text-[12px] font-semibold leading-snug"
+          className="line-clamp-1 text-[14.5px] font-medium leading-tight"
           style={{ color: 'var(--text-primary)' }}
           title={titulo}
         >
           {titulo}
         </h3>
-        <p className="truncate text-[11px]" style={{ color: 'var(--text-muted)' }}>
-          {beat.artista_nome ?? 'sem artista'}
-        </p>
-        <div
-          className="mt-auto flex items-center justify-between pt-1.5 font-mono text-[9px] uppercase tracking-wider"
-          style={{ color: 'var(--text-subtle)', borderTop: '1px solid var(--border-muted)' }}
+        <p
+          className="line-clamp-1 text-[12.5px] leading-tight"
+          style={{ color: 'var(--text-muted)' }}
         >
-          <span className="truncate">{formataData(beat.created_at)}</span>
+          {beat.artista_nome ?? 'Sem artista'}
+        </p>
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          {/* Status discreto */}
+          <div className="flex min-w-0 items-center gap-1.5">
+            {estado.isLoading ? (
+              <Loader2 className="h-3 w-3 shrink-0 animate-spin" style={{ color: estado.cor }} />
+            ) : beat.status === 'failed' ? (
+              <AlertCircle className="h-3 w-3 shrink-0" style={{ color: estado.cor }} />
+            ) : (
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ background: estado.cor }}
+              />
+            )}
+            <span
+              className="truncate text-[11.5px] font-medium"
+              style={{ color: estado.cor }}
+            >
+              {estado.label.charAt(0) + estado.label.slice(1).toLowerCase()}
+            </span>
+          </div>
+
+          {/* BPM / Key sutis */}
+          {(beat.bpm || beat.music_key) && (
+            <span
+              className="shrink-0 text-[11px] tabular"
+              style={{ color: 'var(--text-subtle)' }}
+            >
+              {beat.bpm ? `${beat.bpm} BPM` : ''}
+              {beat.bpm && beat.music_key ? ' · ' : ''}
+              {beat.music_key ?? ''}
+            </span>
+          )}
         </div>
       </div>
     </div>
