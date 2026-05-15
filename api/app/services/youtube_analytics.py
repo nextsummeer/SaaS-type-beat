@@ -22,9 +22,22 @@ logger = logging.getLogger(__name__)
 
 REPORTS_URL = "https://youtubeanalytics.googleapis.com/v2/reports"
 CACHE_TTL_HOURS = 24
+# TTL curto pra payloads vazios — evita envenenar cache 24h com glitch temporário
+# da API (ex: dados ainda não consolidados, bug do endDate=hoje, instabilidade do YT).
+CACHE_TTL_EMPTY_MINUTES = 30
 
 # Períodos suportados (string -> dias)
 PERIODOS: dict[str, int] = {"7d": 7, "30d": 30, "90d": 90}
+
+
+def _payload_is_empty(payload: dict) -> bool:
+    """True se o payload da API não tiver rows (vazio ou sem o campo).
+
+    Usado pra decidir o TTL do cache: payloads vazios podem ser dados temporariamente
+    indisponíveis (delay de consolidação, glitch da API), e cachear isso por 24h
+    bloqueia o usuário de ver dados reais que aparecem minutos depois.
+    """
+    return not payload.get("rows")
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -74,8 +87,15 @@ def _cache_get(user_id: str, cache_key: str) -> dict | None:
 
 
 def _cache_set(user_id: str, cache_key: str, payload: dict) -> None:
-    """Upsert no cache com TTL fixo (24h)."""
-    expires_at = datetime.now(timezone.utc) + timedelta(hours=CACHE_TTL_HOURS)
+    """Upsert no cache. TTL adaptativo: 24h pra payload com dados, 30min se vazio."""
+    if _payload_is_empty(payload):
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=CACHE_TTL_EMPTY_MINUTES)
+        logger.info(
+            "[analytics] payload vazio — TTL curto (%dmin) user=%s key=%s",
+            CACHE_TTL_EMPTY_MINUTES, user_id, cache_key,
+        )
+    else:
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=CACHE_TTL_HOURS)
     client = get_admin_client()
     client.table("analytics_cache").upsert(
         {

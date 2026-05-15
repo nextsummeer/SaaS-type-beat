@@ -182,6 +182,30 @@ def test_get_views_timeline_sempre_usa_day():
     assert all(p["dimensions"] == "day" for p in capturas)
 
 
+def test_cache_set_payload_com_dados_usa_ttl_longo():
+    """Payload com rows → TTL 24h normal."""
+    mock = MagicMock()
+    with patch.object(youtube_analytics, "get_admin_client", return_value=mock):
+        youtube_analytics._cache_set(USER_ID, "test-key", {"rows": [[1, 2, 3]]})
+
+    payload_salvo = mock.table.return_value.upsert.call_args.args[0]
+    expires_at = datetime.fromisoformat(payload_salvo["expires_at"])
+    delta = expires_at - datetime.now(timezone.utc)
+    assert timedelta(hours=23, minutes=58) < delta <= timedelta(hours=24)
+
+
+def test_cache_set_payload_vazio_usa_ttl_curto():
+    """Payload sem rows → TTL curto (30min), evita envenenar 24h com glitch."""
+    mock = MagicMock()
+    with patch.object(youtube_analytics, "get_admin_client", return_value=mock):
+        youtube_analytics._cache_set(USER_ID, "test-key", {"rows": []})
+
+    payload_salvo = mock.table.return_value.upsert.call_args.args[0]
+    expires_at = datetime.fromisoformat(payload_salvo["expires_at"])
+    delta = expires_at - datetime.now(timezone.utc)
+    assert timedelta(minutes=28) < delta <= timedelta(minutes=30)
+
+
 def test_cache_expirado_e_tratado_como_miss():
     """Cache com expires_at no passado deve ser ignorado."""
     expirado = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
