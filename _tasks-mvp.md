@@ -1,12 +1,12 @@
 # _tasks — [NOME] Fase 1 (MVP) @gustavo
 
 **Criado:** 2026-04-25
-**Atualizado:** 2026-05-13
+**Atualizado:** 2026-05-14
 **Outcome:** Produtor convidado faz login, escolhe estilo visual padrao (onboarding), conecta canal YouTube, sobe um beat (qualquer formato) informando artista de referencia (lista controlada + Spotify) e mood (cards visuais), opcionalmente envia capa propria, recebe capa gerada por IA + 3 variacoes A/B/C de titulo+descricao+tags geradas pela IA (com nomes inspirados em hits do artista via Spotify), edita o que quiser, confirma agendamento, e ve 3 videos publicados/agendados no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Meta: beta fechado setembro 2026.
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** T6.14-T6.18 concluidas (redesign visual pós-login). Pendentes: T5.6 (E2E conta de teste), T2.6-T2.12 (inputs completos: mood cards, seletor artista Spotify, estilos visuais), T4.6 (curadoria estilos capa IA), T6.1-T6.4 (dashboard cards reais + empty/error states).
+**Proximo passo:** Auditoria de 2026-05-14 confirmou que T2.8, T3.2, T6.1, T6.2, T6.3 ja estavam feitas (ledger desatualizado — marcadas [x]). Bloco capa IA (T2.6 mood/cover_source/visual_style, T2.10, T2.11, T4.6, T4.7, T4.8, T4.9, T4.10, T4.11) PAUSADO — Gustavo estudando abordagem, decisao na proxima semana. Proximas executaveis: T3.4 (usage_tracker centralizado) e T6.4 (README setup 10 passos). Apos decisao da capa, retomar T2.6-T2.12 + T4.6-T4.11.
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -264,17 +264,10 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** SQL seed com 80-100 rows valida. Spotify_id preenchido pra >= 90% (alguns artistas underground podem nao ter).
 - **Dependencia:** T2.6, T2.8 (precisa do spotify_service pra preencher IDs)
 
-#### `[ ]` T2.8 — Service: spotify_service.py (auth + search + top tracks)
+#### `[x]` T2.8 — Service: spotify_service.py (auth + search + top tracks)
 
 - **Arquivos:** `api/app/services/spotify_service.py`
-- **O que fazer:**
-  - Client Credentials Flow (env: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`)
-  - `search_artist(query: str) -> {name, id, popularity} | None` — primeira correspondencia ou None
-  - `get_top_tracks(artist_id: str, market='US') -> list[str]` — titulos das top 10 musicas
-  - Cache via Upstash Redis (TTL 7 dias) pra evitar chamadas duplicadas
-  - Erro graceful: timeout, rate limit, sem resultado
-- **Criterio de pronto:** `search_artist("drake")` retorna nome canonico "Drake". `get_top_tracks("drake_id")` retorna 10 titulos reais.
-- **Dependencia:** T0.4 (referencia spotify a criar)
+- **Status:** ✅ DONE (verificado em auditoria 2026-05-14). Implementacao real concluida em 2026-05-12 — ver entrada duplicada na Fase 4 abaixo. Client Credentials + get_top_tracks + cache de token em memoria. Cache Redis 7d nao implementado (decisao consciente: cache em memoria do processo basta no MVP).
 
 #### `[ ]` T2.9 — UI upload: campo artista com autocomplete + custom + validacao Spotify
 
@@ -358,12 +351,10 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Funcao retorna {bpm, music_key} para qualquer MP3 valido.
 - **Dependencia:** librosa, soundfile, ffmpeg (ja no nixpacks)
 
-#### `[ ]` T3.2 — Service: gemini_service.search_trending_tags (grounded)
+#### `[x]` T3.2 — Service: gemini_service.search_trending_tags (grounded)
 
 - **Arquivo:** `api/app/services/gemini_service.py`
-- **O que fazer:** Funcao `search_trending_tags(artistas[]) -> {tags[]}` usando Gemini com tool `google_search`. Prompt pede top tags de YouTube pra cada artista.
-- **Criterio de pronto:** Pra `["Drake", "The Weeknd"]` retorna 15+ tags com pelo menos 5 contendo "type beat"
-- **Dependencia:** T3.1
+- **Status:** ✅ DONE (verificado em auditoria 2026-05-14). Implementacao real concluida em 2026-05-12 — ver entrada duplicada na Fase 4 abaixo. gemini-2.5-flash + google_search tool + parse via regex + graceful fallback. Chamado em generate.py.
 
 #### `[x]` T3.3 — Worker analyze.py orquestra + atualiza beats
 
@@ -591,26 +582,20 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 
 > **Por que:** beta privado precisa estar minimamente apresentavel. Empty/error/loading states + convites.
 
-#### `[ ]` T6.1 — Dashboard lista beats com status + thumb + canal
+#### `[x]` T6.1 — Dashboard lista beats com status + thumb + canal
 
-- **Arquivos:** `web/app/(app)/dashboard/page.tsx`, `web/components/BeatCard.tsx`
-- **O que fazer:** Server component lista beats do user (RLS faz isolamento). Cada card: thumb da capa, titulo (variacao A), status, canal, data
-- **Criterio de pronto:** 3 beats criados → 3 cards corretos. Outro user nao ve.
-- **Dependencia:** T4.2
+- **Arquivos:** `web/app/(app)/beats/page.tsx`, `web/components/BeatCard.tsx`, `web/components/BeatListRow.tsx`
+- **Status:** ✅ DONE (verificado em auditoria 2026-05-14). Implementado como bonus da Fase 2 Analytics em 2026-05-14. Listagem real fica em `/beats` (nao /dashboard) com cards em grade ou lista (toggle), filtros por status, thumb da capa, titulo, status, data. Multitenant via RLS. Dashboard cards de metricas tambem foram entregues como bonus (contadores reais de publicados/em fila/agendados + views totais).
 
-#### `[ ]` T6.2 — Pagina /beats/[id] mostra 3 links YouTube + agenda
+#### `[x]` T6.2 — Pagina /beats/[id] mostra link YouTube + agenda
 
-- **Arquivos:** `web/app/(app)/beats/[id]/page.tsx`
-- **O que fazer:** Apos publicar, pagina mostra 3 cards com link YouTube clickavel, data agendada, status (agendado/publicado)
-- **Criterio de pronto:** Clica no link → abre video no YouTube
-- **Dependencia:** T5.4
+- **Arquivos:** `web/app/(app)/beats/[id]/review/page.tsx`
+- **Status:** ✅ DONE (verificado em auditoria 2026-05-14). Review page mostra link YouTube clicavel quando `youtube_video_id` existe, data agendada via DateTimePicker custom (T6.10), status (T6.11 bloqueia reagendamento se ja publicado). MVP foi simplificado pra 1 video por beat — entao "3 links" virou "1 link" conforme decisao de 2026-05-11.
 
-#### `[ ]` T6.3 — Empty state + error state + loading state em todas as paginas
+#### `[x]` T6.3 — Empty state + error state + loading state em todas as paginas
 
-- **Arquivos:** todas as paginas web + componentes shadcn `Skeleton`, `Alert`
-- **O que fazer:** Cada pagina com fetch tem 3 estados visualmente distintos
-- **Criterio de pronto:** Throttle de rede no devtools mostra loading. Forcar erro 500 mostra alert. User sem beats ve empty illustration.
-- **Dependencia:** T6.2
+- **Arquivos:** `web/app/(app)/beats/page.tsx`, `web/app/(app)/beats/[id]/page.tsx`, paginas de analytics
+- **Status:** ✅ DONE (verificado em auditoria 2026-05-14). /beats tem loading + error + empty states (linhas 167-248). /beats/[id] tem fetchError handling. Paginas de analytics tem skeletons especificos por bloco (entregue na T7.11). Dashboard usa DashboardStats com graceful fallback.
 
 #### `[ ]` T6.4 — README.md guia de setup local em 10 passos
 
@@ -772,6 +757,8 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 ---
 
 ## Historico de chats
+
+- **2026-05-14** — Sessao de planejamento "analise de nicho" (Fase 3 do produto, estilo VidIQ). Pesquisa profunda sobre VidIQ realizada (relatorio com 6 secoes: modelo, captura de dados, metricas, concorrentes, engenharia reversa, especifico de type beat). Descoberta-chave: VidIQ usa as mesmas APIs publicas que nos, moat e clickstream de 20M usuarios com extensao Chrome; volume de busca e ESTIMATIVA (admitido pela propria empresa); concorrente direto pro nicho e OutlierKit ($9-29/mes); custo viavel ($150-700/mes faixa 100-1000 usuarios). Decisao do Gustavo: usabilidade A+C (pagina dedicada + widget dashboard "ideias da semana"), caminho hibrido de fontes de dados (YouTube API + Spotify + autocomplete + Trends), modelo de creditos por tier no billing futuro. Analise de nicho fica como **Fase 3 do produto** apos MVP base fechar. Auditoria do MVP feita: T2.8, T3.2, T6.1, T6.2, T6.3 confirmadas como ja feitas (ledger desatualizado, marcadas [x]). Bloco capa IA (T2.6 parcial, T2.10, T2.11, T4.6-T4.11) PAUSADO — Gustavo estudando abordagem, decisao na proxima semana. Proximas executaveis decididas: T3.4 (usage_tracker centralizado) e T6.4 (README setup 10 passos).
 
 - **2026-05-13** — T6.14→T6.18: redesign visual interface pos-login. Inter + tokens CSS, sidebar redesenhada com grupos/icones, Dashboard no menu, toggle grade/lista em Beats (BeatListRow novo), upload centralizado, config em cards estilo Vaulto, dashboard com metricas placeholder. Skill frontend-design instalada. Proximo: redesign completo com cores Vaulto via /frontend-design na proxima sessao.
 
