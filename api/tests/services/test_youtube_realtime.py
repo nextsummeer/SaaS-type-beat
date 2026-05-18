@@ -90,8 +90,9 @@ def test_video_ids_vazio_retorna_dict_vazio_sem_chamar_api():
     """Sem video_ids: skip total, nao chama Supabase nem YouTube."""
     with patch("app.services.youtube_service.get_admin_client") as mock_supabase, \
          patch("app.services.youtube_service.build") as mock_build:
-        resultado = youtube_service.get_realtime_stats(USER_ID, [])
-    assert resultado == {}
+        stats, was_fresh = youtube_service.get_realtime_stats(USER_ID, [])
+    assert stats == {}
+    assert was_fresh is False
     mock_supabase.assert_not_called()
     mock_build.assert_not_called()
 
@@ -101,7 +102,7 @@ def test_video_ids_vazio_retorna_dict_vazio_sem_chamar_api():
 # ──────────────────────────────────────────────
 
 def test_cache_hit_nao_chama_youtube_api():
-    """Quando cache valido existe, NAO bate na API do YouTube."""
+    """Quando cache valido existe, NAO bate na API do YouTube. was_fresh=False."""
     cached_payload = {
         "abc123": {
             "view_count": 50, "like_count": 2, "comment_count": 1,
@@ -111,9 +112,10 @@ def test_cache_hit_nao_chama_youtube_api():
     with patch("app.services.youtube_service.get_admin_client", return_value=_mock_supabase_cache_hit(cached_payload)), \
          patch("app.services.youtube_service.build") as mock_build, \
          patch("app.services.youtube_service._load_account") as mock_load:
-        resultado = youtube_service.get_realtime_stats(USER_ID, ["abc123"])
+        stats, was_fresh = youtube_service.get_realtime_stats(USER_ID, ["abc123"])
 
-    assert resultado == cached_payload
+    assert stats == cached_payload
+    assert was_fresh is False
     mock_build.assert_not_called()
     mock_load.assert_not_called()
 
@@ -125,14 +127,15 @@ def test_cache_hit_filtra_apenas_video_ids_pedidos():
         "xyz789": {"view_count": 10, "like_count": 0, "comment_count": 0, "published_at": None, "title": "B", "privacy_status": "public"},
     }
     with patch("app.services.youtube_service.get_admin_client", return_value=_mock_supabase_cache_hit(cached_payload)):
-        resultado = youtube_service.get_realtime_stats(USER_ID, ["abc123"])
+        stats, was_fresh = youtube_service.get_realtime_stats(USER_ID, ["abc123"])
 
-    assert "abc123" in resultado
-    assert "xyz789" not in resultado
+    assert "abc123" in stats
+    assert "xyz789" not in stats
+    assert was_fresh is False
 
 
 def test_cache_miss_chama_youtube_api_e_popula_cache():
-    """Cache miss: chama API + salva no cache + retorna dict parseado."""
+    """Cache miss: chama API + salva no cache + retorna dict parseado. was_fresh=True."""
     mock_supabase = _mock_supabase_cache_miss()
     yt_client = _mock_youtube_client([_video_item("abc123", views=200, likes=10, comments=3)])
 
@@ -144,12 +147,13 @@ def test_cache_miss_chama_youtube_api_e_popula_cache():
         mock_load.return_value = {"account_id": "x", "scopes": []}
         mock_creds.return_value.valid = True
 
-        resultado = youtube_service.get_realtime_stats(USER_ID, ["abc123"])
+        stats, was_fresh = youtube_service.get_realtime_stats(USER_ID, ["abc123"])
 
-    assert resultado["abc123"]["view_count"] == 200
-    assert resultado["abc123"]["like_count"] == 10
-    assert resultado["abc123"]["comment_count"] == 3
-    assert resultado["abc123"]["privacy_status"] == "public"
+    assert stats["abc123"]["view_count"] == 200
+    assert stats["abc123"]["like_count"] == 10
+    assert stats["abc123"]["comment_count"] == 3
+    assert stats["abc123"]["privacy_status"] == "public"
+    assert was_fresh is True
     # API foi chamada exatamente 1x
     yt_client.videos.return_value.list.assert_called_once()
     # usage_tracker registrou 1 chunk
@@ -159,7 +163,7 @@ def test_cache_miss_chama_youtube_api_e_popula_cache():
 
 
 def test_force_refresh_ignora_cache_valido():
-    """force_refresh=True bate na API mesmo com cache valido (botao RELOAD)."""
+    """force_refresh=True bate na API mesmo com cache valido (botao RELOAD). was_fresh=True."""
     cached_payload = {"abc123": {"view_count": 1, "like_count": 0, "comment_count": 0, "published_at": None, "title": "old", "privacy_status": "public"}}
     yt_client = _mock_youtube_client([_video_item("abc123", views=999, likes=99, comments=9)])
 
@@ -171,10 +175,11 @@ def test_force_refresh_ignora_cache_valido():
         mock_load.return_value = {"account_id": "x", "scopes": []}
         mock_creds.return_value.valid = True
 
-        resultado = youtube_service.get_realtime_stats(USER_ID, ["abc123"], force_refresh=True)
+        stats, was_fresh = youtube_service.get_realtime_stats(USER_ID, ["abc123"], force_refresh=True)
 
     # Dados frescos da API, NAO do cache
-    assert resultado["abc123"]["view_count"] == 999
+    assert stats["abc123"]["view_count"] == 999
+    assert was_fresh is True
     yt_client.videos.return_value.list.assert_called_once()
 
 
@@ -183,7 +188,8 @@ def test_force_refresh_ignora_cache_valido():
 # ──────────────────────────────────────────────
 
 def test_video_deletado_nao_aparece_no_dict():
-    """Se video sumiu da resposta (deletado/removido), nao entra no resultado."""
+    """Se video sumiu da resposta (deletado/removido), nao entra no resultado.
+    was_fresh=True permite ao endpoint persistir youtube_deleted_at."""
     # Pedimos 2 IDs, API retorna so 1
     yt_client = _mock_youtube_client([_video_item("vivo123", views=100)])
 
@@ -195,10 +201,12 @@ def test_video_deletado_nao_aparece_no_dict():
         mock_load.return_value = {"account_id": "x", "scopes": []}
         mock_creds.return_value.valid = True
 
-        resultado = youtube_service.get_realtime_stats(USER_ID, ["vivo123", "deletado456"])
+        stats, was_fresh = youtube_service.get_realtime_stats(USER_ID, ["vivo123", "deletado456"])
 
-    assert "vivo123" in resultado
-    assert "deletado456" not in resultado
+    assert "vivo123" in stats
+    assert "deletado456" not in stats
+    # was_fresh=True sinaliza pro caller que a ausencia e signal certeiro de deletado
+    assert was_fresh is True
 
 
 def test_parse_converte_strings_em_int():
@@ -213,10 +221,10 @@ def test_parse_converte_strings_em_int():
         mock_load.return_value = {"account_id": "x", "scopes": []}
         mock_creds.return_value.valid = True
 
-        resultado = youtube_service.get_realtime_stats(USER_ID, ["abc"])
+        stats, _ = youtube_service.get_realtime_stats(USER_ID, ["abc"])
 
-    assert resultado["abc"]["view_count"] == 1234
-    assert isinstance(resultado["abc"]["view_count"], int)
+    assert stats["abc"]["view_count"] == 1234
+    assert isinstance(stats["abc"]["view_count"], int)
 
 
 def test_stats_ausentes_viram_zero():
@@ -237,11 +245,11 @@ def test_stats_ausentes_viram_zero():
         mock_load.return_value = {"account_id": "x", "scopes": []}
         mock_creds.return_value.valid = True
 
-        resultado = youtube_service.get_realtime_stats(USER_ID, ["novo123"])
+        stats, _ = youtube_service.get_realtime_stats(USER_ID, ["novo123"])
 
-    assert resultado["novo123"]["view_count"] == 5
-    assert resultado["novo123"]["like_count"] == 0
-    assert resultado["novo123"]["comment_count"] == 0
+    assert stats["novo123"]["view_count"] == 5
+    assert stats["novo123"]["like_count"] == 0
+    assert stats["novo123"]["comment_count"] == 0
 
 
 # ──────────────────────────────────────────────

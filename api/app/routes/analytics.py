@@ -129,18 +129,19 @@ def my_beats(
     # 1 unica chamada Data API (1 unit/chunk de 50) traz: stats + privacy + detecta deletados.
     # Substitui a combinacao antiga (list_videos_status + Analytics get_beats_stats = 2 units).
     try:
-        stats_por_video = youtube_service.get_realtime_stats(user_id, video_ids, force_refresh=force_refresh)
+        stats_por_video, was_fresh_call = youtube_service.get_realtime_stats(
+            user_id, video_ids, force_refresh=force_refresh
+        )
     except Exception as exc:
         logger.warning("my-beats: falha em get_realtime_stats user=%s: %s", user_id, exc)
-        stats_por_video = {}
+        stats_por_video, was_fresh_call = {}, False
 
-    # Detectar deletados: video_ids que nao voltaram do response (apenas se NAO veio do cache,
-    # senao a ausencia do cache nao implica deletado). Quando force_refresh=true OU quando o
-    # cache acabou de ser populado pela chamada acima, podemos confiar na ausencia.
-    if stats_por_video:  # so verifica se houve chamada bem-sucedida (cache hit ou refetch)
+    # Detectar deletados: video_ids que nao voltaram do response.
+    # So confiavel quando `was_fresh_call=True` (chamada fresh da API) — ausencia no
+    # cache pode ser so video novo nao indexado, nao deletado.
+    if was_fresh_call:
         deletados_agora = [vid for vid in video_ids if vid not in stats_por_video]
-        if deletados_agora and force_refresh:
-            # So persiste deletados quando o usuario clicou RELOAD (dado fresh confiavel)
+        if deletados_agora:
             from datetime import datetime, timezone
             agora_iso = datetime.now(timezone.utc).isoformat()
             for vid in deletados_agora:

@@ -229,7 +229,7 @@ def get_realtime_stats(
     user_id: str,
     video_ids: list[str],
     force_refresh: bool = False,
-) -> dict[str, dict]:
+) -> tuple[dict[str, dict], bool]:
     """Busca views/likes/comments/published_at quase em tempo real via Data API.
 
     Diferente do YouTube Analytics API (delay 24-48h), `videos.list?part=statistics,snippet`
@@ -241,18 +241,23 @@ def get_realtime_stats(
         force_refresh: se True, ignora cache e chama API novamente (botao RELOAD da UI)
 
     Returns:
-        dict {video_id: {view_count, like_count, comment_count, published_at, title}}
-        Videos nao encontrados (deletados) nao aparecem no dict.
+        Tupla (stats, was_fresh_call):
+            stats: dict {video_id: {view_count, like_count, comment_count, published_at, title, privacy_status}}
+                  Videos nao encontrados (deletados) nao aparecem no dict.
+            was_fresh_call: True se chamou a API agora (cache miss ou force_refresh),
+                           False se retornou dado do cache. Quando True, a ausencia de
+                           um video_id no dict significa que ele foi deletado/removido.
+                           Quando False, ausencia pode ser so cache desatualizado.
     """
     if not video_ids:
-        return {}
+        return {}, False
 
     # Cache hit: retorna dict cacheado se ainda valido
     if not force_refresh:
         cached = _realtime_cache_get(user_id)
         if cached is not None:
             # Filtra apenas os video_ids pedidos (cache pode ter outros videos antigos)
-            return {vid: cached[vid] for vid in video_ids if vid in cached}
+            return {vid: cached[vid] for vid in video_ids if vid in cached}, False
 
     account = _load_account(user_id)
     credentials = _build_credentials(account)
@@ -303,7 +308,7 @@ def get_realtime_stats(
 
     # Salva no cache (5min TTL)
     _realtime_cache_set(user_id, resultado)
-    return resultado
+    return resultado, True
 
 
 def upload_video(
