@@ -1,6 +1,9 @@
 import os
 import json
+import time
 import logging
+
+from app.services import usage_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +21,8 @@ def generate_metadata(
     producer_instagram: str | None,
     producer_email: str | None,
     store_link: str | None = None,
+    user_id: str | None = None,
+    beat_id: str | None = None,
 ) -> dict:
     """
     Usa Claude para gerar:
@@ -145,11 +150,27 @@ Responda APENAS com JSON válido neste formato exato:
   "tags": ["tag 1", "tag 2", "tag 3", ...]
 }}"""
 
+    started = time.monotonic()
     response = client.messages.create(
         model=MODEL,
         max_tokens=6000,
         messages=[{"role": "user", "content": prompt}],
         timeout=120,
+    )
+    duration_ms = int((time.monotonic() - started) * 1000)
+
+    # Registra custo em api_usage (tokens reais retornados pela Anthropic)
+    usage = getattr(response, "usage", None)
+    tokens_in = getattr(usage, "input_tokens", None) if usage else None
+    tokens_out = getattr(usage, "output_tokens", None) if usage else None
+    usage_tracker.track(
+        user_id=user_id,
+        feature="claude_sonnet_4_6",
+        tokens_in=tokens_in,
+        tokens_out=tokens_out,
+        duration_ms=duration_ms,
+        beat_id=beat_id,
+        metadata={"purpose": "generate_metadata", "model": MODEL},
     )
 
     raw = response.content[0].text.strip()

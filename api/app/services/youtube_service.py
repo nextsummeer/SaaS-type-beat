@@ -1,6 +1,7 @@
 """Upload de video pro YouTube usando OAuth do user (refresh token cifrado em youtube_accounts)."""
 import logging
 import os
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -10,7 +11,13 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 
+from app.services import usage_tracker
 from app.services.supabase_service import get_admin_client
+
+# Quota oficial YouTube Data API v3: videos.insert = 1600, thumbnails.set = 50
+# Total tipico por upload do MVP: 1650 units (registrado em api_usage.metadata)
+YOUTUBE_UPLOAD_QUOTA_UNITS = 1600
+YOUTUBE_THUMBNAIL_QUOTA_UNITS = 50
 
 logger = logging.getLogger(__name__)
 
@@ -187,10 +194,12 @@ def upload_video(
     scheduled_at: Optional[datetime] = None,
     privacy_status: str = "public",
     cover_path: Optional[str] = None,
+    beat_id: Optional[str] = None,
 ) -> dict:
     """
     Faz upload do MP4 no canal conectado do user.
     Retorna {video_id, url, scheduled, privacy_status_final}.
+    Registra consumo de quota (1600 + 50 units) em api_usage via usage_tracker.
     """
     if privacy_status not in ("public", "unlisted"):
         raise ValueError(f"privacy_status invalido: {privacy_status}")
@@ -224,6 +233,7 @@ def upload_video(
         user_id, body["status"]["privacyStatus"], is_scheduled, mp4_path,
     )
 
+    started = time.monotonic()
     request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
     response = None
     while response is None:
@@ -232,8 +242,11 @@ def upload_video(
             logger.info("[YT_UPLOAD] progresso %d%%", int(status.progress() * 100))
 
     video_id = response["id"]
+    upload_duration_ms = int((time.monotonic() - started) * 1000)
     logger.info("[YT_UPLOAD] concluido video_id=%s", video_id)
 
+    quota_units = YOUTUBE_UPLOAD_QUOTA_UNITS
+    thumbnail_applied = False
     if cover_path and os.path.exists(cover_path):
         try:
             youtube.thumbnails().set(
@@ -241,11 +254,27 @@ def upload_video(
                 media_body=MediaFileUpload(cover_path, mimetype="image/jpeg"),
             ).execute()
             logger.info("[YT_UPLOAD] thumbnail custom aplicada video=%s", video_id)
+            quota_units += YOUTUBE_THUMBNAIL_QUOTA_UNITS
+            thumbnail_applied = True
         except HttpError as exc:
             logger.warning(
                 "[YT_UPLOAD] thumbnail rejeitada (canal nao verificado?) video=%s erro=%s",
                 video_id, exc,
             )
+
+    # Registra consumo de quota (cost_usd = 0 — YouTube API e free, mas a quota e o gargalo)
+    usage_tracker.track(
+        user_id=user_id,
+        feature="youtube_upload",
+        duration_ms=upload_duration_ms,
+        beat_id=beat_id,
+        metadata={
+            "video_id": video_id,
+            "quota_units": quota_units,
+            "thumbnail_applied": thumbnail_applied,
+            "scheduled": is_scheduled,
+        },
+    )
 
     return {
         "video_id": video_id,

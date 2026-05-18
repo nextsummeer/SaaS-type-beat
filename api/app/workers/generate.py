@@ -67,7 +67,7 @@ def generate_beat(beat_id: str):
         #      + Gemini (usa nome composto — Google entende "A x B type beat")
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
         fut_spotify = executor.submit(get_top_tracks, artista_principal)
-        fut_gemini = executor.submit(search_trending_tags, artista_nome)
+        fut_gemini = executor.submit(search_trending_tags, artista_nome, user_id, beat_id)
         try:
             top_tracks = fut_spotify.result(timeout=15)
         except Exception as exc:
@@ -91,6 +91,8 @@ def generate_beat(beat_id: str):
             producer_instagram=profile.get("instagram"),
             producer_email=producer_email,
             store_link=beat.get("store_link"),
+            user_id=user_id,
+            beat_id=beat_id,
         )
 
         # 4. Insere 1 post (variacao='A')

@@ -1,12 +1,12 @@
 # _tasks — [NOME] Fase 1 (MVP) @gustavo
 
 **Criado:** 2026-04-25
-**Atualizado:** 2026-05-14
+**Atualizado:** 2026-05-18
 **Outcome:** Produtor convidado faz login, escolhe estilo visual padrao (onboarding), conecta canal YouTube, sobe um beat (qualquer formato) informando artista de referencia (lista controlada + Spotify) e mood (cards visuais), opcionalmente envia capa propria, recebe capa gerada por IA + 3 variacoes A/B/C de titulo+descricao+tags geradas pela IA (com nomes inspirados em hits do artista via Spotify), edita o que quiser, confirma agendamento, e ve 3 videos publicados/agendados no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Meta: beta fechado setembro 2026.
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** Auditoria de 2026-05-14 confirmou que T2.8, T3.2, T6.1, T6.2, T6.3 ja estavam feitas (ledger desatualizado — marcadas [x]). Bloco capa IA (T2.6 mood/cover_source/visual_style, T2.10, T2.11, T4.6, T4.7, T4.8, T4.9, T4.10, T4.11) PAUSADO — Gustavo estudando abordagem, decisao na proxima semana. Proximas executaveis: T3.4 (usage_tracker centralizado) e T6.4 (README setup 10 passos). Apos decisao da capa, retomar T2.6-T2.12 + T4.6-T4.11.
+**Proximo passo:** T3.4 (usage_tracker centralizado) **CONCLUIDA em 2026-05-18** — Claude+Gemini+YouTube agora registram em `api_usage` com cost_usd calculado. 22 testes verdes. Bloco capa IA (T2.6 mood/cover_source/visual_style, T2.10, T2.11, T4.6-T4.11) segue PAUSADO — Gustavo estudando. Proximas executaveis: T6.4 (README setup 10 passos). Apos decisao da capa, retomar T2.6-T2.12 + T4.6-T4.11.
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -363,11 +363,18 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Beat convertido → row tem bpm e music_key. Status=analyzed.
 - **Dependencia:** T3.1
 
-#### `[ ]` T3.4 — usage_tracker registra cost_usd em api_usage
+#### `[x]` T3.4 — usage_tracker registra cost_usd em api_usage
 
 - **Arquivo:** `api/app/services/usage_tracker.py`
-- **O que fazer:** Funcao `track(user_id, feature, tokens_in, tokens_out)` calcula cost_usd e insere em `api_usage`. Chamada nas T3.1 e T3.2.
-- **Criterio de pronto:** Apos analyze, `api_usage` tem 2 rows (gemini_audio + gemini_search) com cost_usd > 0
+- **O que fazer (escopo executado 2026-05-18, atualizado em relacao ao plano original):**
+  - Modulo `usage_tracker.py` com `track(user_id, feature, tokens_in, tokens_out, duration_ms, beat_id, metadata)` e tabela `PRICING` (Claude Sonnet 4.6, Gemini 2.5 Flash, YouTube upload, fal.ai gpt-image-2).
+  - Plugado em `gemini_service.search_trending_tags` (tokens via `usage_metadata`).
+  - Plugado em `anthropic_service.generate_metadata` (tokens via `response.usage`).
+  - Plugado em `youtube_service.upload_video` (quota units 1600 + 50 thumbnail no metadata).
+  - Workers `generate.py` e `publish.py` passam `user_id` + `beat_id`.
+  - Falha silenciosa: `try/except` envolvendo o INSERT — nunca derruba o pipeline.
+  - Escopo NAO incluido: Gemini audio (descartado, analise hoje e librosa local), fal.ai (capa IA pausada), Supabase storage egress (sem medicao por chamada).
+- **Criterio de pronto:** Apos `generate.py` rodar, `api_usage` tem 2 rows (claude_sonnet_4_6 + gemini_2_5_flash com cost_usd > 0). Apos `publish.py`, 1 row youtube_upload com quota_units no metadata. 22 testes existentes seguem passando.
 - **Dependencia:** T3.3
 
 #### `[ ]` T3.5 — Test: analise de beat real
@@ -757,6 +764,8 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 ---
 
 ## Historico de chats
+
+- **2026-05-18** — T3.4 (usage_tracker centralizado) concluida. Novo modulo `api/app/services/usage_tracker.py` com `track()` + tabela `PRICING` (Claude Sonnet 4.6, Gemini 2.5 Flash, YouTube upload, fal.ai gpt-image-2). Plugado em `gemini_service.search_trending_tags`, `anthropic_service.generate_metadata` e `youtube_service.upload_video`. Workers `generate.py` e `publish.py` agora passam `user_id` + `beat_id`. Falha silenciosa: try/except no INSERT nunca derruba o pipeline. Escopo original do ledger (Gemini audio) ficou obsoleto — analise hoje e librosa local, sem custo. Sessao iniciada pela pergunta "como estao os custos da operacao" — apresentado panorama de plataformas fixas (~$5/mes Railway, resto free tier) e custos variaveis estimados por upload (~$0.05-0.07 sem capa IA, dominado pelo Claude). Gargalo real do MVP nao e custo monetario, e quota YouTube (10k units/dia = ~6 uploads no projeto todo). 22 testes existentes seguem verdes.
 
 - **2026-05-14** — Sessao de planejamento "analise de nicho" (Fase 3 do produto, estilo VidIQ). Pesquisa profunda sobre VidIQ realizada (relatorio com 6 secoes: modelo, captura de dados, metricas, concorrentes, engenharia reversa, especifico de type beat). Descoberta-chave: VidIQ usa as mesmas APIs publicas que nos, moat e clickstream de 20M usuarios com extensao Chrome; volume de busca e ESTIMATIVA (admitido pela propria empresa); concorrente direto pro nicho e OutlierKit ($9-29/mes); custo viavel ($150-700/mes faixa 100-1000 usuarios). Decisao do Gustavo: usabilidade A+C (pagina dedicada + widget dashboard "ideias da semana"), caminho hibrido de fontes de dados (YouTube API + Spotify + autocomplete + Trends), modelo de creditos por tier no billing futuro. Analise de nicho fica como **Fase 3 do produto** apos MVP base fechar. Auditoria do MVP feita: T2.8, T3.2, T6.1, T6.2, T6.3 confirmadas como ja feitas (ledger desatualizado, marcadas [x]). Bloco capa IA (T2.6 parcial, T2.10, T2.11, T4.6-T4.11) PAUSADO — Gustavo estudando abordagem, decisao na proxima semana. Proximas executaveis decididas: T3.4 (usage_tracker centralizado) e T6.4 (README setup 10 passos).
 

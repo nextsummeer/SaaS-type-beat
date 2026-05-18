@@ -130,6 +130,7 @@ def publish_beat(beat_id: str):
             scheduled_at=scheduled_at,
             privacy_status=privacy_status,
             cover_path=tmp_cover,
+            beat_id=beat_id,
         )
 
         post_status = "scheduled" if result["scheduled"] else "published"
