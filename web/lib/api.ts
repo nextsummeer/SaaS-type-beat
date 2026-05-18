@@ -139,8 +139,10 @@ export interface AnalyticsMyBeatItem {
   cover_path: string | null
   youtube_url: string | null
   privacy_status: YoutubePrivacyStatus
-  views: number
-  retention_pct: number
+  view_count: number
+  like_count: number
+  comment_count: number
+  published_at: string | null
 }
 
 export interface AnalyticsMyBeats {
@@ -148,12 +150,13 @@ export interface AnalyticsMyBeats {
   items: AnalyticsMyBeatItem[]
 }
 
-/** Lista beats publicados pelo BeatPost com stats individuais. */
+/** Lista beats publicados pelo BeatPost com stats lifetime quase em tempo real (Data API). */
 export async function fetchAnalyticsMyBeats(
   token: string,
-  period: '7d' | '30d' | '90d' = '7d',
+  options: { period?: '7d' | '30d' | '90d'; forceRefresh?: boolean } = {},
 ): Promise<AnalyticsMyBeats> {
-  const url = `${API_URL}/analytics/my-beats?period=${period}`
+  const { period = '7d', forceRefresh = false } = options
+  const url = `${API_URL}/analytics/my-beats?period=${period}${forceRefresh ? '&force_refresh=true' : ''}`
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',

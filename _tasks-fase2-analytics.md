@@ -223,6 +223,51 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 
 ---
 
+### Bloco E — Realtime stats (Data API, pos-fechamento Fase 2)
+
+#### `[x]` T7.12 — Likes/comments/published_at em tempo real + botao RELOAD
+
+- **Contexto:** Sessao 2026-05-18, Gustavo viu print do BeatStore Pro mostrando
+  views/likes/comments quase em tempo real (beat publicado ha 1h ja tinha 3
+  views; comentario aparecia em 2min ao clicar RELOAD). Audit do
+  `youtube_analytics.py` mostrou que ele usa Analytics API (delay 24-48h).
+  Decisao: complementar com Data API (`videos.list?part=statistics,snippet`)
+  que tem latencia de minutos.
+- **Arquivos:**
+  - `api/app/services/youtube_service.py` — novo metodo `get_realtime_stats(user_id, video_ids)`
+  - `api/app/routes/analytics.py` — modificar `/analytics/my-beats` pra incluir likes/comments/published_at
+  - `api/tests/services/test_youtube_realtime.py` (novo) ou estender existente
+  - `web/lib/api.ts` — atualizar tipo `AnalyticsMyBeatItem`
+  - `web/app/(app)/analytics/beats/page.tsx` — cards com likes/comments/data + botao RELOAD + sort por likes/comments + search
+- **O que fazer:**
+  1. `get_realtime_stats(user_id, video_ids)`: chama `videos.list?part=statistics,snippet`,
+     retorna dict `{video_id: {view_count, like_count, comment_count, published_at, title}}`.
+     Custo 1 unit a cada 50 IDs.
+  2. Cache via `analytics_cache` existente com TTL 5min (constante nova
+     `CACHE_TTL_REALTIME_MINUTES = 5`). `cache_key` formato `realtime:<hash_video_ids>`.
+  3. Endpoint `/analytics/my-beats` recebe parametro opcional `?force_refresh=true`
+     que bypassa o cache realtime (mas nao o Analytics).
+  4. Registrar em `api_usage` cada chamada via `usage_tracker.track()` com
+     `feature='youtube_data_api'`, `quota_units=1` por chunk de 50 video_ids.
+  5. Frontend: cards renderizam icone olho + numero, coracao + numero, balao
+     + numero, data formatada `DD/MM/YYYY`. Substituir coluna retention.
+  6. Botao RELOAD no header: dispara refetch com `force_refresh=true` e
+     mostra spin animado durante a chamada.
+  7. Sort por NEWEST (published_at desc), VIEWS, LIKES, COMMENTS — botoes
+     toggleaveis. Search por titulo: filtro client-side simples.
+- **Criterio de pronto:**
+  - Beat publicado ha minutos ja mostra views/likes/comments reais ao
+    clicar RELOAD
+  - F5 normal pega cache (rapido, sem custo de quota)
+  - RELOAD gasta exatamente 1 unit por chunk de 50 beats (registrado em api_usage)
+  - Sort e search funcionam client-side sem refetch
+  - Testes do service passam (mockando build YouTube client)
+  - `pnpm typecheck` passa
+- **Dependencia:** T7.4 (estrutura do endpoint /analytics/my-beats ja existe)
+- **Estimativa:** ~half day (backend 2h + frontend 2-3h + testes 1h)
+
+---
+
 ## Criterio de pronto da Fase
 
 - [x] Gustavo abre `/analytics` no seu proprio canal e ve os 4 beats publicados refletidos nas metricas
@@ -257,4 +302,5 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 ## Historico de chats
 
 - **2026-05-13** — Sessao de planejamento da Fase 2 Analytics (adiantada do plano de produto). Decisao: backend primeiro, sem IA na v1, comparacoes internas (nao com nicho externo), sem mood. Arquivo criado, aguardando OK do Gustavo pra comecar T7.1.
+- **2026-05-18** — T7.12 entregue: realtime stats (views/likes/comments/published_at) via Data API substituiu retention da Analytics API na pagina /analytics/beats. Trigger: Gustavo viu print do BeatStore Pro com stats atualizando em minutos via botao RELOAD. Audit revelou que /analytics/my-beats fazia 2 chamadas (list_videos_status + get_beats_stats), refatorado pra 1 sa chamada via novo `get_realtime_stats` em youtube_service.py com cache 5min e param `force_refresh=true`. Decisoes: caminho A (manter URL /analytics/beats, esconder period selector), cache 5min, retention substituida por likes/comments. UI ganhou: card de 4 totais (beats/views/likes/comments), barra de busca por titulo/artista, 4 pills de sort (Mais novo/Views/Likes/Comentarios), botao Reload com spin animado. Backend ganhou: 9 testes novos (test_youtube_realtime.py) cobrindo cache hit/miss/force_refresh + parsing + deteccao deletado + quota tracking. 31/31 testes routes/services passam, typecheck zero erro. Commit pendente.
 - **2026-05-14** — Sessao completa T7.1-T7.11. T7.1 (OAuth scope + reautorizacao banner) → T7.2 (service + cache 24h, 8 testes) → T7.3 (endpoint /overview + delta vs periodo anterior). Durante testes, descobertos 3 bugs e corrigidos em sequencia: (a) cache stale com snapshot zerado, (b) hipotese Brand Account descartada apos comparar channel_id, (c) intervalo de datas incluindo "hoje" fazia API retornar 0 (fix: terminar em ontem). Hipotese final confirmada pelo Gustavo: vídeos antigos privatizados confundiam agregado do canal — solucao foi adicionar endpoint /analytics/my-beats que filtra por video_ids especificos da tabela posts. Decidido pivotar pra entregar T7.4-T7.7 + UI em uma sentada. Sub-paginas (visao geral / beats / fontes) criadas como bonus, com sidebar suportando sub-itens. T7.5 + T7.6 (traffic-sources + views-timeline) entregues. Refatorado timeline pra 'day' em todos os periodos (90d com 'month' retornava vazio). Toggle Views/Inscritos com prefetch paralelo. Notas explicativas de escopo em cada sub-pagina. Bonus: deteccao de video deletado/privado/unlisted (campo `youtube_deleted_at` + filtro 'Removidos' em /beats) e dashboard cards reais (T6.1-T6.4 do MVP). Polimento (T7.11): banner reauth + skeletons + erros ja estavam presentes desde o inicio das paginas. Documentacao em `docs/arquitetura/analytics-pipeline.md` criada. **Fase 2 concluida e em producao.**

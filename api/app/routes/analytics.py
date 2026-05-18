@@ -44,17 +44,20 @@ def _valida_periodo(periodo: str) -> str:
 
 @router.get("/my-beats")
 def my_beats(
-    period: str = Query("7d", description="7d, 30d ou 90d"),
+    period: str = Query("7d", description="Mantido por compat — stats agora sao lifetime via Data API"),
+    force_refresh: bool = Query(False, description="Bypassa cache de 5min (botao RELOAD da UI)"),
     authorization: str = Header(...),
 ):
-    """Lista beats publicados pelo BeatPost com suas stats individuais.
+    """Lista beats publicados pelo BeatPost com stats lifetime quase em tempo real.
 
-    Diferente de /top-beats que pega TOP global do canal, esse filtra
-    APENAS pelos beats que existem na tabela `posts` do user (ou seja,
-    beats publicados via BeatPost). Ignora videos antigos do canal.
+    Usa YouTube Data API (`videos.list?part=statistics,snippet,status`) que retorna
+    metricas em minutos (vs Analytics API que tem delay 24-48h). Stats sao LIFETIME
+    (totais desde upload), nao por periodo — por isso `period` virou no-op aqui.
 
-    Beats que ainda não têm views (api retorna 0 ou nem retorna) entram
-    na lista mesmo assim, com views=0, pra UI mostrar tudo que foi publicado.
+    Cache 5min via `analytics_cache`. `force_refresh=true` ignora cache (botao RELOAD).
+
+    Detecta videos deletados automaticamente: se video_id nao volta no response,
+    foi removido do YouTube → persiste `youtube_deleted_at`.
 
     Retorna:
         {
@@ -67,8 +70,11 @@ def my_beats(
               "artista_nome": "...",
               "cover_path": "...",
               "youtube_url": "https://...",
-              "views": 1243,
-              "retention_pct": 52.0
+              "privacy_status": "public",
+              "view_count": 1243,
+              "like_count": 27,
+              "comment_count": 3,
+              "published_at": "2026-05-18T15:30:00Z"
             },
             ...
           ]
@@ -77,12 +83,12 @@ def my_beats(
     user_id = _autentica(authorization)
     periodo = _valida_periodo(period)
 
-    # Buscar todos os beats publicados (posts com youtube_video_id)
     from app.services.supabase_service import get_admin_client
+    from app.services import youtube_service
 
     client = get_admin_client()
     try:
-        # titulo mora em posts (escolhido pela IA na revisão); artista_nome e cover_path moram em beats
+        # titulo mora em posts (escolhido pela IA na revisao); artista_nome e cover_path moram em beats
         posts_data = (
             client.table("posts")
             .select(
@@ -95,7 +101,7 @@ def my_beats(
         logger.error("my-beats: falha ao buscar posts user=%s: %s", user_id, exc)
         raise HTTPException(status_code=500, detail=f"Erro ao consultar banco: {exc}")
 
-    # Filtrar manualmente os posts com video_id e beat válido, e que ainda existem no YouTube
+    # Filtrar manualmente os posts com video_id e beat valido, e que ainda existem no YouTube
     posts_lista = [
         p for p in (posts_data.data or [])
         if p.get("youtube_video_id") and p.get("beats") and not p.get("youtube_deleted_at")
@@ -120,24 +126,21 @@ def my_beats(
             "youtube_url": p.get("youtube_url"),
         }
 
-    # Verificar estado atual de cada video no YouTube.
-    # Custa 1 unit (videos.list até 50 IDs). Aqui:
-    #   - retorna privacy_status atual (public/private/unlisted)
-    #   - se video sumiu da resposta, foi deletado → persiste em youtube_deleted_at
-    privacy_por_video: dict[str, str] = {}
+    # 1 unica chamada Data API (1 unit/chunk de 50) traz: stats + privacy + detecta deletados.
+    # Substitui a combinacao antiga (list_videos_status + Analytics get_beats_stats = 2 units).
     try:
-        from app.services import youtube_service
+        stats_por_video = youtube_service.get_realtime_stats(user_id, video_ids, force_refresh=force_refresh)
+    except Exception as exc:
+        logger.warning("my-beats: falha em get_realtime_stats user=%s: %s", user_id, exc)
+        stats_por_video = {}
 
-        status_map = youtube_service.list_videos_status(user_id, video_ids)
-        deletados_agora: list[str] = []
-        for vid, status in status_map.items():
-            if status is None:
-                deletados_agora.append(vid)
-            else:
-                privacy_por_video[vid] = status
-
-        # Persistir os deletados pra próxima vez nem precisar consultar
-        if deletados_agora:
+    # Detectar deletados: video_ids que nao voltaram do response (apenas se NAO veio do cache,
+    # senao a ausencia do cache nao implica deletado). Quando force_refresh=true OU quando o
+    # cache acabou de ser populado pela chamada acima, podemos confiar na ausencia.
+    if stats_por_video:  # so verifica se houve chamada bem-sucedida (cache hit ou refetch)
+        deletados_agora = [vid for vid in video_ids if vid not in stats_por_video]
+        if deletados_agora and force_refresh:
+            # So persiste deletados quando o usuario clicou RELOAD (dado fresh confiavel)
             from datetime import datetime, timezone
             agora_iso = datetime.now(timezone.utc).isoformat()
             for vid in deletados_agora:
@@ -148,48 +151,17 @@ def my_beats(
                     client.table("posts").update(
                         {"youtube_deleted_at": agora_iso}
                     ).eq("id", post_id).execute()
-                    # Remove da listagem
                     beat_por_video.pop(vid, None)
                 except Exception as exc:
                     logger.warning(
                         "my-beats: falha ao marcar deleted vid=%s post=%s: %s",
                         vid, post_id, exc,
                     )
-            # Atualiza video_ids pra chamada do Analytics ignorar os deletados
-            video_ids = [v for v in video_ids if v not in deletados_agora]
-    except Exception as exc:
-        # Não derrubar o endpoint inteiro se a checagem de status falhar
-        logger.warning("my-beats: falha em list_videos_status user=%s: %s", user_id, exc)
 
-    if not video_ids:
-        return {"period": periodo, "items": []}
-
-    # Buscar stats do YouTube Analytics filtrado por esses video_ids
-    try:
-        raw = youtube_analytics.get_beats_stats(user_id, video_ids, periodo)
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
-    except RuntimeError as exc:
-        logger.error("my-beats falhou no Google pra user=%s: %s", user_id, exc)
-        # Em vez de retornar 502, retorna a lista com zeros pra UI nao quebrar
-        raw = {"columnHeaders": [], "rows": []}
-
-    # Parse: mapear video_id → stats
-    headers = [h["name"] for h in raw.get("columnHeaders", [])]
-    stats_por_video: dict[str, dict] = {}
-    for row in raw.get("rows") or []:
-        valores = dict(zip(headers, row))
-        vid = valores.get("video")
-        if vid:
-            stats_por_video[vid] = {
-                "views": int(valores.get("views") or 0),
-                "retention_pct": round(float(valores.get("averageViewPercentage") or 0), 1),
-            }
-
-    # Montar lista final: TODOS os beats publicados (mesmo sem views)
+    # Montar lista final: TODOS os beats publicados (mesmo sem stats — entram com zeros)
     items = []
     for vid, info in beat_por_video.items():
-        stats = stats_por_video.get(vid, {"views": 0, "retention_pct": 0.0})
+        stats = stats_por_video.get(vid, {})
         items.append({
             "beat_id": info["beat_id"],
             "video_id": vid,
@@ -197,13 +169,15 @@ def my_beats(
             "artista_nome": info["artista_nome"],
             "cover_path": info["cover_path"],
             "youtube_url": info["youtube_url"],
-            "privacy_status": privacy_por_video.get(vid, "public"),
-            "views": stats["views"],
-            "retention_pct": stats["retention_pct"],
+            "privacy_status": stats.get("privacy_status") or "public",
+            "view_count": stats.get("view_count", 0),
+            "like_count": stats.get("like_count", 0),
+            "comment_count": stats.get("comment_count", 0),
+            "published_at": stats.get("published_at"),
         })
 
-    # Ordenar por views desc, depois por título
-    items.sort(key=lambda x: (-x["views"], (x["titulo"] or "").lower()))
+    # Ordenar default: published_at desc (mais recente primeiro), fallback titulo
+    items.sort(key=lambda x: (x["published_at"] or "", (x["titulo"] or "").lower()), reverse=True)
 
     return {"period": periodo, "items": items}
 

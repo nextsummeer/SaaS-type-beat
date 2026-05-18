@@ -7,6 +7,11 @@ import {
   ExternalLink,
   ArrowUpDown,
   BarChart3,
+  Eye,
+  Heart,
+  MessageSquare,
+  RefreshCw,
+  Search,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -14,11 +19,9 @@ import {
   type AnalyticsMyBeats,
   type AnalyticsMyBeatItem,
 } from '@/lib/api'
-import { AnalyticsPeriodSelector, type Periodo } from '@/components/AnalyticsPeriodSelector'
-import { AnalyticsDelayBanner } from '@/components/AnalyticsDelayBanner'
 import { AnalyticsScopeNote } from '@/components/AnalyticsScopeNote'
 
-type SortKey = 'views' | 'retention' | 'titulo'
+type SortKey = 'newest' | 'views' | 'likes' | 'comments'
 
 function BeatThumbnail({ item }: { item: AnalyticsMyBeatItem }) {
   const supabase = createClient()
@@ -70,104 +73,108 @@ function BeatThumbnail({ item }: { item: AnalyticsMyBeatItem }) {
   )
 }
 
-function HeaderButton({
+function SortPill({
   label,
-  sortKey,
-  current,
+  ativo,
   onClick,
-  align = 'left',
 }: {
   label: string
-  sortKey: SortKey
-  current: { key: SortKey; dir: 'asc' | 'desc' }
+  ativo: boolean
   onClick: () => void
-  align?: 'left' | 'right'
 }) {
-  const ativo = current.key === sortKey
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.18em] transition-colors ${
-        align === 'right' ? 'justify-end ml-auto' : ''
-      }`}
-      style={{ color: ativo ? 'var(--text-primary)' : 'var(--text-subtle)' }}
+      className="rounded-lg px-3 py-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.16em] transition-colors"
+      style={{
+        background: ativo ? 'var(--text-primary)' : 'transparent',
+        color: ativo ? 'var(--bg-base)' : 'var(--text-subtle)',
+        border: '1px solid',
+        borderColor: ativo ? 'var(--text-primary)' : 'var(--border)',
+      }}
     >
       {label}
-      <ArrowUpDown
-        size={10}
-        style={{
-          opacity: ativo ? 1 : 0.4,
-          transform: ativo && current.dir === 'asc' ? 'rotate(180deg)' : undefined,
-          transition: 'transform 0.18s',
-        }}
-      />
     </button>
   )
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return '—'
+  try {
+    const d = new Date(iso)
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  } catch {
+    return '—'
+  }
 }
 
 export default function AnalyticsBeatsPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  const [periodo, setPeriodo] = useState<Periodo>('7d')
   const [data, setData] = useState<AnalyticsMyBeats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [reloading, setReloading] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
-  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({
-    key: 'views',
-    dir: 'desc',
-  })
+  const [sort, setSort] = useState<SortKey>('newest')
+  const [search, setSearch] = useState('')
 
-  useEffect(() => {
-    let cancelado = false
-    async function carrega() {
-      setLoading(true)
-      setErro(null)
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) {
-          router.push('/login')
-          return
-        }
-        const result = await fetchAnalyticsMyBeats(session.access_token, periodo)
-        if (!cancelado) setData(result)
-      } catch (e) {
-        if (!cancelado) setErro(e instanceof Error ? e.message : 'Erro desconhecido')
-      } finally {
-        if (!cancelado) setLoading(false)
+  async function carrega(forceRefresh = false) {
+    if (forceRefresh) setReloading(true)
+    else setLoading(true)
+    setErro(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+        return
       }
+      const result = await fetchAnalyticsMyBeats(session.access_token, { forceRefresh })
+      setData(result)
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro desconhecido')
+    } finally {
+      setLoading(false)
+      setReloading(false)
     }
-    carrega()
-    return () => {
-      cancelado = true
-    }
-  }, [periodo])
-
-  const itensOrdenados = useMemo(() => {
-    if (!data) return []
-    const itens = [...data.items]
-    itens.sort((a, b) => {
-      let cmp = 0
-      if (sort.key === 'views') cmp = a.views - b.views
-      else if (sort.key === 'retention') cmp = a.retention_pct - b.retention_pct
-      else if (sort.key === 'titulo') {
-        const aT = (a.titulo ?? '').toLowerCase()
-        const bT = (b.titulo ?? '').toLowerCase()
-        cmp = aT < bT ? -1 : aT > bT ? 1 : 0
-      }
-      return sort.dir === 'asc' ? cmp : -cmp
-    })
-    return itens
-  }, [data, sort])
-
-  function toggleSort(key: SortKey) {
-    setSort((cur) =>
-      cur.key === key ? { key, dir: cur.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' },
-    )
   }
 
-  const totalViews = data?.items.reduce((acc, b) => acc + b.views, 0) ?? 0
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    carrega(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const itensFiltradosEOrdenados = useMemo(() => {
+    if (!data) return []
+    const termo = search.trim().toLowerCase()
+    let itens = data.items
+    if (termo) {
+      itens = itens.filter((b) => {
+        const titulo = (b.titulo ?? '').toLowerCase()
+        const artista = (b.artista_nome ?? '').toLowerCase()
+        return titulo.includes(termo) || artista.includes(termo)
+      })
+    }
+    const ordenado = [...itens]
+    ordenado.sort((a, b) => {
+      if (sort === 'newest') {
+        const aP = a.published_at ?? ''
+        const bP = b.published_at ?? ''
+        return bP.localeCompare(aP)
+      }
+      if (sort === 'views') return b.view_count - a.view_count
+      if (sort === 'likes') return b.like_count - a.like_count
+      if (sort === 'comments') return b.comment_count - a.comment_count
+      return 0
+    })
+    return ordenado
+  }, [data, sort, search])
+
+  const totalViews = data?.items.reduce((acc, b) => acc + b.view_count, 0) ?? 0
+  const totalLikes = data?.items.reduce((acc, b) => acc + b.like_count, 0) ?? 0
+  const totalComments = data?.items.reduce((acc, b) => acc + b.comment_count, 0) ?? 0
 
   return (
     <div className="space-y-7">
@@ -187,17 +194,35 @@ export default function AnalyticsBeatsPage() {
             Meus beats em detalhe<span style={{ color: 'var(--accent)' }}>.</span>
           </h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Apenas beats publicados pela plataforma, com views e retenção do período.
+            Stats lifetime atualizadas em minutos. Clique <span style={{ color: 'var(--text-primary)' }}>Reload</span> pra forçar refresh.
           </p>
         </div>
 
-        <div className="rise rise-2">
-          <AnalyticsPeriodSelector value={periodo} onChange={setPeriodo} />
-        </div>
-      </div>
-
-      <div className="rise rise-3">
-        <AnalyticsDelayBanner />
+        <button
+          type="button"
+          onClick={() => carrega(true)}
+          disabled={reloading || loading}
+          className="flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 font-mono text-[11px] font-medium uppercase tracking-[0.18em] transition rise rise-2"
+          style={{
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border)',
+            color: 'var(--text-primary)',
+            opacity: reloading || loading ? 0.5 : 1,
+            cursor: reloading || loading ? 'not-allowed' : 'pointer',
+          }}
+          onMouseEnter={(e) => {
+            if (!reloading && !loading) e.currentTarget.style.borderColor = 'var(--border-strong)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--border)'
+          }}
+        >
+          <RefreshCw
+            className="h-3.5 w-3.5"
+            style={{ animation: reloading ? 'spin 0.8s linear infinite' : undefined }}
+          />
+          Reload
+        </button>
       </div>
 
       {erro && (
@@ -224,7 +249,7 @@ export default function AnalyticsBeatsPage() {
       {/* Resumo */}
       {data && data.items.length > 0 && (
         <div
-          className="flex flex-wrap items-baseline gap-x-6 gap-y-2 rounded-xl px-5 py-4 rise rise-3"
+          className="flex flex-wrap items-baseline gap-x-8 gap-y-2 rounded-xl px-5 py-4 rise rise-3"
           style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
         >
           <div>
@@ -248,6 +273,54 @@ export default function AnalyticsBeatsPage() {
             <span className="font-display text-[22px] font-semibold tabular" style={{ color: 'var(--accent)' }}>
               {totalViews.toLocaleString('pt-BR')}
             </span>
+          </div>
+          <div>
+            <span
+              className="block font-mono text-[10px] uppercase tracking-wider"
+              style={{ color: 'var(--text-subtle)' }}
+            >
+              likes totais
+            </span>
+            <span className="font-display text-[22px] font-semibold tabular" style={{ color: 'var(--text-primary)' }}>
+              {totalLikes.toLocaleString('pt-BR')}
+            </span>
+          </div>
+          <div>
+            <span
+              className="block font-mono text-[10px] uppercase tracking-wider"
+              style={{ color: 'var(--text-subtle)' }}
+            >
+              comentários totais
+            </span>
+            <span className="font-display text-[22px] font-semibold tabular" style={{ color: 'var(--text-primary)' }}>
+              {totalComments.toLocaleString('pt-BR')}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Barra de busca + sort */}
+      {data && data.items.length > 0 && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rise rise-3">
+          <div
+            className="flex items-center gap-2 rounded-xl px-3 py-2 sm:max-w-sm sm:flex-1"
+            style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+          >
+            <Search className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--text-subtle)' }} />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por título ou artista..."
+              className="w-full bg-transparent text-[13px] outline-none"
+              style={{ color: 'var(--text-primary)' }}
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <SortPill label="Mais novo" ativo={sort === 'newest'} onClick={() => setSort('newest')} />
+            <SortPill label="Views" ativo={sort === 'views'} onClick={() => setSort('views')} />
+            <SortPill label="Likes" ativo={sort === 'likes'} onClick={() => setSort('likes')} />
+            <SortPill label="Comentários" ativo={sort === 'comments'} onClick={() => setSort('comments')} />
           </div>
         </div>
       )}
@@ -287,41 +360,23 @@ export default function AnalyticsBeatsPage() {
             métricas individuais.
           </p>
         </div>
+      ) : itensFiltradosEOrdenados.length === 0 ? (
+        <div
+          className="rounded-xl border border-dashed px-6 py-10 text-center rise rise-4"
+          style={{ borderColor: 'var(--border)' }}
+        >
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Nenhum beat encontrado pra <span style={{ color: 'var(--text-primary)' }}>&quot;{search}&quot;</span>.
+          </p>
+        </div>
       ) : (
         <div className="rise rise-4">
-          {/* Cabeçalho de tabela */}
-          <div
-            className="hidden grid-cols-[1fr_120px_120px_40px] items-center gap-4 px-5 py-2.5 sm:grid"
-          >
-            <HeaderButton
-              label="Beat"
-              sortKey="titulo"
-              current={sort}
-              onClick={() => toggleSort('titulo')}
-            />
-            <HeaderButton
-              label="Views"
-              sortKey="views"
-              current={sort}
-              onClick={() => toggleSort('views')}
-              align="right"
-            />
-            <HeaderButton
-              label="Retenção"
-              sortKey="retention"
-              current={sort}
-              onClick={() => toggleSort('retention')}
-              align="right"
-            />
-            <span />
-          </div>
-
           {/* Linhas */}
           <div className="space-y-2">
-            {itensOrdenados.map((beat) => (
+            {itensFiltradosEOrdenados.map((beat) => (
               <div
                 key={beat.beat_id}
-                className="group grid grid-cols-[1fr_auto] items-center gap-4 rounded-xl p-4 transition-colors sm:grid-cols-[1fr_120px_120px_40px]"
+                className="group grid grid-cols-[1fr_auto] items-center gap-4 rounded-xl p-4 transition-colors sm:grid-cols-[1fr_70px_70px_70px_90px_40px]"
                 style={{
                   background: 'var(--bg-surface)',
                   border: '1px solid var(--border)',
@@ -366,51 +421,71 @@ export default function AnalyticsBeatsPage() {
                   </div>
                 </div>
 
-                {/* Views (mobile: junto / desktop: coluna) */}
-                <div className="hidden flex-col items-end sm:flex">
-                  <p
-                    className="font-display text-[20px] font-semibold leading-none tabular"
-                    style={{ color: beat.views > 0 ? 'var(--accent)' : 'var(--text-subtle)' }}
-                  >
-                    {beat.views.toLocaleString('pt-BR')}
-                  </p>
-                  <p
-                    className="mt-1 font-mono text-[9px] uppercase tracking-wider"
-                    style={{ color: 'var(--text-subtle)' }}
-                  >
-                    views
-                  </p>
+                {/* Views (desktop) */}
+                <div className="hidden flex-col items-center sm:flex">
+                  <div className="flex items-center gap-1">
+                    <Eye className="h-3 w-3" style={{ color: 'var(--text-subtle)' }} />
+                    <span
+                      className="font-display text-[15px] font-semibold tabular"
+                      style={{ color: beat.view_count > 0 ? 'var(--accent)' : 'var(--text-subtle)' }}
+                    >
+                      {beat.view_count.toLocaleString('pt-BR')}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Retenção */}
-                <div className="hidden flex-col items-end sm:flex">
-                  <p
-                    className="text-[15px] font-medium tabular"
-                    style={{
-                      color: beat.retention_pct > 0 ? 'var(--text-secondary)' : 'var(--text-subtle)',
-                    }}
-                  >
-                    {beat.retention_pct}%
-                  </p>
-                  <p
-                    className="mt-1 font-mono text-[9px] uppercase tracking-wider"
-                    style={{ color: 'var(--text-subtle)' }}
-                  >
-                    retenção
-                  </p>
+                {/* Likes (desktop) */}
+                <div className="hidden flex-col items-center sm:flex">
+                  <div className="flex items-center gap-1">
+                    <Heart className="h-3 w-3" style={{ color: 'var(--text-subtle)' }} />
+                    <span
+                      className="text-[14px] font-medium tabular"
+                      style={{ color: beat.like_count > 0 ? 'var(--text-primary)' : 'var(--text-subtle)' }}
+                    >
+                      {beat.like_count.toLocaleString('pt-BR')}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Ação mobile (views + link) */}
+                {/* Comments (desktop) */}
+                <div className="hidden flex-col items-center sm:flex">
+                  <div className="flex items-center gap-1">
+                    <MessageSquare className="h-3 w-3" style={{ color: 'var(--text-subtle)' }} />
+                    <span
+                      className="text-[14px] font-medium tabular"
+                      style={{ color: beat.comment_count > 0 ? 'var(--text-primary)' : 'var(--text-subtle)' }}
+                    >
+                      {beat.comment_count.toLocaleString('pt-BR')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Data (desktop) */}
+                <div className="hidden flex-col items-end sm:flex">
+                  <span
+                    className="font-mono text-[10px] tabular"
+                    style={{ color: 'var(--text-subtle)' }}
+                  >
+                    {formatDate(beat.published_at)}
+                  </span>
+                </div>
+
+                {/* Mobile: stats compactas */}
                 <div className="flex flex-col items-end gap-1 sm:hidden">
-                  <p
-                    className="font-display text-[18px] font-semibold tabular"
-                    style={{ color: beat.views > 0 ? 'var(--accent)' : 'var(--text-subtle)' }}
-                  >
-                    {beat.views}
-                  </p>
-                  <p className="text-[10px]" style={{ color: 'var(--text-subtle)' }}>
-                    {beat.retention_pct}% ret.
-                  </p>
+                  <div className="flex items-center gap-3 text-[12px]" style={{ color: 'var(--text-muted)' }}>
+                    <span className="flex items-center gap-0.5">
+                      <Eye className="h-3 w-3" /> {beat.view_count}
+                    </span>
+                    <span className="flex items-center gap-0.5">
+                      <Heart className="h-3 w-3" /> {beat.like_count}
+                    </span>
+                    <span className="flex items-center gap-0.5">
+                      <MessageSquare className="h-3 w-3" /> {beat.comment_count}
+                    </span>
+                  </div>
+                  <span className="font-mono text-[9px]" style={{ color: 'var(--text-subtle)' }}>
+                    {formatDate(beat.published_at)}
+                  </span>
                 </div>
 
                 {/* Link YouTube */}

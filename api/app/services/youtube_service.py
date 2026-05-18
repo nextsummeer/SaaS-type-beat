@@ -2,7 +2,7 @@
 import logging
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from google.auth.transport.requests import Request as GoogleRequest
@@ -18,6 +18,11 @@ from app.services.supabase_service import get_admin_client
 # Total tipico por upload do MVP: 1650 units (registrado em api_usage.metadata)
 YOUTUBE_UPLOAD_QUOTA_UNITS = 1600
 YOUTUBE_THUMBNAIL_QUOTA_UNITS = 50
+# videos.list = 1 unit por chunk de ate 50 IDs (usado em realtime stats)
+YOUTUBE_LIST_QUOTA_UNITS = 1
+# Cache curto pra realtime stats: balance entre frescor e custo de quota
+CACHE_TTL_REALTIME_MINUTES = 5
+REALTIME_CACHE_KEY = "realtime:my-beats"
 
 logger = logging.getLogger(__name__)
 
@@ -182,6 +187,122 @@ def list_videos_status(user_id: str, video_ids: list[str]) -> dict[str, Optional
         for vid in chunk:
             # Se nao retornou, foi deletado
             resultado[vid] = encontrados.get(vid)
+    return resultado
+
+
+def _realtime_cache_get(user_id: str) -> Optional[dict]:
+    """Retorna dict {video_id: stats} cacheado se ainda valido, senao None."""
+    client = get_admin_client()
+    result = (
+        client.table("analytics_cache")
+        .select("payload, expires_at")
+        .eq("user_id", user_id)
+        .eq("cache_key", REALTIME_CACHE_KEY)
+        .limit(1)
+        .execute()
+    )
+    if not result.data:
+        return None
+    row = result.data[0]
+    expires_at = datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00"))
+    if expires_at <= datetime.now(timezone.utc):
+        return None
+    return row["payload"]
+
+
+def _realtime_cache_set(user_id: str, payload: dict) -> None:
+    """Upsert do cache realtime com TTL curto (5min)."""
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=CACHE_TTL_REALTIME_MINUTES)
+    client = get_admin_client()
+    client.table("analytics_cache").upsert(
+        {
+            "user_id": user_id,
+            "cache_key": REALTIME_CACHE_KEY,
+            "payload": payload,
+            "expires_at": expires_at.isoformat(),
+        },
+        on_conflict="user_id,cache_key",
+    ).execute()
+
+
+def get_realtime_stats(
+    user_id: str,
+    video_ids: list[str],
+    force_refresh: bool = False,
+) -> dict[str, dict]:
+    """Busca views/likes/comments/published_at quase em tempo real via Data API.
+
+    Diferente do YouTube Analytics API (delay 24-48h), `videos.list?part=statistics,snippet`
+    retorna metricas com latencia de minutos. Custo: 1 unit por chunk de ate 50 IDs.
+
+    Args:
+        user_id: dono do canal (pra credenciais OAuth + cache + tracking)
+        video_ids: lista de IDs de video do YouTube
+        force_refresh: se True, ignora cache e chama API novamente (botao RELOAD da UI)
+
+    Returns:
+        dict {video_id: {view_count, like_count, comment_count, published_at, title}}
+        Videos nao encontrados (deletados) nao aparecem no dict.
+    """
+    if not video_ids:
+        return {}
+
+    # Cache hit: retorna dict cacheado se ainda valido
+    if not force_refresh:
+        cached = _realtime_cache_get(user_id)
+        if cached is not None:
+            # Filtra apenas os video_ids pedidos (cache pode ter outros videos antigos)
+            return {vid: cached[vid] for vid in video_ids if vid in cached}
+
+    account = _load_account(user_id)
+    credentials = _build_credentials(account)
+    if not credentials.valid:
+        credentials.refresh(GoogleRequest())
+        _persist_refreshed_token(account["account_id"], credentials)
+
+    youtube = build("youtube", "v3", credentials=credentials, cache_discovery=False)
+
+    resultado: dict[str, dict] = {}
+    chunks = [video_ids[i : i + 50] for i in range(0, len(video_ids), 50)]
+
+    for chunk in chunks:
+        t_start = time.time()
+        try:
+            # part="statistics,snippet,status" custa o mesmo 1 unit;
+            # status traz privacy + permite detectar deletados (nao aparece na resposta)
+            resp = youtube.videos().list(
+                part="statistics,snippet,status",
+                id=",".join(chunk),
+                maxResults=50,
+            ).execute()
+        except HttpError as exc:
+            logger.error("[YT_REALTIME] erro ao listar videos: %s", exc)
+            raise
+        duration_ms = int((time.time() - t_start) * 1000)
+
+        for item in resp.get("items", []):
+            stats = item.get("statistics", {})
+            snippet = item.get("snippet", {})
+            status = item.get("status", {})
+            resultado[item["id"]] = {
+                "view_count": int(stats.get("viewCount") or 0),
+                "like_count": int(stats.get("likeCount") or 0),
+                "comment_count": int(stats.get("commentCount") or 0),
+                "published_at": snippet.get("publishedAt"),
+                "title": snippet.get("title"),
+                "privacy_status": status.get("privacyStatus"),
+            }
+
+        # Registra consumo de quota: 1 unit por chunk (regra P5 do CLAUDE.md)
+        usage_tracker.track(
+            user_id=user_id,
+            feature="youtube_data_api",
+            duration_ms=duration_ms,
+            metadata={"endpoint": "videos.list", "quota_units": YOUTUBE_LIST_QUOTA_UNITS, "video_count": len(chunk)},
+        )
+
+    # Salva no cache (5min TTL)
+    _realtime_cache_set(user_id, resultado)
     return resultado
 
 
