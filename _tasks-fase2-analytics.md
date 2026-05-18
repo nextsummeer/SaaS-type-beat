@@ -225,6 +225,44 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 
 ### Bloco E — Realtime stats (Data API, pos-fechamento Fase 2)
 
+#### `[x]` T7.13 — Modal de detalhes do beat (LITE puro, zero quota extra)
+
+- **Contexto:** 2026-05-18, Gustavo viu prints do BeatStore Pro: cards
+  clicaveis abrem um modal "VIDEO INTELLIGENCE - DAILY REPORTS" com tabs
+  Overview/Performance, mostrando metricas detalhadas + curva de retencao
+  + view progression historico. Decidido caminho **LITE puro**: replicar
+  estrutura visual de cards de metricas SEM curva de retencao (Analytics
+  API) e SEM view progression (que exigiria cron diario + tabela historica).
+- **Decisao de escopo:** sem curva de retencao, sem historico de views,
+  sem "relative performance". Apenas metricas que ja vem do `/analytics/my-beats`
+  + duration (gratis, mesma chamada Data API).
+- **Arquivos:**
+  - `api/app/services/youtube_service.py` — adicionar `part=contentDetails`
+    a chamada existente em `get_realtime_stats` + parse de duration ISO 8601
+  - `api/tests/services/test_youtube_realtime.py` — atualizar testes
+  - `web/lib/api.ts` — tipo `AnalyticsMyBeatItem` ganha `duration_seconds`
+  - `web/components/BeatDetailsModal.tsx` (novo) — modal overlay
+  - `web/app/(app)/analytics/beats/page.tsx` — cards clicaveis abrem modal
+- **O que entrega:**
+  - Modal abre ao clicar em qualquer card de beat na pagina /analytics/beats
+  - Esquerda do modal: thumbnail + titulo + artista + data + link YouTube
+  - Direita: 4 cards principais (Views, Likes, Comments, Duration) + 3 cards
+    secundarios (Engagement Rate, Total Age, Privacy Status)
+  - Botao Reload no header do modal forca refresh do beat especifico
+  - Tecla ESC ou click fora do modal fecha
+- **Criterio de pronto:**
+  - Clicar em qualquer card abre modal com dados do beat
+  - Duration formatado como `M:SS` (ex: "2:36")
+  - Engagement Rate = ((likes + comments) / views) × 100, mostrado com 1 casa
+  - Total Age = "X days" / "X hours" / "X minutes" desde published_at
+  - Modal nao trava body scroll com vazamento
+  - `pnpm typecheck` passa
+  - 31 testes ja passam + nao quebrar nenhum
+- **Custo:** 0 unit a mais — `part=contentDetails` na chamada existente
+  custa o mesmo que `part=statistics,snippet,status` (YouTube cobra por
+  request, nao por part).
+- **Dependencia:** T7.12
+
 #### `[x]` T7.12 — Likes/comments/published_at em tempo real + botao RELOAD
 
 - **Contexto:** Sessao 2026-05-18, Gustavo viu print do BeatStore Pro mostrando
@@ -302,5 +340,6 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 ## Historico de chats
 
 - **2026-05-13** — Sessao de planejamento da Fase 2 Analytics (adiantada do plano de produto). Decisao: backend primeiro, sem IA na v1, comparacoes internas (nao com nicho externo), sem mood. Arquivo criado, aguardando OK do Gustavo pra comecar T7.1.
+- **2026-05-18** — T7.13 entregue (LITE puro): modal de detalhes do beat ao clicar nos cards de /analytics/beats. Trigger: Gustavo viu prints do BeatStore Pro mostrando "VIDEO INTELLIGENCE - DAILY REPORTS" com tabs Overview/Performance + curva de retencao + view progression historico. Decisao explicita de escopo: LITE puro (sem curva, sem historico, sem cron diario) pra evitar feature creep. Backend: adicionado `part=contentDetails` na chamada existente em `get_realtime_stats` (zero quota extra — YouTube cobra por request, nao por part) + parser ISO 8601 (`PT2M36S` → 156s). Frontend: `BeatDetailsModal.tsx` com layout split (esquerda: thumbnail grande + chips + data + link YT; direita: 4 cards principais Views/Likes/Comments/Duration + 3 secundarios Engagement Rate/Total Age/Privacy + footer informativo). Utilitarios em `lib/utils.ts`: `formatDuration`, `engagementRate`, `totalAge`. Modal: ESC fecha, click fora fecha, body scroll lock, botao Reload integrado. 36/36 testes passam (5 novos pro parser duration). T7.13 fecha o ciclo realtime+detalhe.
 - **2026-05-18** — T7.12 entregue: realtime stats (views/likes/comments/published_at) via Data API substituiu retention da Analytics API na pagina /analytics/beats. Trigger: Gustavo viu print do BeatStore Pro com stats atualizando em minutos via botao RELOAD. Audit revelou que /analytics/my-beats fazia 2 chamadas (list_videos_status + get_beats_stats), refatorado pra 1 sa chamada via novo `get_realtime_stats` em youtube_service.py com cache 5min e param `force_refresh=true`. Decisoes: caminho A (manter URL /analytics/beats, esconder period selector), cache 5min, retention substituida por likes/comments. UI ganhou: card de 4 totais (beats/views/likes/comments), barra de busca por titulo/artista, 4 pills de sort (Mais novo/Views/Likes/Comentarios), botao Reload com spin animado. Backend ganhou: 9 testes novos (test_youtube_realtime.py) cobrindo cache hit/miss/force_refresh + parsing + deteccao deletado + quota tracking. 31/31 testes routes/services passam, typecheck zero erro. Commit pendente.
 - **2026-05-14** — Sessao completa T7.1-T7.11. T7.1 (OAuth scope + reautorizacao banner) → T7.2 (service + cache 24h, 8 testes) → T7.3 (endpoint /overview + delta vs periodo anterior). Durante testes, descobertos 3 bugs e corrigidos em sequencia: (a) cache stale com snapshot zerado, (b) hipotese Brand Account descartada apos comparar channel_id, (c) intervalo de datas incluindo "hoje" fazia API retornar 0 (fix: terminar em ontem). Hipotese final confirmada pelo Gustavo: vídeos antigos privatizados confundiam agregado do canal — solucao foi adicionar endpoint /analytics/my-beats que filtra por video_ids especificos da tabela posts. Decidido pivotar pra entregar T7.4-T7.7 + UI em uma sentada. Sub-paginas (visao geral / beats / fontes) criadas como bonus, com sidebar suportando sub-itens. T7.5 + T7.6 (traffic-sources + views-timeline) entregues. Refatorado timeline pra 'day' em todos os periodos (90d com 'month' retornava vazio). Toggle Views/Inscritos com prefetch paralelo. Notas explicativas de escopo em cada sub-pagina. Bonus: deteccao de video deletado/privado/unlisted (campo `youtube_deleted_at` + filtro 'Removidos' em /beats) e dashboard cards reais (T6.1-T6.4 do MVP). Polimento (T7.11): banner reauth + skeletons + erros ja estavam presentes desde o inicio das paginas. Documentacao em `docs/arquitetura/analytics-pipeline.md` criada. **Fase 2 concluida e em producao.**

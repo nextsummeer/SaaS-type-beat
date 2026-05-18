@@ -20,6 +20,7 @@ import {
   type AnalyticsMyBeatItem,
 } from '@/lib/api'
 import { AnalyticsScopeNote } from '@/components/AnalyticsScopeNote'
+import { BeatDetailsModal } from '@/components/BeatDetailsModal'
 
 type SortKey = 'newest' | 'views' | 'likes' | 'comments'
 
@@ -119,6 +120,8 @@ export default function AnalyticsBeatsPage() {
   const [erro, setErro] = useState<string | null>(null)
   const [sort, setSort] = useState<SortKey>('newest')
   const [search, setSearch] = useState('')
+  const [beatSelecionadoId, setBeatSelecionadoId] = useState<string | null>(null)
+  const [reloadingModal, setReloadingModal] = useState(false)
 
   async function carrega(forceRefresh = false) {
     if (forceRefresh) setReloading(true)
@@ -376,7 +379,16 @@ export default function AnalyticsBeatsPage() {
             {itensFiltradosEOrdenados.map((beat) => (
               <div
                 key={beat.beat_id}
-                className="group grid grid-cols-[1fr_auto] items-center gap-4 rounded-xl p-4 transition-colors sm:grid-cols-[1fr_70px_70px_70px_90px_40px]"
+                role="button"
+                tabIndex={0}
+                onClick={() => setBeatSelecionadoId(beat.beat_id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setBeatSelecionadoId(beat.beat_id)
+                  }
+                }}
+                className="group grid cursor-pointer grid-cols-[1fr_auto] items-center gap-4 rounded-xl p-4 transition-colors sm:grid-cols-[1fr_70px_70px_70px_90px_40px]"
                 style={{
                   background: 'var(--bg-surface)',
                   border: '1px solid var(--border)',
@@ -495,6 +507,7 @@ export default function AnalyticsBeatsPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     title="Abrir no YouTube"
+                    onClick={(e) => e.stopPropagation()}
                     className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg transition sm:flex"
                     style={{
                       background: 'var(--bg-elevated)',
@@ -518,6 +531,21 @@ export default function AnalyticsBeatsPage() {
           </div>
         </div>
       )}
+
+      {/* Modal de detalhes */}
+      <BeatDetailsModal
+        beat={data?.items.find((b) => b.beat_id === beatSelecionadoId) ?? null}
+        onClose={() => setBeatSelecionadoId(null)}
+        reloading={reloadingModal}
+        onReload={async () => {
+          setReloadingModal(true)
+          try {
+            await carrega(true)
+          } finally {
+            setReloadingModal(false)
+          }
+        }}
+      />
     </div>
   )
 }

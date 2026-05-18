@@ -175,6 +175,7 @@ def my_beats(
             "like_count": stats.get("like_count", 0),
             "comment_count": stats.get("comment_count", 0),
             "published_at": stats.get("published_at"),
+            "duration_seconds": stats.get("duration_seconds", 0),
         })
 
     # Ordenar default: published_at desc (mais recente primeiro), fallback titulo

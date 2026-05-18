@@ -32,6 +32,7 @@ def _video_item(
     published_at: str = "2026-05-18T15:00:00Z",
     title: str = "Type Beat Test",
     privacy: str = "public",
+    duration: str = "PT2M36S",
 ) -> dict:
     return {
         "id": video_id,
@@ -42,6 +43,7 @@ def _video_item(
         },
         "snippet": {"publishedAt": published_at, "title": title},
         "status": {"privacyStatus": privacy},
+        "contentDetails": {"duration": duration},
     }
 
 
@@ -80,6 +82,37 @@ def _mock_youtube_client(items: list[dict]) -> MagicMock:
     mock = MagicMock()
     mock.videos.return_value.list.return_value.execute.return_value = _videos_list_response(items)
     return mock
+
+
+# ──────────────────────────────────────────────
+# Parse de duration ISO 8601
+# ──────────────────────────────────────────────
+
+def test_parse_duration_minutos_e_segundos():
+    """PT2M36S = 2 minutos e 36 segundos = 156s."""
+    assert youtube_service._parse_iso8601_duration("PT2M36S") == 156
+
+
+def test_parse_duration_so_segundos():
+    """PT45S = 45s."""
+    assert youtube_service._parse_iso8601_duration("PT45S") == 45
+
+
+def test_parse_duration_com_horas():
+    """PT1H5M30S = 1*3600 + 5*60 + 30 = 3930s."""
+    assert youtube_service._parse_iso8601_duration("PT1H5M30S") == 3930
+
+
+def test_parse_duration_so_minutos():
+    """PT5M = 300s."""
+    assert youtube_service._parse_iso8601_duration("PT5M") == 300
+
+
+def test_parse_duration_invalido_retorna_zero():
+    """Input vazio / invalido retorna 0 (graceful degradation)."""
+    assert youtube_service._parse_iso8601_duration(None) == 0
+    assert youtube_service._parse_iso8601_duration("") == 0
+    assert youtube_service._parse_iso8601_duration("garbage") == 0
 
 
 # ──────────────────────────────────────────────

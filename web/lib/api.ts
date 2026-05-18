@@ -143,6 +143,7 @@ export interface AnalyticsMyBeatItem {
   like_count: number
   comment_count: number
   published_at: string | null
+  duration_seconds: number
 }
 
 export interface AnalyticsMyBeats {

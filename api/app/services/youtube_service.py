@@ -1,6 +1,7 @@
 """Upload de video pro YouTube usando OAuth do user (refresh token cifrado em youtube_accounts)."""
 import logging
 import os
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -23,6 +24,26 @@ YOUTUBE_LIST_QUOTA_UNITS = 1
 # Cache curto pra realtime stats: balance entre frescor e custo de quota
 CACHE_TTL_REALTIME_MINUTES = 5
 REALTIME_CACHE_KEY = "realtime:my-beats"
+
+# Regex pra parsear duration ISO 8601 (PT2M36S, PT1H5M30S, PT45S etc.)
+_DURATION_REGEX = re.compile(r"^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$")
+
+
+def _parse_iso8601_duration(iso: Optional[str]) -> int:
+    """Converte duracao ISO 8601 (PT2M36S) em segundos (156).
+
+    Aceita formatos do YouTube: PT45S, PT2M36S, PT1H5M, PT1H5M30S.
+    Retorna 0 se input invalido/vazio.
+    """
+    if not iso:
+        return 0
+    match = _DURATION_REGEX.match(iso.strip())
+    if not match:
+        return 0
+    horas = int(match.group(1) or 0)
+    minutos = int(match.group(2) or 0)
+    segundos = int(match.group(3) or 0)
+    return horas * 3600 + minutos * 60 + segundos
 
 logger = logging.getLogger(__name__)
 
@@ -273,10 +294,11 @@ def get_realtime_stats(
     for chunk in chunks:
         t_start = time.time()
         try:
-            # part="statistics,snippet,status" custa o mesmo 1 unit;
-            # status traz privacy + permite detectar deletados (nao aparece na resposta)
+            # part="statistics,snippet,status,contentDetails" custa o mesmo 1 unit;
+            # YouTube cobra POR REQUEST, nao por part. Adicionar contentDetails da
+            # acesso a duration ISO 8601 (PT2M36S) sem custo extra.
             resp = youtube.videos().list(
-                part="statistics,snippet,status",
+                part="statistics,snippet,status,contentDetails",
                 id=",".join(chunk),
                 maxResults=50,
             ).execute()
@@ -289,6 +311,7 @@ def get_realtime_stats(
             stats = item.get("statistics", {})
             snippet = item.get("snippet", {})
             status = item.get("status", {})
+            content_details = item.get("contentDetails", {})
             resultado[item["id"]] = {
                 "view_count": int(stats.get("viewCount") or 0),
                 "like_count": int(stats.get("likeCount") or 0),
@@ -296,6 +319,7 @@ def get_realtime_stats(
                 "published_at": snippet.get("publishedAt"),
                 "title": snippet.get("title"),
                 "privacy_status": status.get("privacyStatus"),
+                "duration_seconds": _parse_iso8601_duration(content_details.get("duration")),
             }
 
         # Registra consumo de quota: 1 unit por chunk (regra P5 do CLAUDE.md)
