@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { UploadCloud, AlertCircle, Music, Image, Plus, X } from 'lucide-react'
+import { UploadCloud, AlertCircle, Music, Image, Plus, X, Check, Store, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { uploadWithProgress } from '@/lib/storage'
 
@@ -194,29 +194,125 @@ export function UploadForm() {
         </div>
       </div>
 
-      {/* Link da loja (condicional) */}
+      {/* Link da loja (condicional) — card toggleable */}
       <div className="space-y-3">
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
-          <input
-            type="checkbox"
-            checked={jaPublicado}
-            onChange={(e) => setJaPublicado(e.target.checked)}
-            disabled={uploading}
-            className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-orange-600 focus:ring-orange-500"
-          />
-          Já publiquei esse beat em uma loja (BeatStars, Airbit, etc)
-        </label>
-        {jaPublicado && (
-          <div>
-            <input
-              type="url"
-              value={storeLink}
-              onChange={(e) => setStoreLink(e.target.value)}
-              disabled={uploading}
-              placeholder="https://www.beatstars.com/beat/..."
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-orange-500 focus:ring-1 focus:ring-orange-500 disabled:opacity-50"
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={jaPublicado}
+          onClick={() => !uploading && setJaPublicado(!jaPublicado)}
+          disabled={uploading}
+          className="group flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50"
+          style={{
+            background: jaPublicado ? 'var(--accent-muted)' : 'var(--bg-elevated)',
+            border: jaPublicado
+              ? '1px solid rgba(255, 90, 31, 0.4)'
+              : '1px solid var(--border)',
+            boxShadow: jaPublicado ? 'var(--shadow-glow-accent)' : 'none',
+          }}
+          onMouseEnter={(e) => {
+            if (!jaPublicado && !uploading) {
+              e.currentTarget.style.borderColor = 'var(--border-strong)'
+              e.currentTarget.style.background = 'var(--bg-overlay)'
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!jaPublicado && !uploading) {
+              e.currentTarget.style.borderColor = 'var(--border)'
+              e.currentTarget.style.background = 'var(--bg-elevated)'
+            }
+          }}
+        >
+          {/* Check custom */}
+          <span
+            className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md transition-all"
+            style={{
+              background: jaPublicado ? 'var(--accent)' : 'transparent',
+              border: jaPublicado
+                ? '1px solid var(--accent)'
+                : '1.5px solid var(--border-strong)',
+            }}
+          >
+            <Check
+              size={13}
+              strokeWidth={3}
+              style={{
+                color: '#fff',
+                opacity: jaPublicado ? 1 : 0,
+                transition: 'opacity 0.18s',
+              }}
             />
-            <p className="mt-1 text-xs text-zinc-500">Esse link vai aparecer na descrição do vídeo no YouTube.</p>
+          </span>
+
+          {/* Ícone Store contextual */}
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors"
+            style={{
+              background: jaPublicado
+                ? 'rgba(255, 90, 31, 0.18)'
+                : 'var(--bg-surface)',
+              border: '1px solid',
+              borderColor: jaPublicado
+                ? 'rgba(255, 90, 31, 0.4)'
+                : 'var(--border-muted)',
+            }}
+          >
+            <Store
+              size={16}
+              strokeWidth={1.75}
+              style={{
+                color: jaPublicado ? 'var(--accent)' : 'var(--text-muted)',
+              }}
+            />
+          </span>
+
+          {/* Texto */}
+          <span className="flex flex-1 flex-col gap-0.5">
+            <span
+              className="text-[14px] font-medium leading-tight"
+              style={{ color: jaPublicado ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+            >
+              Já publiquei esse beat em uma loja
+            </span>
+            <span
+              className="text-[11.5px] leading-tight"
+              style={{ color: 'var(--text-subtle)' }}
+            >
+              BeatStars, Airbit, Traktrain, etc
+            </span>
+          </span>
+        </button>
+
+        {jaPublicado && (
+          <div
+            className="space-y-1.5 rise rise-1"
+            style={{ animationDuration: '0.3s' }}
+          >
+            <div
+              className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 transition focus-within:ring-1"
+              style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+              }}
+            >
+              <ExternalLink
+                size={14}
+                style={{ color: 'var(--text-subtle)' }}
+                className="shrink-0"
+              />
+              <input
+                type="url"
+                value={storeLink}
+                onChange={(e) => setStoreLink(e.target.value)}
+                disabled={uploading}
+                placeholder="https://www.beatstars.com/beat/..."
+                className="flex-1 bg-transparent text-[13.5px] outline-none placeholder:text-[var(--text-subtle)] disabled:opacity-50"
+                style={{ color: 'var(--text-primary)' }}
+              />
+            </div>
+            <p className="ml-1 text-[11.5px]" style={{ color: 'var(--text-subtle)' }}>
+              Esse link vai aparecer na descrição do vídeo no YouTube.
+            </p>
           </div>
         )}
       </div>
