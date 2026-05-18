@@ -42,6 +42,10 @@
 - `referencias/ffmpeg.md` — Conversao MP3 320 + loudnorm + audio→video [ativo]
 - `referencias/upstash-qstash.md` — Publisher + receiver + idempotencia [ativo]
 - `referencias/shadcn-ui.md` — CLI install, componentes do MVP, theming [ativo]
+- `referencias/custos-da-operacao.md` — Auditoria de plataformas + APIs + precos por chamada + queries SQL pra consultar gasto por upload [ativo]
+
+## Financeiro
+- `financeiro/projecao-custos-2026-05-18.html` — Dashboard HTML standalone: projecao com $9.99/$19.99, 20 uploads/mes, mix 70/30, breakeven, custo total/user em escala [ativo]
 
 ## Sessoes
 - `sessoes/2026-04-25-1500-brainstorm-mvp.md` — Sessao fundadora (resumo) [ativo]
@@ -62,3 +66,4 @@
 - `sessoes/2026-05-13-redesign-visual-pos-login.md` — T6.14→T6.18: redesign visual interface pos-login. Inter, tokens CSS, sidebar com grupos/icones, toggle grade/lista na pagina Beats, upload centralizado, config em cards, dashboard com metricas placeholder. Skill frontend-design instalada. Proximo: redesign completo com cores Vaulto via /frontend-design. [ativo, importante]
 - `sessoes/2026-05-14-fase2-analytics-e-conquistas.md` — Fase 2 Analytics completa (5 endpoints, 3 sub-paginas, deteccao deletado/privado/unlisted, timeline com toggle metric) + Conquistas (28 achievements, 6 ranks, SiriOrb animada, galeria). Bonus: dashboard real, filtro Removidos na /beats. Roadmap atualizado: Prêmios pra T10, Analise de nicho VidIQ-like e Conteudo Educacional como próximas. [ativo, importante]
 - `sessoes/2026-05-14-pesquisa-vidiq-e-fix-cache-analytics.md` — Pesquisa profunda VidIQ (modelo, fontes de dados, metricas, concorrentes). Decisoes: analise de nicho vira Fase 3 do produto, usabilidade A+C, caminho hibrido (YT API + Spotify + autocomplete + Trends), modelo creditos. Auditoria MVP base: T2.8/T3.2/T6.1/T6.2/T6.3 confirmadas done. Capa IA pausada (Gustavo estudando). Bug cache stale do analytics corrigido (TTL adaptativo). [ativo, importante]
+- `sessoes/2026-05-18-custos-e-projecao-financeira.md` — T3.4 (usage_tracker centralizado). Auditoria de custos: $0.014 medido por upload, dominado por Claude. Projecao financeira em HTML standalone com tiers $9.99/$19.99. Pontos cegos: Stripe BR vs Pix recorrente, YouTube content policy 2026 (alegacao minha sobre BeatValet desmentida), OAuth ainda em modo Testing — beta bloqueado fora dos 4 test users. Pendencias: aumento quota YouTube + verification OAuth + dominio proprio. [ativo, importante]

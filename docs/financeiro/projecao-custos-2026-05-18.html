@@ -1,0 +1,1637 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BeatPost · Projeção de Custos · 18 mai 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     BEATPOST · DASHBOARD FINANCEIRO
+     Paleta: near-black + dourado pálido + mint + rose
+     Tipografia: Instrument Serif (display) / Geist / Geist Mono
+     ============================================================ */
+
+  :root {
+    --bg: #08080a;
+    --bg-canvas: #0c0c0f;
+    --surface-1: #121216;
+    --surface-2: #1a1a20;
+    --surface-3: #23232b;
+    --border: #2a2a33;
+    --border-strong: #3d3d48;
+    --border-accent: rgba(212, 184, 150, 0.32);
+
+    --text-primary: #fafafa;
+    --text-secondary: #b8b8c0;
+    --text-muted: #6e6e78;
+    --text-dim: #4a4a54;
+
+    --gold: #d4b896;
+    --gold-soft: #e8d4b0;
+    --gold-deep: #8a7252;
+    --mint: #6ee7b7;
+    --mint-soft: #a6f0d2;
+    --rose: #fda4af;
+    --rose-soft: #fecdd3;
+    --amber: #fbbf24;
+    --sky: #93c5fd;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 18px;
+    --radius-xl: 28px;
+
+    --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 0 0 1px var(--border), 0 20px 40px -20px rgba(0, 0, 0, 0.6);
+    --shadow-hero: 0 0 0 1px var(--border-accent), 0 30px 80px -30px rgba(212, 184, 150, 0.15), 0 60px 120px -40px rgba(0, 0, 0, 0.8);
+
+    --font-display: "Instrument Serif", "Times New Roman", serif;
+    --font-sans: "Geist", -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: "Geist Mono", "SF Mono", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    line-height: 1.5;
+  }
+
+  body {
+    background-image:
+      radial-gradient(900px 600px at 18% -10%, rgba(212, 184, 150, 0.06), transparent 60%),
+      radial-gradient(800px 500px at 100% 0%, rgba(110, 231, 183, 0.04), transparent 60%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg-canvas) 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grain overlay sutil pra dar textura "premium" sem ruído */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.025;
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/></svg>");
+    mix-blend-mode: overlay;
+  }
+
+  /* Tipografia */
+  h1, h2, h3, h4 { margin: 0; font-weight: 400; letter-spacing: -0.02em; }
+  .display { font-family: var(--font-display); font-style: italic; font-weight: 400; letter-spacing: -0.015em; line-height: 1.02; }
+  .mono { font-family: var(--font-mono); font-feature-settings: "tnum", "ss01"; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); font-weight: 500; }
+  .eyebrow-muted { color: var(--text-muted); }
+
+  /* Layout master */
+  .layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* === SIDEBAR === */
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    padding: 32px 28px;
+    border-right: 1px solid var(--border);
+    background: rgba(8, 8, 10, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .brand-mark {
+    width: 26px; height: 26px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-deep) 100%);
+    box-shadow: 0 0 0 1px rgba(212, 184, 150, 0.3), 0 4px 12px rgba(212, 184, 150, 0.15);
+    align-self: center;
+    position: relative;
+  }
+  .brand-mark::after {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border-radius: 3px;
+    background: var(--bg);
+  }
+  .brand-name { font-family: var(--font-display); font-size: 22px; letter-spacing: -0.01em; }
+  .brand-tag { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); letter-spacing: 0.15em; text-transform: uppercase; }
+
+  .nav-section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .nav-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .nav-list { display: flex; flex-direction: column; gap: 2px; }
+  .nav-list a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 13.5px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.15s ease;
+    border-left: 1px solid transparent;
+  }
+  .nav-list a:hover {
+    color: var(--text-primary);
+    background: var(--surface-1);
+    border-left-color: var(--gold);
+  }
+  .nav-list .num { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); }
+
+  .sidebar-meta {
+    margin-top: auto;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 11.5px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .sidebar-meta strong { color: var(--text-secondary); font-weight: 500; }
+
+  /* === MAIN CONTENT === */
+  .main {
+    padding: 56px 64px 120px;
+    max-width: 1280px;
+  }
+
+  /* Hero */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 40px;
+    padding: 56px 0 80px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 72px;
+    opacity: 0;
+    animation: reveal 0.9s ease-out 0.1s forwards;
+  }
+  .hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .hero-chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding: 5px 10px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    letter-spacing: 0.04em;
+  }
+  .hero-chip.live::before {
+    content: "";
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--mint);
+    margin-right: 7px;
+    margin-bottom: 1px;
+    box-shadow: 0 0 8px var(--mint);
+    vertical-align: middle;
+  }
+
+  /* Botão de download */
+  .download-btn {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--bg);
+    background: linear-gradient(135deg, var(--gold-soft) 0%, var(--gold) 100%);
+    padding: 9px 16px 9px 14px;
+    border-radius: 100px;
+    border: 1px solid var(--gold);
+    font-weight: 500;
+    box-shadow: 0 0 0 1px rgba(212, 184, 150, 0.2), 0 6px 20px -8px rgba(212, 184, 150, 0.4);
+    transition: transform 0.2s ease, box-shadow 0.25s ease, filter 0.2s ease;
+    cursor: pointer;
+  }
+  .download-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+    box-shadow: 0 0 0 1px rgba(212, 184, 150, 0.3), 0 10px 28px -8px rgba(212, 184, 150, 0.55);
+  }
+  .download-btn:active { transform: translateY(0); }
+  .download-btn svg {
+    width: 13px; height: 13px;
+    stroke: var(--bg);
+    stroke-width: 2.2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  @media (max-width: 600px) {
+    .download-btn { margin-left: 0; margin-top: 8px; width: fit-content; }
+  }
+  .hero-title {
+    font-family: var(--font-display);
+    font-size: clamp(48px, 7vw, 96px);
+    line-height: 0.96;
+    margin-top: 8px;
+    color: var(--text-primary);
+  }
+  .hero-title em {
+    color: var(--gold);
+    font-style: italic;
+  }
+  .hero-sub {
+    max-width: 640px;
+    color: var(--text-secondary);
+    font-size: 18px;
+    line-height: 1.55;
+  }
+
+  /* KPI row dentro do hero */
+  .hero-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin-top: 24px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .kpi {
+    padding: 26px 24px 26px 0;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .kpi:last-child { border-right: none; }
+  .kpi-label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+  }
+  .kpi-value {
+    font-family: var(--font-display);
+    font-size: 44px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+  .kpi-value .currency {
+    font-family: var(--font-sans);
+    font-size: 18px;
+    font-weight: 500;
+    vertical-align: top;
+    margin-right: 4px;
+    color: var(--text-muted);
+    letter-spacing: 0;
+  }
+  .kpi-value .small {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 22px;
+    color: var(--text-muted);
+    margin-left: 2px;
+    letter-spacing: 0;
+  }
+  .kpi-foot {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .kpi-foot .accent { color: var(--mint); }
+
+  /* === Sections === */
+  section { margin-bottom: 96px; }
+  .section-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-head h2 {
+    font-family: var(--font-display);
+    font-size: 44px;
+    line-height: 1.05;
+    color: var(--text-primary);
+    max-width: 720px;
+  }
+  .section-head h2 em { color: var(--gold); }
+  .section-head .lede {
+    color: var(--text-muted);
+    font-size: 14px;
+    max-width: 320px;
+    text-align: right;
+    line-height: 1.55;
+  }
+
+  /* Premissas / inputs */
+  .premissas {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .premissa {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 18px 18px 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+  }
+  .premissa:hover { border-color: var(--border-strong); }
+  .premissa-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 10px;
+  }
+  .premissa-value {
+    font-family: var(--font-display);
+    font-size: 28px;
+    line-height: 1.1;
+    color: var(--text-primary);
+  }
+  .premissa-value .unit {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .premissa-note {
+    margin-top: 10px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* Comparativo Tier (2 cards lado a lado) */
+  .duo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .tier-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px 28px 24px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease, border-color 0.3s ease;
+  }
+  .tier-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-strong);
+  }
+  .tier-card.premium {
+    border-color: rgba(212, 184, 150, 0.3);
+    background:
+      radial-gradient(800px 300px at 100% 0%, rgba(212, 184, 150, 0.08), transparent 60%),
+      var(--surface-1);
+  }
+  .tier-card.premium::before {
+    content: "PREMIUM";
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.2em;
+    color: var(--gold);
+    padding: 4px 9px;
+    border: 1px solid var(--gold-deep);
+    border-radius: 100px;
+    background: rgba(212, 184, 150, 0.06);
+  }
+  .tier-head {
+    margin-bottom: 24px;
+  }
+  .tier-name {
+    font-family: var(--font-display);
+    font-size: 36px;
+    line-height: 1.05;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+  .tier-name em { color: var(--gold); }
+  .tier-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .tier-price {
+    font-family: var(--font-display);
+    font-size: 64px;
+    line-height: 1;
+    color: var(--text-primary);
+    margin: 8px 0 6px;
+  }
+  .tier-price .currency { font-family: var(--font-sans); font-size: 22px; color: var(--text-muted); vertical-align: top; margin-right: 4px; font-weight: 500; }
+  .tier-price .cents { font-family: var(--font-sans); font-size: 28px; color: var(--text-muted); font-weight: 500; }
+  .tier-price-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); letter-spacing: 0.05em; }
+
+  .breakdown {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .br-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 13.5px;
+    padding: 4px 0;
+  }
+  .br-row .label { color: var(--text-secondary); }
+  .br-row .label .sub { color: var(--text-muted); font-size: 11.5px; margin-left: 6px; }
+  .br-row .val { font-family: var(--font-mono); color: var(--text-primary); font-size: 13px; }
+  .br-row.zero .val { color: var(--mint); }
+  .br-row.total {
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    margin-top: 6px;
+    font-weight: 500;
+  }
+  .br-row.total .label { color: var(--text-primary); font-size: 14.5px; }
+  .br-row.total .val {
+    color: var(--gold);
+    font-size: 22px;
+    font-family: var(--font-mono);
+    font-weight: 500;
+  }
+  .br-row.warn .val { color: var(--amber); }
+  .br-row.neg .val { color: var(--rose); }
+
+  /* Stripe card */
+  .stripe-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 32px;
+    align-items: center;
+  }
+  .stripe-card h3 {
+    font-family: var(--font-display);
+    font-size: 28px;
+    line-height: 1.1;
+    margin-bottom: 12px;
+  }
+  .stripe-card p {
+    color: var(--text-secondary);
+    font-size: 13.5px;
+    line-height: 1.65;
+    margin: 0 0 12px;
+  }
+  .formula {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--text-muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    display: inline-block;
+  }
+  .formula b { color: var(--gold); font-weight: 500; }
+  .stripe-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .stripe-cell {
+    padding: 18px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--bg-canvas);
+  }
+  .stripe-cell .price { font-family: var(--font-display); font-size: 32px; line-height: 1; }
+  .stripe-cell .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; font-family: var(--font-mono); }
+  .stripe-cell .fee {
+    font-family: var(--font-mono);
+    color: var(--rose);
+    font-size: 14px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+  }
+  .stripe-cell .pct { color: var(--rose); font-weight: 500; }
+  .stripe-cell .net {
+    font-family: var(--font-mono);
+    color: var(--mint);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  /* Tabela escalável */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+  }
+  .data-table th {
+    text-align: left;
+    padding: 16px 18px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    font-weight: 500;
+    background: var(--bg-canvas);
+    border-bottom: 1px solid var(--border);
+  }
+  .data-table th.num, .data-table td.num {
+    text-align: right;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .data-table td {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    vertical-align: middle;
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tbody tr { transition: background 0.15s ease; }
+  .data-table tbody tr:hover { background: var(--surface-2); }
+  .data-table td.strong { color: var(--text-primary); font-weight: 500; }
+  .data-table td.muted { color: var(--text-muted); }
+  .data-table td.gold { color: var(--gold); font-weight: 500; }
+  .data-table td.mint { color: var(--mint); font-weight: 500; }
+  .data-table td.rose { color: var(--rose); font-weight: 500; }
+
+  .table-wrap { overflow-x: auto; border-radius: var(--radius-lg); }
+
+  /* Custos operacionais grid */
+  .ops-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .ops-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 22px 22px 20px;
+  }
+  .ops-card h4 {
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  .ops-card .ops-val {
+    font-family: var(--font-display);
+    font-size: 30px;
+    color: var(--gold);
+    margin: 12px 0 6px;
+  }
+  .ops-card .ops-val .small { font-size: 13px; color: var(--text-muted); font-family: var(--font-sans); }
+  .ops-card p {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  /* Timeline de upgrades */
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+  }
+  .ts-row {
+    display: grid;
+    grid-template-columns: 88px 1fr 240px 140px;
+    align-items: center;
+    padding: 22px 24px;
+    border-bottom: 1px solid var(--border);
+    gap: 24px;
+    transition: background 0.15s ease;
+  }
+  .ts-row:last-child { border-bottom: none; }
+  .ts-row:hover { background: var(--surface-2); }
+  .ts-marker {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 9px;
+    border-radius: 100px;
+    text-align: center;
+    letter-spacing: 0.1em;
+    font-weight: 500;
+  }
+  .ts-marker.crit { color: var(--rose); border: 1px solid rgba(253, 164, 175, 0.4); background: rgba(253, 164, 175, 0.06); }
+  .ts-marker.warn { color: var(--amber); border: 1px solid rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.06); }
+  .ts-marker.info { color: var(--sky); border: 1px solid rgba(147, 197, 253, 0.4); background: rgba(147, 197, 253, 0.06); }
+  .ts-marker.low { color: var(--text-muted); border: 1px solid var(--border); }
+  .ts-title { font-size: 14.5px; color: var(--text-primary); font-weight: 500; }
+  .ts-desc { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; line-height: 1.5; }
+  .ts-when { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
+  .ts-cost { font-family: var(--font-mono); font-size: 13px; color: var(--mint); text-align: right; }
+  .ts-cost.zero { color: var(--text-muted); }
+
+  /* Bars: custo total por user (gráfico CSS) */
+  .bars-wrap {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 32px 32px 28px;
+  }
+  .bars-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 24px;
+  }
+  .bars-head h3 {
+    font-family: var(--font-display);
+    font-size: 24px;
+    color: var(--text-primary);
+  }
+  .bars-head .legend {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    gap: 18px;
+  }
+  .bars-head .legend span::before {
+    content: "";
+    display: inline-block;
+    width: 9px; height: 9px;
+    border-radius: 2px;
+    margin-right: 7px;
+    vertical-align: middle;
+  }
+  .lg-var::before { background: var(--gold); }
+  .lg-fix::before { background: var(--border-strong); }
+  .bar-row {
+    display: grid;
+    grid-template-columns: 100px 1fr 100px;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 0;
+  }
+  .bar-row .label { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-secondary); }
+  .bar-row .total { font-family: var(--font-mono); font-size: 14px; color: var(--gold); text-align: right; font-weight: 500; }
+  .bar-track {
+    position: relative;
+    height: 24px;
+    background: var(--bg-canvas);
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .bar-fill-var, .bar-fill-fix {
+    position: absolute;
+    top: 0; bottom: 0;
+    border-radius: 0;
+    transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .bar-fill-var {
+    left: 0;
+    background: linear-gradient(90deg, var(--gold-deep), var(--gold));
+    width: 0;
+  }
+  .bar-fill-fix {
+    background: var(--border-strong);
+    width: 0;
+  }
+  .bar-fill-fix.animate { transition-delay: 0.2s; }
+
+  /* Avisos finais */
+  .heads-up {
+    background:
+      linear-gradient(135deg, rgba(251, 191, 36, 0.04), transparent 50%),
+      var(--surface-1);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--amber);
+    border-radius: var(--radius-md);
+    padding: 28px 32px;
+  }
+  .heads-up h3 {
+    font-family: var(--font-display);
+    font-size: 30px;
+    margin-bottom: 18px;
+    color: var(--text-primary);
+  }
+  .heads-up h3 em { color: var(--amber); }
+  .heads-up ol {
+    margin: 0;
+    padding-left: 22px;
+    counter-reset: hu;
+  }
+  .heads-up li {
+    margin-bottom: 16px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    font-size: 14px;
+  }
+  .heads-up li strong { color: var(--text-primary); font-weight: 500; }
+  .heads-up li::marker {
+    color: var(--amber);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  /* Footer */
+  .footer {
+    margin-top: 96px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    color: var(--text-muted);
+    font-size: 12px;
+    gap: 32px;
+  }
+  .footer .marker { font-family: var(--font-mono); }
+
+  /* Animations */
+  @keyframes reveal {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.7s ease-out, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.shown { opacity: 1; transform: translateY(0); }
+
+  /* Responsivo */
+  @media (max-width: 1080px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { position: relative; height: auto; }
+    .main { padding: 32px 24px 64px; }
+    .hero-kpis { grid-template-columns: 1fr 1fr; }
+    .premissas { grid-template-columns: 1fr 1fr; }
+    .duo { grid-template-columns: 1fr; }
+    .stripe-card { grid-template-columns: 1fr; }
+    .ops-grid { grid-template-columns: 1fr; }
+    .ts-row { grid-template-columns: 1fr; gap: 8px; }
+    .bar-row { grid-template-columns: 70px 1fr 90px; }
+  }
+  @media (max-width: 600px) {
+    .hero-title { font-size: 48px; }
+    .hero-kpis { grid-template-columns: 1fr; }
+    .premissas { grid-template-columns: 1fr; }
+    .section-head { flex-direction: column; align-items: flex-start; }
+    .section-head .lede { text-align: left; }
+  }
+
+  /* Scrollbar refinada (browsers que suportam) */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 100px; border: 2px solid var(--bg); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+  /* Selection */
+  ::selection { background: var(--gold); color: var(--bg); }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- =========== SIDEBAR =========== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">BeatPost</div>
+        <div class="brand-tag">Financial · v1</div>
+      </div>
+    </div>
+
+    <nav class="nav-section">
+      <div class="nav-label">Projeção</div>
+      <div class="nav-list">
+        <a href="#premissas"><span>Premissas</span><span class="num">01</span></a>
+        <a href="#upload"><span>Custo por upload</span><span class="num">02</span></a>
+        <a href="#usuario"><span>Custo por usuário</span><span class="num">03</span></a>
+        <a href="#stripe"><span>Taxa Stripe</span><span class="num">04</span></a>
+        <a href="#infra"><span>Infraestrutura</span><span class="num">05</span></a>
+        <a href="#operacionais"><span>Operacionais</span><span class="num">06</span></a>
+        <a href="#upgrades"><span>Quando upgradar</span><span class="num">07</span></a>
+        <a href="#breakeven"><span>Breakeven</span><span class="num">08</span></a>
+        <a href="#total"><span>Custo total/user</span><span class="num">09</span></a>
+        <a href="#avisos"><span>Pontos cegos</span><span class="num">10</span></a>
+      </div>
+    </nav>
+
+    <div class="sidebar-meta">
+      Atualizado em <strong>18 mai 2026</strong><br>
+      Câmbio assumido: <strong>1 USD = R$ 5,00</strong><br>
+      Mix: <strong>70% Básico · 30% Premium</strong>
+    </div>
+  </aside>
+
+  <!-- =========== MAIN =========== -->
+  <main class="main">
+
+    <!-- HERO -->
+    <header class="hero">
+      <div class="hero-meta">
+        <span class="hero-chip live">PROJEÇÃO ATIVA</span>
+        <span class="hero-chip">v1 · 2026-05-18</span>
+        <span class="hero-chip">PT-BR</span>
+        <a class="download-btn" href="projecao-custos-2026-05-18.html" download="BeatPost-Projecao-Custos-2026-05-18.html" title="Baixar este arquivo HTML">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0l-5-5m5 5l5-5M5 20h14"/></svg>
+          Baixar HTML
+        </a>
+      </div>
+
+      <h1 class="hero-title display">
+        Quanto custa, de verdade,<br>
+        <em>operar o BeatPost</em> por mês.
+      </h1>
+
+      <p class="hero-sub">
+        Apuração completa dos custos por upload, por usuário, taxa Stripe, infraestrutura escalável e ponto de equilíbrio.
+        Preços em USD (cobrança via Stripe internacional). Os números são reais, baseados em medições de produção e tabelas oficiais dos provedores.
+      </p>
+
+      <div class="hero-kpis">
+        <div class="kpi">
+          <span class="kpi-label">Custo / upload (sem capa)</span>
+          <span class="kpi-value"><span class="currency">$</span>0,05</span>
+          <span class="kpi-foot">≈ R$ 0,25 por beat publicado</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Custo / upload (com capa IA)</span>
+          <span class="kpi-value"><span class="currency">$</span>0,10</span>
+          <span class="kpi-foot">≈ R$ 0,50 por beat publicado</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Margem por usuário (mix)</span>
+          <span class="kpi-value"><span class="currency">$</span>11,01</span>
+          <span class="kpi-foot"><span class="accent">85% bruto</span> · após Stripe + IA</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Breakeven projetado</span>
+          <span class="kpi-value">3<span class="small"> users</span></span>
+          <span class="kpi-foot"><span class="accent">já lucrativo</span> · com 5 pagantes</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 01 · PREMISSAS -->
+    <section id="premissas" class="reveal">
+      <div class="section-head">
+        <h2 class="display">
+          <em>01 ·</em> Premissas da projeção
+        </h2>
+        <p class="lede">As 4 entradas que alimentam todos os cálculos seguintes. Mude qualquer uma e o modelo precisa ser revisto.</p>
+      </div>
+
+      <div class="premissas">
+        <div class="premissa">
+          <div class="premissa-label">Tier Básico</div>
+          <div class="premissa-value">$9,99<span class="unit"> /mês</span></div>
+          <div class="premissa-note">Plano de entrada · sem capa gerada por IA</div>
+        </div>
+        <div class="premissa">
+          <div class="premissa-label">Tier Premium</div>
+          <div class="premissa-value">$19,99<span class="unit"> /mês</span></div>
+          <div class="premissa-note">Plano completo · com capa gerada por IA (fal.ai)</div>
+        </div>
+        <div class="premissa">
+          <div class="premissa-label">Uploads / usuário / mês</div>
+          <div class="premissa-value">20<span class="unit"> beats</span></div>
+          <div class="premissa-note">Média realista do produtor underground ativo</div>
+        </div>
+        <div class="premissa">
+          <div class="premissa-label">Gemini grounding</div>
+          <div class="premissa-value">PAGO<span class="unit"> · $0,035/req</span></div>
+          <div class="premissa-note">Cenário pós free tier (após 1.500 buscas/dia)</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 · CUSTO POR UPLOAD -->
+    <section id="upload" class="reveal">
+      <div class="section-head">
+        <h2 class="display">
+          <em>02 ·</em> Custo de cada upload publicado
+        </h2>
+        <p class="lede">Soma do que sai da conta em USD a cada vídeo subido no YouTube. YouTube e Spotify são free — não entram.</p>
+      </div>
+
+      <div class="duo">
+        <!-- Sem capa IA -->
+        <div class="tier-card">
+          <div class="tier-head">
+            <div class="tier-name">Sem <em>capa IA</em></div>
+            <div class="tier-desc">Pipeline padrão · produtor sobe capa própria</div>
+            <div class="tier-price"><span class="currency">$</span>0,05<span class="cents">04</span></div>
+            <div class="tier-price-sub">POR BEAT PUBLICADO · ≈ R$ 0,25</div>
+          </div>
+
+          <div class="breakdown">
+            <div class="br-row">
+              <span class="label">Claude Sonnet 4.6 <span class="sub">(título + descrição + tags)</span></span>
+              <span class="val">$0,0144</span>
+            </div>
+            <div class="br-row">
+              <span class="label">Gemini 2.5 Flash <span class="sub">(tokens)</span></span>
+              <span class="val">$0,0010</span>
+            </div>
+            <div class="br-row">
+              <span class="label">Gemini grounding <span class="sub">(Google Search)</span></span>
+              <span class="val">$0,0350</span>
+            </div>
+            <div class="br-row zero">
+              <span class="label">YouTube Data API <span class="sub">(quota 1.650 units)</span></span>
+              <span class="val">$0,00</span>
+            </div>
+            <div class="br-row zero">
+              <span class="label">Spotify API <span class="sub">(top tracks)</span></span>
+              <span class="val">$0,00</span>
+            </div>
+            <div class="br-row zero">
+              <span class="label">ffmpeg + librosa <span class="sub">(processamento local)</span></span>
+              <span class="val">$0,00</span>
+            </div>
+            <div class="br-row total">
+              <span class="label">Total por upload</span>
+              <span class="val">$0,0504</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Com capa IA -->
+        <div class="tier-card premium">
+          <div class="tier-head">
+            <div class="tier-name">Com <em>capa IA</em></div>
+            <div class="tier-desc">Pipeline completo · IA gera capa em estilo escolhido</div>
+            <div class="tier-price"><span class="currency">$</span>0,10<span class="cents">04</span></div>
+            <div class="tier-price-sub">POR BEAT PUBLICADO · ≈ R$ 0,50</div>
+          </div>
+
+          <div class="breakdown">
+            <div class="br-row">
+              <span class="label">Tudo do tier sem capa</span>
+              <span class="val">$0,0504</span>
+            </div>
+            <div class="br-row warn">
+              <span class="label">fal.ai gpt-image-2 <span class="sub">(geração de capa única)</span></span>
+              <span class="val">$0,0500</span>
+            </div>
+            <div class="br-row total">
+              <span class="label">Total por upload</span>
+              <span class="val">$0,1004</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 · CUSTO POR USUÁRIO (20 uploads) -->
+    <section id="usuario" class="reveal">
+      <div class="section-head">
+        <h2 class="display">
+          <em>03 ·</em> Custo de IA por usuário ativo
+        </h2>
+        <p class="lede">Apenas IA — ainda sem Stripe e sem rateio de infra. 20 uploads/mês como média.</p>
+      </div>
+
+      <div class="duo">
+        <div class="tier-card">
+          <div class="tier-head">
+            <div class="tier-name">Usuário <em>Básico</em></div>
+            <div class="tier-desc">20 uploads/mês × $0,0504</div>
+            <div class="tier-price"><span class="currency">$</span>1,01<span class="cents"></span></div>
+            <div class="tier-price-sub">CUSTO MENSAL DE IA · ≈ R$ 5,04</div>
+          </div>
+          <div class="breakdown">
+            <div class="br-row"><span class="label">Receita bruta</span><span class="val">$9,99</span></div>
+            <div class="br-row neg"><span class="label">– Custo de IA</span><span class="val">–$1,01</span></div>
+            <div class="br-row"><span class="label" style="color:var(--text-primary)">Sobra antes de Stripe + infra</span><span class="val" style="color:var(--mint)">$8,98</span></div>
+          </div>
+        </div>
+        <div class="tier-card premium">
+          <div class="tier-head">
+            <div class="tier-name">Usuário <em>Premium</em></div>
+            <div class="tier-desc">20 uploads/mês × $0,1004</div>
+            <div class="tier-price"><span class="currency">$</span>2,01<span class="cents"></span></div>
+            <div class="tier-price-sub">CUSTO MENSAL DE IA · ≈ R$ 10,04</div>
+          </div>
+          <div class="breakdown">
+            <div class="br-row"><span class="label">Receita bruta</span><span class="val">$19,99</span></div>
+            <div class="br-row neg"><span class="label">– Custo de IA</span><span class="val">–$2,01</span></div>
+            <div class="br-row"><span class="label" style="color:var(--text-primary)">Sobra antes de Stripe + infra</span><span class="val" style="color:var(--mint)">$17,98</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 · STRIPE -->
+    <section id="stripe" class="reveal">
+      <div class="section-head">
+        <h2 class="display">
+          <em>04 ·</em> A mordida da <em>Stripe</em>
+        </h2>
+        <p class="lede">A taxa fixa de $0,30 morde mais em preços baixos. Em $9,99 vira 5,9% real, não 2,9%.</p>
+      </div>
+
+      <div class="stripe-card">
+        <div>
+          <h3>Stripe internacional <em style="color:var(--gold)">2,9% + $0,30</em></h3>
+          <p>Cada renovação mensal de assinatura passa pela Stripe e paga essa taxa. Como a parcela fixa de $0,30 não varia com o preço, ela <strong>pesa muito mais</strong> em planos baratos. É o motivo de planos de $5 raramente fazerem sentido econômico.</p>
+          <p>Para cartões brasileiros, ainda pode haver conversão FX (~1%) e IOF cobrado do cliente — não do BeatPost.</p>
+          <div class="formula">fee = preço × <b>0,029</b> + <b>$0,30</b></div>
+        </div>
+        <div class="stripe-grid">
+          <div class="stripe-cell">
+            <div class="label">Tier Básico</div>
+            <div class="price">$9,99</div>
+            <div class="fee">– $0,59 <span class="pct">(5,9%)</span></div>
+            <div class="net">= $9,40 líquido</div>
+          </div>
+          <div class="stripe-cell">
+            <div class="label">Tier Premium</div>
+            <div class="price">$19,99</div>
+            <div class="fee">– $0,88 <span class="pct">(4,4%)</span></div>
+            <div class="net">= $19,11 líquido</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 · INFRAESTRUTURA -->
+    <section id="infra" class="reveal">
+      <div class="section-head">
+        <h2 class="display">
+          <em>05 ·</em> Infraestrutura, em camadas
+        </h2>
+        <p class="lede">O custo fixo não cresce linear — ele <strong>salta em degraus</strong> conforme você cruza cada free tier.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Faixa de usuários</th>
+              <th>Railway</th>
+              <th>Vercel</th>
+              <th>Supabase</th>
+              <th>QStash</th>
+              <th class="num">Subtotal infra (USD)</th>
+              <th class="num">≈ R$</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="strong">1 – 2 (hoje)</td><td>$5 · Hobby</td><td class="mint">$0 · Hobby</td><td class="mint">$0 · Free</td><td class="mint">$0 · Free</td><td class="num gold">$5,00</td><td class="num muted">R$ 25</td></tr>
+            <tr><td class="strong">3 – 9</td><td>$5 · Hobby</td><td class="rose">$20 · Pro¹</td><td class="mint">$0 · Free</td><td class="mint">$0 · Free</td><td class="num gold">$25,00</td><td class="num muted">R$ 125</td></tr>
+            <tr><td class="strong">10 – 29</td><td>$5 · Hobby</td><td>$20 · Pro</td><td class="rose">$25 · Pro²</td><td class="mint">$0 · Free</td><td class="num gold">$50,00</td><td class="num muted">R$ 250</td></tr>
+            <tr><td class="strong">30 – 99</td><td class="rose">$20 · Pro³</td><td>$20 · Pro</td><td>$25 · Pro</td><td class="mint">$0 · Free</td><td class="num gold">$65,00</td><td class="num muted">R$ 325</td></tr>
+            <tr><td class="strong">100 – 299</td><td>$20 · Pro</td><td>$20 · Pro</td><td>$25 · Pro</td><td class="mint">$0 · Free</td><td class="num gold">$65,00</td><td class="num muted">R$ 325</td></tr>
+            <tr><td class="strong">300 – 999</td><td class="rose">$50 · scale⁴</td><td>$20 · Pro</td><td class="rose">$50 · scale⁵</td><td class="rose">$5 · pay⁶</td><td class="num gold">$125,00</td><td class="num muted">R$ 625</td></tr>
+            <tr><td class="strong">1.000 – 3.000</td><td>$100+</td><td>$20</td><td>$100+</td><td>$20+</td><td class="num gold">$240,00</td><td class="num muted">R$ 1.200</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:18px; font-size:12.5px; color:var(--text-muted); line-height:1.7;">
+        <strong style="color:var(--text-secondary)">Notas críticas:</strong>
+        <strong style="color:var(--rose)">¹</strong> Vercel Hobby é <strong>proibido</strong> pra uso comercial — obrigatório migrar pra Pro no momento da primeira cobrança.
+        <strong style="color:var(--rose)">²</strong> Supabase Free aguenta só ~50 beats armazenados (1GB / 20MB cada) — primeiro upgrade que aparece.
+        <strong style="color:var(--rose)">³</strong> Railway Hobby tem RAM compartilhada — 5 uploads simultâneos travam ffmpeg.
+        <strong>⁴ ⁵ ⁶</strong> A partir de 300 users, todos os limites ficam apertados ao mesmo tempo.
+      </div>
+    </section>
+
+    <!-- 06 · OPERACIONAIS -->
+    <section id="operacionais" class="reveal">
+      <div class="section-head">
+        <h2 class="display">
+          <em>06 ·</em> Custos operacionais
+        </h2>
+        <p class="lede">Domínio próprio, email profissional, transacional. O "fora da plataforma".</p>
+      </div>
+
+      <div class="ops-grid">
+        <div class="ops-card">
+          <h4>Domínio próprio</h4>
+          <div class="ops-val">$1,25<span class="small"> /mês</span></div>
+          <p>~$15/ano (.com.br, .com ou .app). Necessário desde o lançamento — `.vercel.app` derruba credibilidade. Pode ser pago anualmente.</p>
+        </div>
+        <div class="ops-card">
+          <h4>Google Workspace</h4>
+          <div class="ops-val">$7,00<span class="small"> /mês / conta</span></div>
+          <p>Email <code style="font-family:var(--font-mono);color:var(--gold);font-size:12px">@beatpost.com</code> profissional. Hoje você usa Gmail comum (memória). Recomendado a partir de ~30 usuários ativos.</p>
+        </div>
+        <div class="ops-card">
+          <h4>Resend (transacional)</h4>
+          <div class="ops-val">$0 – 20<span class="small"> /mês</span></div>
+          <p>Envio de emails de produto (verificação, recibos, alertas). Free até 3.000 emails/mês. Plano Pro $20 quando crescer.</p>
+        </div>
+        <div class="ops-card">
+          <h4>Marketing (orgânico)</h4>
+          <div class="ops-val">$0<span class="small"> assumido</span></div>
+          <p>Sem orçamento de ads no MVP. Aquisição via comunidade, conteúdo orgânico e indicação. Realista pra beta privado.</p>
+        </div>
+        <div class="ops-card">
+          <h4>Tempo do Gustavo</h4>
+          <div class="ops-val">$0<span class="small"> "contábil"</span></div>
+          <p>Não entra na planilha, mas existe. Suporte, ajustes, marketing, criação — todas as horas que você investe. Importante lembrar.</p>
+        </div>
+        <div class="ops-card">
+          <h4>Impostos (MEI/PJ)</h4>
+          <div class="ops-val">~6 – 15%<span class="small"> do faturamento</span></div>
+          <p>MEI ($75/mês limite R$ 81k/ano) ou Simples PJ (5,5%+). Não modelado abaixo — multiplique a margem final por 0,85–0,94.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 · UPGRADES -->
+    <section id="upgrades" class="reveal">
+      <div class="section-head">
+        <h2 class="display">
+          <em>07 ·</em> Quando upgradar cada plataforma
+        </h2>
+        <p class="lede">Ordem cronológica real do que vai te bater conforme o produto cresce.</p>
+      </div>
+
+      <div class="timeline">
+        <div class="ts-row">
+          <span class="ts-marker crit">CRÍTICO</span>
+          <div>
+            <div class="ts-title">Aumento de quota YouTube Data API</div>
+            <div class="ts-desc">Hoje: 10.000 units/dia = 6 uploads/dia no projeto todo. Bloqueia o negócio inteiro antes de qualquer escala.</div>
+          </div>
+          <div class="ts-when">HOJE · antes do beta</div>
+          <div class="ts-cost zero">$0 · formulário</div>
+        </div>
+
+        <div class="ts-row">
+          <span class="ts-marker warn">1º UPGRADE</span>
+          <div>
+            <div class="ts-title">Supabase Free → Pro ($25/mês)</div>
+            <div class="ts-desc">Estoura em ~50 beats armazenados. Com 2 usuários ativos fazendo 20/mês, dura ~5 semanas.</div>
+          </div>
+          <div class="ts-when">~3 usuários pagantes</div>
+          <div class="ts-cost">+ $25/mês</div>
+        </div>
+
+        <div class="ts-row">
+          <span class="ts-marker warn">OBRIGATÓRIO</span>
+          <div>
+            <div class="ts-title">Vercel Hobby → Pro ($20/mês)</div>
+            <div class="ts-desc">Termos de serviço da Vercel proíbem Hobby pra projeto comercial. Dia do primeiro real cobrado.</div>
+          </div>
+          <div class="ts-when">1º pagante</div>
+          <div class="ts-cost">+ $20/mês</div>
+        </div>
+
+        <div class="ts-row">
+          <span class="ts-marker info">PERFORMANCE</span>
+          <div>
+            <div class="ts-title">Railway Hobby → Pro ($20/mês)</div>
+            <div class="ts-desc">RAM compartilhada do Hobby trava ffmpeg em uploads simultâneos. Acima de 10 users ativos o problema aparece.</div>
+          </div>
+          <div class="ts-when">~10–15 usuários</div>
+          <div class="ts-cost">+ $15/mês</div>
+        </div>
+
+        <div class="ts-row">
+          <span class="ts-marker info">VOLUME</span>
+          <div>
+            <div class="ts-title">Gemini grounding sai do free</div>
+            <div class="ts-desc">1.500 buscas/dia free. Acima disso, cada upload custa +$0,035. Já contabilizado em toda esta projeção.</div>
+          </div>
+          <div class="ts-when">~50 usuários ativos</div>
+          <div class="ts-cost">+ $0,035/upload</div>
+        </div>
+
+        <div class="ts-row">
+          <span class="ts-marker low">CONFORTO</span>
+          <div>
+            <div class="ts-title">Google Workspace (email pro)</div>
+            <div class="ts-desc">Email @beatpost.com aumenta credibilidade. Necessário quando comunicação com produtores for séria.</div>
+          </div>
+          <div class="ts-when">~30 usuários</div>
+          <div class="ts-cost">+ $7/mês</div>
+        </div>
+
+        <div class="ts-row">
+          <span class="ts-marker low">ESCALA</span>
+          <div>
+            <div class="ts-title">QStash free → pay-as-you-go</div>
+            <div class="ts-desc">500 mensagens/dia free = ~125 uploads/dia. Acima de 150 users ativos começa a faltar.</div>
+          </div>
+          <div class="ts-when">~150 usuários</div>
+          <div class="ts-cost">+ $5–20/mês</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08 · BREAKEVEN -->
+    <section id="breakeven" class="reveal">
+      <div class="section-head">
+        <h2 class="display">
+          <em>08 ·</em> Tabela de breakeven
+        </h2>
+        <p class="lede">Mix 70% Básico + 30% Premium · ARPU $13 · 20 uploads cada · Gemini grounding pago.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Usuários</th>
+              <th class="num">Receita bruta</th>
+              <th class="num">Stripe fees</th>
+              <th class="num">Custo IA (uploads)</th>
+              <th class="num">Custo fixo</th>
+              <th class="num">Operacionais</th>
+              <th class="num">Lucro líquido</th>
+              <th class="num">Margem</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="strong">1</td>
+              <td class="num">$12,99</td>
+              <td class="num rose">–$0,67</td>
+              <td class="num rose">–$1,31</td>
+              <td class="num rose">–$5,00</td>
+              <td class="num rose">–$1,25</td>
+              <td class="num mint">+$4,76</td>
+              <td class="num gold">37%</td>
+            </tr>
+            <tr>
+              <td class="strong">5</td>
+              <td class="num">$64,95</td>
+              <td class="num rose">–$3,35</td>
+              <td class="num rose">–$6,55</td>
+              <td class="num rose">–$25,00</td>
+              <td class="num rose">–$1,25</td>
+              <td class="num mint">+$28,80</td>
+              <td class="num gold">44%</td>
+            </tr>
+            <tr>
+              <td class="strong">10</td>
+              <td class="num">$129,90</td>
+              <td class="num rose">–$6,70</td>
+              <td class="num rose">–$13,10</td>
+              <td class="num rose">–$50,00</td>
+              <td class="num rose">–$1,25</td>
+              <td class="num mint">+$58,85</td>
+              <td class="num gold">45%</td>
+            </tr>
+            <tr>
+              <td class="strong">25</td>
+              <td class="num">$324,75</td>
+              <td class="num rose">–$16,75</td>
+              <td class="num rose">–$32,75</td>
+              <td class="num rose">–$50,00</td>
+              <td class="num rose">–$1,25</td>
+              <td class="num mint">+$224,00</td>
+              <td class="num gold">69%</td>
+            </tr>
+            <tr>
+              <td class="strong">50</td>
+              <td class="num">$649,50</td>
+              <td class="num rose">–$33,50</td>
+              <td class="num rose">–$65,50</td>
+              <td class="num rose">–$65,00</td>
+              <td class="num rose">–$1,25</td>
+              <td class="num mint">+$484,25</td>
+              <td class="num gold">75%</td>
+            </tr>
+            <tr>
+              <td class="strong">100</td>
+              <td class="num">$1.299,00</td>
+              <td class="num rose">–$67,00</td>
+              <td class="num rose">–$131,00</td>
+              <td class="num rose">–$65,00</td>
+              <td class="num rose">–$8,25</td>
+              <td class="num mint">+$1.027,75</td>
+              <td class="num gold">79%</td>
+            </tr>
+            <tr>
+              <td class="strong">200</td>
+              <td class="num">$2.598,00</td>
+              <td class="num rose">–$134,00</td>
+              <td class="num rose">–$262,00</td>
+              <td class="num rose">–$65,00</td>
+              <td class="num rose">–$28,25</td>
+              <td class="num mint">+$2.108,75</td>
+              <td class="num gold">81%</td>
+            </tr>
+            <tr>
+              <td class="strong">500</td>
+              <td class="num">$6.495,00</td>
+              <td class="num rose">–$335,00</td>
+              <td class="num rose">–$655,00</td>
+              <td class="num rose">–$125,00</td>
+              <td class="num rose">–$28,25</td>
+              <td class="num mint">+$5.351,75</td>
+              <td class="num gold">82%</td>
+            </tr>
+            <tr>
+              <td class="strong">1.000</td>
+              <td class="num">$12.990,00</td>
+              <td class="num rose">–$670,00</td>
+              <td class="num rose">–$1.310,00</td>
+              <td class="num rose">–$240,00</td>
+              <td class="num rose">–$35,25</td>
+              <td class="num mint">+$10.734,75</td>
+              <td class="num gold">83%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p style="margin-top:18px; font-size:12.5px; color:var(--text-muted); line-height:1.7;">
+        Breakeven já com <strong style="color:var(--mint)">1 usuário pagante</strong> no cenário B/P médio — fixo de $6,25 é facilmente coberto.
+        Cuidado: <strong style="color:var(--text-secondary)">isso não inclui custo de aquisição (CAC) nem impostos.</strong> Com 10% de impostos PJ + R$ 200/mês de ads, breakeven sobe para ~7 pagantes.
+      </p>
+    </section>
+
+    <!-- 09 · CUSTO TOTAL POR USER (GRÁFICO) -->
+    <section id="total" class="reveal">
+      <div class="section-head">
+        <h2 class="display">
+          <em>09 ·</em> Quanto o BeatPost gasta <em>por usuário, por mês</em>
+        </h2>
+        <p class="lede">Soma de tudo: variável (IA + Stripe) + fixo rateado + operacionais. Quanto mais users, menor o custo por cabeça.</p>
+      </div>
+
+      <div class="bars-wrap">
+        <div class="bars-head">
+          <h3>Custo total / usuário · escala</h3>
+          <div class="legend">
+            <span class="lg-var">variável (IA + Stripe)</span>
+            <span class="lg-fix">fixo (infra + operacionais)</span>
+          </div>
+        </div>
+
+        <!-- escala: max ~$8.50 = 100% -->
+        <div class="bar-row" data-var="23" data-fix="74">
+          <span class="label">1 user</span>
+          <div class="bar-track">
+            <div class="bar-fill-var" data-w="23"></div>
+            <div class="bar-fill-fix animate" data-w="74" data-left="23"></div>
+          </div>
+          <span class="total">$8,23</span>
+        </div>
+        <div class="bar-row" data-var="23" data-fix="62">
+          <span class="label">5 users</span>
+          <div class="bar-track">
+            <div class="bar-fill-var" data-w="23"></div>
+            <div class="bar-fill-fix animate" data-w="62" data-left="23"></div>
+          </div>
+          <span class="total">$7,24</span>
+        </div>
+        <div class="bar-row" data-var="23" data-fix="60">
+          <span class="label">10 users</span>
+          <div class="bar-track">
+            <div class="bar-fill-var" data-w="23"></div>
+            <div class="bar-fill-fix animate" data-w="60" data-left="23"></div>
+          </div>
+          <span class="total">$7,13</span>
+        </div>
+        <div class="bar-row" data-var="23" data-fix="24">
+          <span class="label">25 users</span>
+          <div class="bar-track">
+            <div class="bar-fill-var" data-w="23"></div>
+            <div class="bar-fill-fix animate" data-w="24" data-left="23"></div>
+          </div>
+          <span class="total">$4,03</span>
+        </div>
+        <div class="bar-row" data-var="23" data-fix="16">
+          <span class="label">50 users</span>
+          <div class="bar-track">
+            <div class="bar-fill-var" data-w="23"></div>
+            <div class="bar-fill-fix animate" data-w="16" data-left="23"></div>
+          </div>
+          <span class="total">$3,30</span>
+        </div>
+        <div class="bar-row" data-var="23" data-fix="9">
+          <span class="label">100 users</span>
+          <div class="bar-track">
+            <div class="bar-fill-var" data-w="23"></div>
+            <div class="bar-fill-fix animate" data-w="9" data-left="23"></div>
+          </div>
+          <span class="total">$2,71</span>
+        </div>
+        <div class="bar-row" data-var="23" data-fix="5">
+          <span class="label">200 users</span>
+          <div class="bar-track">
+            <div class="bar-fill-var" data-w="23"></div>
+            <div class="bar-fill-fix animate" data-w="5" data-left="23"></div>
+          </div>
+          <span class="total">$2,45</span>
+        </div>
+        <div class="bar-row" data-var="23" data-fix="4">
+          <span class="label">500 users</span>
+          <div class="bar-track">
+            <div class="bar-fill-var" data-w="23"></div>
+            <div class="bar-fill-fix animate" data-w="4" data-left="23"></div>
+          </div>
+          <span class="total">$2,29</span>
+        </div>
+        <div class="bar-row" data-var="23" data-fix="3">
+          <span class="label">1.000 users</span>
+          <div class="bar-track">
+            <div class="bar-fill-var" data-w="23"></div>
+            <div class="bar-fill-fix animate" data-w="3" data-left="23"></div>
+          </div>
+          <span class="total">$2,25</span>
+        </div>
+
+        <div style="margin-top:22px; padding-top:18px; border-top:1px solid var(--border); font-size:12px; color:var(--text-muted); line-height:1.7;">
+          O <strong style="color:var(--text-secondary)">custo variável por user é fixo em ~$1,98</strong> (Stripe $0,67 + IA $1,31, mix 70/30).
+          Já o custo fixo sobe em <strong style="color:var(--text-secondary)">degraus discretos</strong> (~10, ~30, ~100, ~300 users) — não cresce a cada user.
+          Entre um degrau e outro, o user adicional entra com <strong style="color:var(--text-secondary)">custo de infra ≈ $0</strong> — paga $13 e devolve <strong style="color:var(--mint)">~$11 de lucro variável</strong> direto pro bolso.
+          Negócio dá lucro desde o 1º pagante; fica <strong style="color:var(--mint)">mágico</strong> depois de cobrir os primeiros degraus.
+        </div>
+      </div>
+
+      <!-- Tabela detalhada -->
+      <div class="table-wrap" style="margin-top:32px;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Usuários</th>
+              <th class="num">Variável / user</th>
+              <th class="num">Fixo / user</th>
+              <th class="num">Total / user</th>
+              <th class="num">Total / user (R$)</th>
+              <th class="num">% do ARPU mix</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="strong">1</td><td class="num">$1,98</td><td class="num">$6,25</td><td class="num gold">$8,23</td><td class="num muted">R$ 41,15</td><td class="num">63,4%</td></tr>
+            <tr><td class="strong">5</td><td class="num">$1,98</td><td class="num">$5,26</td><td class="num gold">$7,24</td><td class="num muted">R$ 36,20</td><td class="num">55,7%</td></tr>
+            <tr><td class="strong">10</td><td class="num">$1,98</td><td class="num">$5,15</td><td class="num gold">$7,13</td><td class="num muted">R$ 35,65</td><td class="num">54,9%</td></tr>
+            <tr><td class="strong">25</td><td class="num">$1,98</td><td class="num">$2,05</td><td class="num gold">$4,03</td><td class="num muted">R$ 20,15</td><td class="num">31,0%</td></tr>
+            <tr><td class="strong">50</td><td class="num">$1,98</td><td class="num">$1,33</td><td class="num gold">$3,31</td><td class="num muted">R$ 16,55</td><td class="num">25,5%</td></tr>
+            <tr><td class="strong">100</td><td class="num">$1,98</td><td class="num">$0,73</td><td class="num gold">$2,71</td><td class="num muted">R$ 13,55</td><td class="num">20,8%</td></tr>
+            <tr><td class="strong">200</td><td class="num">$1,98</td><td class="num">$0,47</td><td class="num gold">$2,45</td><td class="num muted">R$ 12,25</td><td class="num">18,8%</td></tr>
+            <tr><td class="strong">500</td><td class="num">$1,98</td><td class="num">$0,31</td><td class="num gold">$2,29</td><td class="num muted">R$ 11,45</td><td class="num">17,6%</td></tr>
+            <tr><td class="strong">1.000</td><td class="num">$1,98</td><td class="num">$0,28</td><td class="num gold">$2,25</td><td class="num muted">R$ 11,25</td><td class="num">17,3%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 10 · AVISOS -->
+    <section id="avisos" class="reveal">
+      <div class="section-head">
+        <h2 class="display">
+          <em>10 ·</em> O que esta planilha <em>esconde</em>
+        </h2>
+        <p class="lede">Pontos cegos honestos. Coisas que vão te afetar no mundo real e que esses números não mostram.</p>
+      </div>
+
+      <div class="heads-up">
+        <h3>5 <em>verdades inconvenientes</em></h3>
+        <ol>
+          <li>
+            <strong>20 uploads/mês é otimista.</strong> Produtor underground real publica entre 4 e 12 beats/mês. Se a média cair pra 10, o custo de IA por user cai 50% — bom pra margem, mas significa que sua tabela de "30 uploads original" estava 3x errada. Calibrar com dados reais nos primeiros 30 dias.
+          </li>
+          <li>
+            <strong>YouTube quota é o gargalo invisível.</strong> Hoje o projeto inteiro suporta 6 uploads/dia. Se 2 produtores ativos quiserem subir 3 beats no mesmo dia, trava. <strong>Submeter formulário de aumento de quota antes de abrir o beta é a tarefa mais crítica desta lista.</strong>
+          </li>
+          <li>
+            <strong>CAC (custo de aquisição) não está modelado.</strong> Mesmo aquisição orgânica tem custo: tempo seu, conteúdo, ferramentas. Se rodar 1 mês de ads gastando R$ 500 e converter 5 users, o CAC foi R$ 100/user — equivalente a 3 meses de margem do Tier Básico. Payback longo se churn for alto.
+          </li>
+          <li>
+            <strong>Impostos não entraram na tabela.</strong> MEI ($75/mês fixo, teto R$ 81.000/ano) ou Simples Nacional PJ (~6–11%). Multiplique a margem final por ~0,90 pra ter o número real após Receita Federal.
+          </li>
+          <li>
+            <strong>Churn é o risco silencioso.</strong> SaaS pequeno tipicamente tem 5–10% de churn mensal. Com 100 users, você perde 5–10 por mês — então precisa adquirir 5–10 só pra manter. Retenção via valor entregue (não promo) é o que separa breakeven sustentável de breakeven que vira prejuízo.
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <div>
+        <div class="marker">BEATPOST · FINANCIAL PROJECTION v1</div>
+        <div style="margin-top:6px;">Próxima revisão sugerida: <strong style="color:var(--text-secondary)">após 30 dias com beta aberto</strong></div>
+      </div>
+      <div style="text-align:right;">
+        <div class="marker">DOC · docs/financeiro/projecao-custos-2026-05-18.html</div>
+        <div style="margin-top:6px;">Fonte dos preços: tabelas oficiais Anthropic / Google AI / Stripe / YouTube · 18 mai 2026</div>
+      </div>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+  // === Reveal on scroll ===
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('shown');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -80px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  // === Animação das barras (custo total/user) ===
+  const barIo = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      const row = e.target;
+      const v = row.querySelector('.bar-fill-var');
+      const f = row.querySelector('.bar-fill-fix');
+      if (v) {
+        const w = v.getAttribute('data-w');
+        requestAnimationFrame(() => { v.style.width = w + '%'; });
+      }
+      if (f) {
+        const w = f.getAttribute('data-w');
+        const left = f.getAttribute('data-left') || '0';
+        f.style.left = left + '%';
+        requestAnimationFrame(() => { f.style.width = w + '%'; });
+      }
+      barIo.unobserve(row);
+    });
+  }, { threshold: 0.3 });
+  document.querySelectorAll('.bar-row').forEach(row => barIo.observe(row));
+
+  // === Smooth scroll para anchors ===
+  document.querySelectorAll('.nav-list a').forEach(a => {
+    a.addEventListener('click', (e) => {
+      const href = a.getAttribute('href');
+      if (href && href.startsWith('#')) {
+        e.preventDefault();
+        const target = document.querySelector(href);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
