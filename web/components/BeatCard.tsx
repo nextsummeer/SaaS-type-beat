@@ -123,6 +123,18 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
             : 'var(--shadow-card)',
           transition: 'border-color 0.2s, box-shadow 0.2s',
         }}
+        onMouseEnter={(e) => {
+          if (!selecionado) {
+            e.currentTarget.style.borderColor = 'var(--border-hover)'
+            e.currentTarget.style.boxShadow = 'var(--glow-hover)'
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!selecionado) {
+            e.currentTarget.style.borderColor = 'var(--border-subtle)'
+            e.currentTarget.style.boxShadow = 'var(--shadow-card)'
+          }
+        }}
       >
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

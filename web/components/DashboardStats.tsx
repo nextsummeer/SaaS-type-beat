@@ -53,10 +53,11 @@ function calculaStats(beats: BeatListItem[], totalViews: number): StatItem[] {
         (b.post_status === 'scheduled' && b.scheduled_at && new Date(b.scheduled_at) <= agora)),
   ).length
 
+  // "Em fila" = processando OU rascunho aguardando agendamento
+  // (qualquer beat que ainda nao foi agendado e nao publicou)
   const emFila = beats.filter(
     (b) =>
       b.status !== 'failed' &&
-      b.status !== 'ready_for_review' &&
       b.post_status !== 'scheduled' &&
       b.post_status !== 'published',
   ).length
@@ -160,10 +161,12 @@ export function DashboardStats() {
               border: '1px solid var(--border-subtle)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border-medium)'
+              e.currentTarget.style.borderColor = 'var(--border-hover)'
+              e.currentTarget.style.boxShadow = 'var(--glow-hover)'
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.borderColor = 'var(--border-subtle)'
+              e.currentTarget.style.boxShadow = 'none'
             }}
           >
             {/* Header: eyebrow num + ícone */}

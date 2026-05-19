@@ -3,12 +3,38 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, Plus, Upload, CheckSquare, X, Trash2, LayoutGrid, List } from 'lucide-react'
+import {
+  Loader2,
+  Plus,
+  Upload,
+  CheckSquare,
+  X,
+  Trash2,
+  LayoutGrid,
+  List,
+  Layers,
+  Activity,
+  FileEdit,
+  CalendarClock,
+  CheckCircle2,
+  Archive,
+  AlertTriangle,
+} from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { fetchBeats, deleteBeat, type BeatListItem } from '@/lib/api'
 import { BeatCard } from '@/components/BeatCard'
 import { BeatListRow } from '@/components/BeatListRow'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+
+/** Converte hex curto/longo (#RRGGBB ou #RGB) em rgba(r,g,b,a). */
+function hexAlpha(hex: string, alpha: number): string {
+  let h = hex.replace('#', '')
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
 
 type FiltroKey = 'todos' | 'processando' | 'rascunho' | 'agendado' | 'postado' | 'removido' | 'falhou'
 
@@ -16,6 +42,9 @@ interface Filtro {
   key: FiltroKey
   label: string
   cor: string
+  /** Cor tematica em hex pra colorir fundo/borda/glow do pill */
+  hex: string
+  icon: typeof LayoutGrid
   match: (b: BeatListItem) => boolean
 }
 
@@ -44,11 +73,20 @@ function estaAgendadoFuturo(b: BeatListItem): boolean {
 }
 
 const FILTROS: Filtro[] = [
-  { key: 'todos', label: 'Todos', cor: 'var(--text-muted)', match: () => true },
+  {
+    key: 'todos',
+    label: 'Todos',
+    cor: 'var(--text-muted)',
+    hex: '#FFFFFF',
+    icon: Layers,
+    match: () => true,
+  },
   {
     key: 'processando',
     label: 'Processando',
     cor: 'var(--led-warning)',
+    hex: '#FBBF24',
+    icon: Activity,
     match: (b) =>
       b.status !== 'failed' &&
       b.status !== 'ready_for_review' &&
@@ -59,15 +97,45 @@ const FILTROS: Filtro[] = [
     key: 'rascunho',
     label: 'Rascunho',
     cor: 'var(--led-draft)',
+    hex: '#C4B5FD',
+    icon: FileEdit,
     match: (b) =>
       b.status === 'ready_for_review' &&
       b.post_status !== 'scheduled' &&
       b.post_status !== 'published',
   },
-  { key: 'agendado', label: 'Agendados', cor: 'var(--led-info)', match: estaAgendadoFuturo },
-  { key: 'postado', label: 'Postados', cor: 'var(--led-success)', match: estaPostado },
-  { key: 'removido', label: 'Removidos', cor: 'var(--text-subtle)', match: foiRemovido },
-  { key: 'falhou', label: 'Falhou', cor: 'var(--led-error)', match: (b) => b.status === 'failed' },
+  {
+    key: 'agendado',
+    label: 'Agendados',
+    cor: 'var(--led-info)',
+    hex: '#60A5FA',
+    icon: CalendarClock,
+    match: estaAgendadoFuturo,
+  },
+  {
+    key: 'postado',
+    label: 'Postados',
+    cor: 'var(--led-success)',
+    hex: '#34D399',
+    icon: CheckCircle2,
+    match: estaPostado,
+  },
+  {
+    key: 'removido',
+    label: 'Removidos',
+    cor: 'var(--text-subtle)',
+    hex: '#8E8E96',
+    icon: Archive,
+    match: foiRemovido,
+  },
+  {
+    key: 'falhou',
+    label: 'Falhou',
+    cor: 'var(--led-error)',
+    hex: '#F87171',
+    icon: AlertTriangle,
+    match: (b) => b.status === 'failed',
+  },
 ]
 
 type ConfirmacaoState =
@@ -353,50 +421,65 @@ export default function BeatsPage() {
           )}
         </div>
 
-        {/* Chips de filtro */}
+        {/* Chips de filtro — tematizados por status */}
         <div className="flex flex-wrap gap-2 rise rise-2">
           {FILTROS.map((f) => {
             const count = contagens[f.key]
             const ativo = filtro === f.key
+            const Icon = f.icon
+            const hex = f.hex
             return (
               <button
                 key={f.key}
                 type="button"
                 onClick={() => setFiltro(f.key)}
-                className="group inline-flex items-center gap-2.5 rounded-full px-4 py-2 text-[14px] transition-colors"
+                className="group relative inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] font-medium transition-all"
                 style={{
-                  background: ativo ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  background: ativo
+                    ? `linear-gradient(135deg, ${hexAlpha(hex, 0.20)} 0%, ${hexAlpha(hex, 0.05)} 100%)`
+                    : 'rgba(255,255,255,0.03)',
                   border: '1px solid',
-                  borderColor: ativo ? 'var(--border-strong)' : 'var(--border)',
-                  color: ativo ? 'var(--text-primary)' : 'var(--text-muted)',
-                  fontWeight: ativo ? 500 : 400,
+                  borderColor: ativo ? hexAlpha(hex, 0.45) : 'var(--border-subtle)',
+                  color: ativo ? hex : 'var(--text-secondary)',
+                  boxShadow: ativo ? `0 0 18px ${hexAlpha(hex, 0.18)}` : 'none',
                 }}
                 onMouseEnter={(e) => {
                   if (!ativo) {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.025)'
-                    e.currentTarget.style.color = 'var(--text-secondary)'
+                    e.currentTarget.style.background = `linear-gradient(135deg, ${hexAlpha(hex, 0.10)} 0%, ${hexAlpha(hex, 0.02)} 100%)`
+                    e.currentTarget.style.borderColor = hexAlpha(hex, 0.28)
+                    e.currentTarget.style.color = hex
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!ativo) {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = 'var(--text-muted)'
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                    e.currentTarget.style.borderColor = 'var(--border-subtle)'
+                    e.currentTarget.style.color = 'var(--text-secondary)'
                   }
                 }}
               >
+                {/* Ícone em badge circular tingido */}
                 <span
-                  className="h-2 w-2 shrink-0 rounded-full"
+                  className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full"
                   style={{
-                    background: f.cor,
-                    opacity: ativo ? 1 : 0.55,
-                    boxShadow: ativo ? `0 0 8px ${f.cor}` : 'none',
+                    background: hexAlpha(hex, ativo ? 0.30 : 0.18),
+                    border: `1px solid ${hexAlpha(hex, ativo ? 0.55 : 0.35)}`,
+                    color: hex,
+                    boxShadow: ativo ? `0 0 6px ${hexAlpha(hex, 0.35)}` : 'none',
                   }}
-                />
+                >
+                  <Icon size={10} strokeWidth={2.2} />
+                </span>
                 <span>{f.label}</span>
                 {count > 0 && (
                   <span
-                    className="tabular text-[13px]"
-                    style={{ color: ativo ? 'var(--text-secondary)' : 'var(--text-subtle)' }}
+                    className="font-mono tabular"
+                    style={{
+                      fontSize: 11,
+                      color: ativo ? hex : 'var(--text-muted)',
+                      opacity: ativo ? 0.85 : 0.7,
+                      marginLeft: 2,
+                    }}
                   >
                     {count}
                   </span>

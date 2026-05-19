@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   DndContext,
   DragOverlay,
@@ -28,6 +29,7 @@ import { AgendaHeader } from '@/components/agenda/AgendaHeader'
 import { MonthCalendar } from '@/components/agenda/MonthCalendar'
 import { BeatChipOverlay } from '@/components/agenda/BeatChip'
 import { QuickScheduleModal } from '@/components/agenda/QuickScheduleModal'
+import { RascunhosPendentesList } from '@/components/agenda/RascunhosPendentesList'
 
 interface PostIdsByBeat {
   [beatId: string]: string
@@ -35,6 +37,7 @@ interface PostIdsByBeat {
 
 export default function AgendaPage() {
   const supabase = createClient()
+  const router = useRouter()
   const hoje = useMemo(() => new Date(), [])
   const [token, setToken] = useState<string | null>(null)
   const [beats, setBeats] = useState<BeatListItem[]>([])
@@ -205,10 +208,29 @@ export default function AgendaPage() {
 
   async function handleDragEnd(event: DragEndEvent) {
     const beat = event.active.data.current?.beat as BeatListItem | undefined
+    const isRascunho = !!event.active.data.current?.isRascunho
     const dropData = event.over?.data.current as { date?: Date } | undefined
     setArrastandoBeat(null)
 
-    if (!beat || !dropData?.date || !token) return
+    if (!beat || !dropData?.date) return
+
+    // Fluxo especial: rascunho arrastado pra um dia → vai pra /review com data
+    // pré-marcada via query string. Produtor revisa, ajusta hora se quiser, e
+    // confirma agendamento de lá (sem PATCH antecipado aqui).
+    if (isRascunho) {
+      const novaData = new Date(dropData.date)
+      novaData.setHours(18, 0, 0, 0) // default 18h, ajustável na /review
+      if (novaData.getTime() < Date.now()) {
+        setFlash({ tipo: 'erro', msg: 'Não dá pra agendar pro passado.' })
+        return
+      }
+      router.push(
+        `/beats/${beat.id}/review?agendar_em=${encodeURIComponent(novaData.toISOString())}`,
+      )
+      return
+    }
+
+    if (!token) return
     if (!podeReagendarLivremente(beat)) {
       setFlash({
         tipo: 'erro',
@@ -382,6 +404,10 @@ export default function AgendaPage() {
             beatsPorDia={beatsPorDia}
             onDiaVazioClick={handleDiaVazioClick}
           />
+
+          {/* Lista de rascunhos pendentes (sempre visível) */}
+          <RascunhosPendentesList drafts={draftsDisponiveis} />
+
           <DragOverlay dropAnimation={null}>
             {arrastandoBeat ? <BeatChipOverlay beat={arrastandoBeat} /> : null}
           </DragOverlay>
@@ -400,7 +426,7 @@ export default function AgendaPage() {
             marginTop: 4,
           }}
         >
-          Arraste chips entre dias pra reagendar · Clique num dia vazio pra agendar um rascunho
+          Arraste chips entre dias pra reagendar · Clique num dia vazio pra agendar um rascunho · Arraste rascunhos pendentes pra revisar e publicar
         </p>
       )}
 

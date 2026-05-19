@@ -9,6 +9,145 @@ import { DashboardGreeting } from '@/components/DashboardGreeting'
 import { DashboardStats } from '@/components/DashboardStats'
 import { ProximasPublicacoesWidget } from '@/components/agenda/ProximasPublicacoesWidget'
 
+/** Constelação neural pulsante — IA conectando ideias.
+   Pontos posicionados organicamente, linhas entre pares próximos,
+   pulse delays escalonados pra dar ritmo. */
+function NeuralConstellation() {
+  const W = 340
+  const H = 200
+  // 16 nós posicionados manualmente em padrão orgânico
+  const NODES: { x: number; y: number; r: number; hub?: boolean }[] = [
+    { x: 30, y: 50, r: 2.5 },
+    { x: 85, y: 28, r: 3 },
+    { x: 145, y: 58, r: 4.5, hub: true },
+    { x: 205, y: 22, r: 3 },
+    { x: 275, y: 50, r: 2.5 },
+    { x: 50, y: 100, r: 3 },
+    { x: 110, y: 108, r: 3.5 },
+    { x: 180, y: 100, r: 4.5, hub: true },
+    { x: 245, y: 112, r: 3 },
+    { x: 305, y: 95, r: 2.5 },
+    { x: 28, y: 152, r: 2.5 },
+    { x: 90, y: 165, r: 3.5 },
+    { x: 158, y: 150, r: 3 },
+    { x: 222, y: 168, r: 4, hub: true },
+    { x: 285, y: 150, r: 3 },
+    { x: 165, y: 18, r: 2 },
+  ]
+  // Pares conectados (índices em NODES)
+  const EDGES: [number, number][] = [
+    [0, 1], [1, 2], [2, 3], [3, 4],
+    [0, 5], [1, 6], [2, 7], [3, 8], [4, 9],
+    [5, 6], [6, 7], [7, 8], [8, 9],
+    [5, 10], [6, 11], [7, 12], [8, 13], [9, 14],
+    [10, 11], [11, 12], [12, 13], [13, 14],
+    [2, 15], [15, 3],
+  ]
+
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
+      <defs>
+        <radialGradient id="nodeGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#FF50D6" stopOpacity="1" />
+          <stop offset="100%" stopColor="#4100FF" stopOpacity="0.85" />
+        </radialGradient>
+        <radialGradient id="nodeHubGrad" cx="40%" cy="40%" r="60%">
+          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+          <stop offset="40%" stopColor="#FF1ABE" stopOpacity="1" />
+          <stop offset="100%" stopColor="#4100FF" stopOpacity="0.9" />
+        </radialGradient>
+        <linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#4100FF" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#FF1ABE" stopOpacity="0.35" />
+        </linearGradient>
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+          <feMerge>
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      {/* Arestas com pulse de opacidade */}
+      {EDGES.map(([a, b], i) => {
+        const na = NODES[a]
+        const nb = NODES[b]
+        return (
+          <line
+            key={`e-${i}`}
+            x1={na.x}
+            y1={na.y}
+            x2={nb.x}
+            y2={nb.y}
+            stroke="url(#edgeGrad)"
+            strokeWidth={1}
+          >
+            <animate
+              attributeName="opacity"
+              values="0.25;0.7;0.25"
+              dur={`${3.2 + (i % 4) * 0.4}s`}
+              begin={`${(i * 0.13) % 2}s`}
+              repeatCount="indefinite"
+            />
+          </line>
+        )
+      })}
+
+      {/* Nós */}
+      {NODES.map((n, i) => {
+        const isHub = n.hub
+        return (
+          <g key={`n-${i}`}>
+            {/* Halo (só nos hubs) */}
+            {isHub && (
+              <circle
+                cx={n.x}
+                cy={n.y}
+                r={n.r + 4}
+                fill="url(#nodeGrad)"
+                opacity={0.18}
+                filter="url(#glow)"
+              >
+                <animate
+                  attributeName="r"
+                  values={`${n.r + 3};${n.r + 7};${n.r + 3}`}
+                  dur={`${2.6 + (i % 3) * 0.4}s`}
+                  begin={`${i * 0.15}s`}
+                  repeatCount="indefinite"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="0.10;0.35;0.10"
+                  dur={`${2.6 + (i % 3) * 0.4}s`}
+                  begin={`${i * 0.15}s`}
+                  repeatCount="indefinite"
+                />
+              </circle>
+            )}
+            {/* Nó principal */}
+            <circle
+              cx={n.x}
+              cy={n.y}
+              r={n.r}
+              fill={isHub ? 'url(#nodeHubGrad)' : 'url(#nodeGrad)'}
+              filter={isHub ? 'url(#glow)' : undefined}
+            >
+              <animate
+                attributeName="r"
+                values={`${n.r * 0.85};${n.r * 1.15};${n.r * 0.85}`}
+                dur={`${2 + (i % 4) * 0.3}s`}
+                begin={`${(i * 0.18) % 1.8}s`}
+                repeatCount="indefinite"
+              />
+            </circle>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
 function SectionLabel({ num, label, rule = true }: { num: string; label: string; rule?: boolean }) {
   return (
     <div className="mb-5 flex items-center gap-4">
@@ -89,21 +228,12 @@ export default async function DashboardPage() {
             }}
           />
 
-          {/* Waveform decorativo branco sutil */}
+          {/* Constelação neural — IA conectando ideias */}
           <div
             aria-hidden
-            className="pointer-events-none absolute right-8 top-1/2 hidden -translate-y-1/2 md:block"
-            style={{ opacity: 0.12 }}
+            className="pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 md:block"
           >
-            <svg width="280" height="120" viewBox="0 0 280 120" fill="none">
-              {Array.from({ length: 36 }).map((_, i) => {
-                const h = 10 + Math.abs(Math.sin(i * 0.6) * 50) + Math.abs(Math.cos(i * 1.2) * 30)
-                const x = i * 8
-                return (
-                  <rect key={i} x={x} y={(120 - h) / 2} width={3} height={h} rx={1.5} fill="#FFFFFF" />
-                )
-              })}
-            </svg>
+            <NeuralConstellation />
           </div>
 
           <div className="relative flex max-w-2xl flex-col gap-4 p-8">

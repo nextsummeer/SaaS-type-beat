@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, Save, CalendarClock, CheckCircle2, Tag, X, ExternalLink, Trash2, Globe, EyeOff, Zap, Tv2, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { fetchPost, patchPost, deleteBeat } from '@/lib/api'
@@ -110,6 +110,7 @@ function ehMesmoMomento(a: Date | null, b: Date | null): boolean {
 export default function ReviewPage() {
   const { id: beatId } = useParams<{ id: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
 
   const [post, setPost] = useState<Post | null>(null)
@@ -141,10 +142,29 @@ export default function ReviewPage() {
         setDescricao(data.descricao ?? '')
         setTags(Array.isArray(data.tags) ? data.tags : [])
         setPurchaseLink(data.purchase_link ?? '')
-        if (data.scheduled_at) {
+
+        // Prioridade de agendamento inicial:
+        //   1) ?agendar_em na URL (drag de rascunho da agenda, ação ativa)
+        //   2) scheduled_at do DB (post já programado anteriormente)
+        //   3) sessionStorage pre_schedule (pré-agendamento via UploadForm)
+        const agendarEmUrl = searchParams.get('agendar_em')
+        let appliedFromUrl = false
+        if (agendarEmUrl) {
+          const d = new Date(agendarEmUrl)
+          if (!isNaN(d.getTime()) && d > new Date()) {
+            setScheduledAt(d)
+            appliedFromUrl = true
+            // scroll suave até a seção de agendamento depois que renderizar
+            setTimeout(() => {
+              const el = document.getElementById('secao-agendamento')
+              el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }, 350)
+          }
+        }
+        if (!appliedFromUrl && data.scheduled_at) {
           const localDate = new Date(data.scheduled_at)
           if (!isNaN(localDate.getTime())) setScheduledAt(localDate)
-        } else if (typeof window !== 'undefined') {
+        } else if (!appliedFromUrl && !data.scheduled_at && typeof window !== 'undefined') {
           // Pre-agendamento veio do calendario via UploadForm → consome 1x e remove
           try {
             const pre = sessionStorage.getItem(`pre_schedule:${beatId}`)
@@ -518,7 +538,8 @@ export default function ReviewPage() {
         </div>
       ) : (
       <div
-        className="space-y-4 rounded-2xl p-6"
+        id="secao-agendamento"
+        className="space-y-4 rounded-2xl p-6 scroll-mt-6"
         style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
       >
         <div className="flex items-center gap-2">

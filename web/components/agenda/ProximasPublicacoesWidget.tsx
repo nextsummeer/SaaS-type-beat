@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { CalendarClock, ChevronRight, Loader2 } from 'lucide-react'
+import { CalendarClock, ChevronRight, Loader2, FileEdit, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { fetchBeats, type BeatListItem } from '@/lib/api'
 import {
@@ -13,6 +13,15 @@ import {
 import { useCoverUrl } from '@/components/BeatCard'
 
 const MAX_ITENS = 5
+
+function ehRascunhoPendente(b: BeatListItem): boolean {
+  return (
+    !ehDeletadoYoutube(b) &&
+    b.status === 'ready_for_review' &&
+    b.post_status !== 'scheduled' &&
+    b.post_status !== 'published'
+  )
+}
 
 function formatarTempoAteData(d: Date): string {
   const agora = new Date()
@@ -63,15 +72,7 @@ export function ProximasPublicacoesWidget() {
         }
         const lista = await fetchBeats(token)
         if (cancelado) return
-        const proximos = lista
-          .filter((b) => !ehDeletadoYoutube(b) && ehAgendadoFuturo(b))
-          .sort((a, b) => {
-            const da = dataDoBeatNoCalendario(a)?.getTime() ?? 0
-            const db = dataDoBeatNoCalendario(b)?.getTime() ?? 0
-            return da - db
-          })
-          .slice(0, MAX_ITENS)
-        setBeats(proximos)
+        setBeats(lista)
       } catch (e) {
         if (!cancelado) setErro(e instanceof Error ? e.message : 'Erro ao carregar')
       } finally {
@@ -84,12 +85,31 @@ export function ProximasPublicacoesWidget() {
     }
   }, [])
 
+  const proximos = beats
+    .filter((b) => !ehDeletadoYoutube(b) && ehAgendadoFuturo(b))
+    .sort((a, b) => {
+      const da = dataDoBeatNoCalendario(a)?.getTime() ?? 0
+      const db = dataDoBeatNoCalendario(b)?.getTime() ?? 0
+      return da - db
+    })
+    .slice(0, MAX_ITENS)
+
+  const rascunhos = beats.filter(ehRascunhoPendente).length
+
   return (
     <section
-      className="rise rise-2 overflow-hidden rounded-2xl"
+      className="rise rise-2 overflow-hidden rounded-2xl transition-colors"
       style={{
         background: 'var(--bg-surface)',
         border: '1px solid var(--border-subtle)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'var(--border-hover)'
+        e.currentTarget.style.boxShadow = 'var(--glow-hover)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'var(--border-subtle)'
+        e.currentTarget.style.boxShadow = 'none'
       }}
     >
       {/* Header */}
@@ -141,14 +161,19 @@ export function ProximasPublicacoesWidget() {
         </div>
       ) : erro ? (
         <div style={{ padding: '20px', fontSize: 13, color: 'var(--led-error)' }}>{erro}</div>
-      ) : beats.length === 0 ? (
+      ) : proximos.length === 0 && rascunhos > 0 ? (
+        <RascunhosCallout count={rascunhos} />
+      ) : proximos.length === 0 ? (
         <EmptyState />
       ) : (
-        <ul style={{ padding: '4px 0' }}>
-          {beats.map((beat) => (
-            <ItemPublicacao key={beat.id} beat={beat} />
-          ))}
-        </ul>
+        <>
+          <ul style={{ padding: '4px 0' }}>
+            {proximos.map((beat) => (
+              <ItemPublicacao key={beat.id} beat={beat} />
+            ))}
+          </ul>
+          {rascunhos > 0 && <RascunhosFooter count={rascunhos} />}
+        </>
       )}
     </section>
   )
@@ -235,6 +260,7 @@ function ItemPublicacao({ beat }: { beat: BeatListItem }) {
   )
 }
 
+/** Empty state quando nao tem nada — nem agendamento, nem rascunho. */
 function EmptyState() {
   return (
     <div
@@ -274,5 +300,85 @@ function EmptyState() {
         Ir pra agenda →
       </Link>
     </div>
+  )
+}
+
+/** Estado especial: sem agendamentos, MAS tem rascunhos esperando. Proativo. */
+function RascunhosCallout({ count }: { count: number }) {
+  return (
+    <div
+      className="flex flex-col items-center gap-3 text-center"
+      style={{ padding: '32px 20px' }}
+    >
+      <div
+        className="flex h-11 w-11 items-center justify-center rounded-full"
+        style={{
+          background: 'linear-gradient(135deg, rgba(199,181,255,0.16), rgba(247,137,203,0.08))',
+          border: '1px solid rgba(199,181,255,0.30)',
+          color: 'var(--purple-soft)',
+        }}
+      >
+        <FileEdit size={17} strokeWidth={1.6} />
+      </div>
+      <div className="flex flex-col gap-1">
+        <p style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>
+          {count === 1 ? '1 rascunho aguardando' : `${count} rascunhos aguardando`}
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 320 }}>
+          A IA terminou de gerar — agora é com você. Escolha quando publicar e
+          revise título, descrição e tags.
+        </p>
+      </div>
+      <Link href="/agenda" className="btn-primary group" style={{ marginTop: 6 }}>
+        <CalendarClock size={13} strokeWidth={2} />
+        {count === 1 ? 'Agendar rascunho' : 'Agendar rascunhos'}
+        <ArrowRight size={13} strokeWidth={2.4} className="transition group-hover:translate-x-0.5" />
+      </Link>
+    </div>
+  )
+}
+
+/** Footer sutil quando tem agendamentos + rascunhos pendentes em paralelo. */
+function RascunhosFooter({ count }: { count: number }) {
+  return (
+    <Link
+      href="/agenda"
+      className="group flex items-center justify-between gap-3 transition-colors"
+      style={{
+        padding: '11px 22px',
+        borderTop: '1px solid var(--border-subtle)',
+        background: 'rgba(199, 181, 255, 0.04)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'rgba(199, 181, 255, 0.08)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'rgba(199, 181, 255, 0.04)'
+      }}
+    >
+      <div className="flex items-center gap-2.5">
+        <FileEdit size={12} strokeWidth={1.8} style={{ color: 'var(--purple-soft)' }} />
+        <span
+          className="font-mono uppercase"
+          style={{
+            fontSize: 10.5,
+            letterSpacing: '0.16em',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          + {count} {count === 1 ? 'rascunho aguardando' : 'rascunhos aguardando'}
+        </span>
+      </div>
+      <span
+        className="font-mono uppercase transition"
+        style={{
+          fontSize: 10,
+          letterSpacing: '0.16em',
+          color: 'var(--purple-soft)',
+        }}
+      >
+        agendar →
+      </span>
+    </Link>
   )
 }

@@ -9,17 +9,21 @@
 :root {
   /* ─── Backgrounds (preto + tons de quase-preto) ─── */
   --bg-deepest:  #000000;
-  --bg-base:     #050506;
-  --bg-surface:  #0A0A0C;
-  --bg-elevated: #111114;
-  --bg-overlay:  #18181C;
+  --bg-base:     #060608;
+  --bg-surface:  #0E0E12;
+  --bg-elevated: #16161B;
+  --bg-overlay:  #1F1F26;
 
   /* ─── Hairlines ─── */
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-medium: rgba(255, 255, 255, 0.10);
-  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-subtle: rgba(255, 255, 255, 0.09);
+  --border-medium: rgba(255, 255, 255, 0.14);
+  --border-strong: rgba(255, 255, 255, 0.22);
   --border-purple:  rgba(65, 0, 255, 0.30);
   --border-magenta: rgba(255, 26, 190, 0.28);
+
+  /* Hover tinted: lavanda sutil pra cards interativos */
+  --border-hover:  rgba(199, 181, 255, 0.30);
+  --glow-hover:    0 0 0 1px rgba(199, 181, 255, 0.10), 0 6px 20px rgba(65, 0, 255, 0.10);
 
   /* Aliases legado */
   --border:        var(--border-subtle);
