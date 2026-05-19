@@ -8,6 +8,7 @@ import {
   DragOverlay,
   PointerSensor,
   KeyboardSensor,
+  pointerWithin,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -218,8 +219,23 @@ export default function AgendaPage() {
     // pré-marcada via query string. Produtor revisa, ajusta hora se quiser, e
     // confirma agendamento de lá (sem PATCH antecipado aqui).
     if (isRascunho) {
-      const novaData = new Date(dropData.date)
-      novaData.setHours(18, 0, 0, 0) // default 18h, ajustável na /review
+      const agora = new Date()
+      const dropDate = new Date(dropData.date)
+      const ehHoje =
+        dropDate.getFullYear() === agora.getFullYear() &&
+        dropDate.getMonth() === agora.getMonth() &&
+        dropDate.getDate() === agora.getDate()
+
+      // Hora padrão: 18h pra dias futuros; agora+30min se for hoje
+      // (assim funciona mesmo se ja passou das 18h).
+      let novaData: Date
+      if (ehHoje) {
+        novaData = new Date(agora.getTime() + 30 * 60 * 1000)
+      } else {
+        novaData = new Date(dropDate)
+        novaData.setHours(18, 0, 0, 0)
+      }
+
       if (novaData.getTime() < Date.now()) {
         setFlash({ tipo: 'erro', msg: 'Não dá pra agendar pro passado.' })
         return
@@ -394,6 +410,7 @@ export default function AgendaPage() {
       ) : (
         <DndContext
           sensors={sensors}
+          collisionDetection={pointerWithin}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
