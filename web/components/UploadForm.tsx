@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { UploadCloud, AlertCircle, Music, Image, Plus, X, Check, Store, ExternalLink } from 'lucide-react'
+import { useState, useRef, useMemo } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { UploadCloud, AlertCircle, Music, Image, Plus, X, Check, Store, ExternalLink, CalendarClock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { uploadWithProgress } from '@/lib/storage'
 
@@ -10,9 +10,20 @@ type Status = 'idle' | 'uploading' | 'error'
 
 const MAX_ARTISTAS = 4
 
+/** chave usada pra carregar o pre-agendamento na /review depois do beat ficar pronto */
+const PRE_SCHEDULE_KEY = (beatId: string) => `pre_schedule:${beatId}`
+
 export function UploadForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
+
+  const preAgendar = useMemo(() => {
+    const raw = searchParams.get('agendar_em')
+    if (!raw) return null
+    const d = new Date(raw)
+    return isNaN(d.getTime()) ? null : d
+  }, [searchParams])
   const audioRef = useRef<HTMLInputElement>(null)
   const coverRef = useRef<HTMLInputElement>(null)
 
@@ -119,6 +130,16 @@ export function UploadForm() {
       }
 
       const { id: dbBeatId } = await apiRes.json()
+
+      // Guarda o pre-agendamento pra /review consumir quando o beat ficar pronto
+      if (preAgendar && typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem(PRE_SCHEDULE_KEY(dbBeatId), preAgendar.toISOString())
+        } catch {
+          // sessionStorage pode estar bloqueado em modo privado — nao e critico
+        }
+      }
+
       router.push(`/beats/${dbBeatId}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido')
@@ -130,6 +151,36 @@ export function UploadForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex max-w-lg flex-col gap-6">
+      {/* Banner pre-agendamento (quando vier do calendario com ?agendar_em=) */}
+      {preAgendar && (
+        <div
+          className="flex items-start gap-3 rounded-lg"
+          style={{
+            padding: '12px 14px',
+            background: 'var(--accent-muted)',
+            border: '1px solid var(--accent-line)',
+          }}
+        >
+          <CalendarClock size={16} style={{ color: 'var(--accent)', marginTop: 2 }} />
+          <div className="flex-1">
+            <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>
+              Esse beat vai ser pré-agendado pra{' '}
+              <strong style={{ color: 'var(--accent)' }}>
+                {new Intl.DateTimeFormat('pt-BR', {
+                  day: '2-digit',
+                  month: 'long',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }).format(preAgendar)}
+              </strong>
+            </p>
+            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+              Você pode mudar a data depois na tela de revisão.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Artistas (lista) + BPM */}
       <div className="space-y-4">
         <div>

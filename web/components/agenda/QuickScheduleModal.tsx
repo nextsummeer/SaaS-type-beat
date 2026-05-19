@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X, Loader2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { X, Loader2, Upload } from 'lucide-react'
 import { DateTimePicker } from '@/components/DateTimePicker'
 import { comHora18 } from '@/lib/agenda'
 import type { BeatListItem } from '@/lib/api'
@@ -26,6 +27,7 @@ function QuickScheduleModalContent({
   onConfirmar,
   onFechar,
 }: QuickScheduleModalProps) {
+  const router = useRouter()
   const [beatIdSelecionado, setBeatIdSelecionado] = useState<string | null>(
     () => draftsDisponiveis[0]?.id ?? null,
   )
@@ -34,6 +36,15 @@ function QuickScheduleModalContent({
   )
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+
+  function irParaUpload() {
+    const dataAlvo = data ?? (dataInicial ? comHora18(dataInicial) : null)
+    if (dataAlvo) {
+      router.push(`/upload?agendar_em=${encodeURIComponent(dataAlvo.toISOString())}`)
+    } else {
+      router.push('/upload')
+    }
+  }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -144,13 +155,15 @@ function QuickScheduleModalContent({
         {/* Body */}
         <div className="flex flex-col gap-5" style={{ padding: '20px' }}>
           {draftsDisponiveis.length === 0 ? (
-            <div
-              className="flex flex-col items-center gap-2 text-center"
-              style={{ padding: '24px 8px', color: 'var(--text-muted)' }}
-            >
-              <p style={{ fontSize: 14 }}>Nenhum beat pronto pra agendar.</p>
-              <p style={{ fontSize: 12, color: 'var(--text-subtle)' }}>
-                Suba um novo beat ou termine de revisar um existente.
+            <div className="flex flex-col items-center gap-4 text-center" style={{ padding: '12px 8px' }}>
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+                Nenhum rascunho pronto pra agendar nessa data.
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--text-subtle)', maxWidth: 320 }}>
+                Sobe um beat agora — a data {dataInicial
+                  ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long' }).format(dataInicial)
+                  : ''}{' '}
+                já fica pré-marcada pra publicação.
               </p>
             </div>
           ) : (
@@ -214,6 +227,31 @@ function QuickScheduleModalContent({
                   placeholder="Escolher data e hora"
                 />
               </div>
+
+              {/* Atalho secundario: subir beat com a data ja pre-marcada */}
+              <button
+                type="button"
+                onClick={irParaUpload}
+                disabled={salvando}
+                className="flex items-center justify-center gap-2 self-start font-mono uppercase"
+                style={{
+                  fontSize: 10,
+                  letterSpacing: '0.14em',
+                  color: 'var(--text-muted)',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: '4px 2px',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: 3,
+                  textDecorationColor: 'var(--border-strong)',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+              >
+                <Upload size={11} strokeWidth={2} />
+                Subir um beat novo nessa data
+              </button>
             </>
           )}
 
@@ -235,32 +273,58 @@ function QuickScheduleModalContent({
 
         {/* Footer */}
         <div
-          className="flex items-center justify-end gap-2"
+          className="flex items-center justify-between gap-2"
           style={{
             padding: '14px 20px',
             borderTop: '1px solid var(--border)',
             background: 'var(--bg-base)',
           }}
         >
-          <button
-            type="button"
-            onClick={onFechar}
-            disabled={salvando}
-            className="btn-ghost"
-            style={{ opacity: salvando ? 0.5 : 1 }}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirmar}
-            disabled={!podeSalvar}
-            className="btn-primary"
-            style={{ opacity: podeSalvar ? 1 : 0.5, cursor: podeSalvar ? 'pointer' : 'not-allowed' }}
-          >
-            {salvando ? <Loader2 size={14} className="animate-spin" /> : null}
-            {salvando ? 'Agendando…' : 'Agendar'}
-          </button>
+          {draftsDisponiveis.length === 0 ? (
+            <>
+              <button
+                type="button"
+                onClick={onFechar}
+                disabled={salvando}
+                className="btn-ghost"
+                style={{ opacity: salvando ? 0.5 : 1 }}
+              >
+                Fechar
+              </button>
+              <button type="button" onClick={irParaUpload} className="btn-primary">
+                <Upload size={14} strokeWidth={2} />
+                Subir um beat
+              </button>
+            </>
+          ) : (
+            <>
+              <span />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onFechar}
+                  disabled={salvando}
+                  className="btn-ghost"
+                  style={{ opacity: salvando ? 0.5 : 1 }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmar}
+                  disabled={!podeSalvar}
+                  className="btn-primary"
+                  style={{
+                    opacity: podeSalvar ? 1 : 0.5,
+                    cursor: podeSalvar ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  {salvando ? <Loader2 size={14} className="animate-spin" /> : null}
+                  {salvando ? 'Agendando…' : 'Agendar'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

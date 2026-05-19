@@ -73,3 +73,17 @@ export function comHora18(d: Date): Date {
   r.setHours(18, 0, 0, 0)
   return r
 }
+
+/** Data que o beat ocupa no calendario: prefere scheduled_at (intencao do user),
+ *  cai pra published_at (caso o beat tenha sido publicado imediatamente).
+ *  Retorna null se nenhuma das duas existe.
+ */
+export function dataDoBeatNoCalendario(beat: {
+  scheduled_at: string | null
+  published_at: string | null
+}): Date | null {
+  const fonte = beat.scheduled_at ?? beat.published_at
+  if (!fonte) return null
+  const d = new Date(fonte)
+  return isNaN(d.getTime()) ? null : d
+}

@@ -23,7 +23,9 @@ export interface BeatListItem {
   titulo: string | null
   post_status: string | null
   scheduled_at: string | null
+  published_at: string | null
   youtube_url: string | null
+  youtube_video_id: string | null
   youtube_deleted_at: string | null
 }
 

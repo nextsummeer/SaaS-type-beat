@@ -15,7 +15,10 @@ interface BeatChipProps {
 /** Chip arrastavel exibido dentro de uma celula do calendario. */
 export function BeatChip({ beat, onClick }: BeatChipProps) {
   const estado = estadoVisual(beat)
-  const desabilitado = !!beat.youtube_deleted_at || beat.post_status === 'published'
+  const removido = !!beat.youtube_deleted_at
+  const publicado = beat.post_status === 'published'
+  // Beat ja publicado ou removido — chip vira read-only (sem drag, click vai pro YouTube/review)
+  const desabilitado = removido || publicado
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `beat-${beat.id}`,
@@ -39,12 +42,18 @@ export function BeatChip({ beat, onClick }: BeatChipProps) {
     }
   }, [beat.cover_path])
 
+  const tituloTooltip = publicado
+    ? `${beat.titulo ?? 'Beat'} · Publicado (não pode reagendar)`
+    : removido
+      ? `${beat.titulo ?? 'Beat'} · Removido do YouTube`
+      : `${beat.titulo ?? 'Aguardando IA'} · ${estado.label} · arraste para reagendar`
+
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.35 : 1,
-    cursor: desabilitado ? 'not-allowed' : isDragging ? 'grabbing' : 'grab',
-    background: 'var(--bg-elevated)',
-    border: '1px solid var(--border)',
+    opacity: isDragging ? 0.35 : desabilitado ? 0.72 : 1,
+    cursor: desabilitado ? 'pointer' : isDragging ? 'grabbing' : 'grab',
+    background: publicado ? 'var(--bg-surface)' : 'var(--bg-elevated)',
+    border: `1px ${publicado ? 'dashed' : 'solid'} var(--border)`,
     borderRadius: 6,
     padding: '4px 6px 4px 4px',
     display: 'flex',
@@ -70,16 +79,18 @@ export function BeatChip({ beat, onClick }: BeatChipProps) {
         onClick?.()
       }}
       onMouseEnter={(e) => {
-        if (desabilitado) return
+        if (desabilitado) {
+          e.currentTarget.style.borderColor = 'var(--border-strong)'
+          return
+        }
         e.currentTarget.style.borderColor = 'var(--border-strong)'
         e.currentTarget.style.background = 'var(--bg-overlay)'
       }}
       onMouseLeave={(e) => {
-        if (desabilitado) return
         e.currentTarget.style.borderColor = 'var(--border)'
-        e.currentTarget.style.background = 'var(--bg-elevated)'
+        if (!desabilitado) e.currentTarget.style.background = 'var(--bg-elevated)'
       }}
-      title={`${beat.titulo ?? 'Aguardando IA'} · ${estado.label}`}
+      title={tituloTooltip}
       {...listeners}
       {...attributes}
     >

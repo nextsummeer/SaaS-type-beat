@@ -144,6 +144,18 @@ export default function ReviewPage() {
         if (data.scheduled_at) {
           const localDate = new Date(data.scheduled_at)
           if (!isNaN(localDate.getTime())) setScheduledAt(localDate)
+        } else if (typeof window !== 'undefined') {
+          // Pre-agendamento veio do calendario via UploadForm → consome 1x e remove
+          try {
+            const pre = sessionStorage.getItem(`pre_schedule:${beatId}`)
+            if (pre) {
+              const d = new Date(pre)
+              if (!isNaN(d.getTime()) && d > new Date()) setScheduledAt(d)
+              sessionStorage.removeItem(`pre_schedule:${beatId}`)
+            }
+          } catch {
+            // sessionStorage bloqueado — segue sem pre-agendamento
+          }
         }
         if (data.privacy_status === 'public' || data.privacy_status === 'unlisted') {
           setPrivacyStatus(data.privacy_status)

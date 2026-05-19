@@ -15,7 +15,7 @@ import {
 import { CalendarRange, Loader2, Upload, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { fetchBeats, reschedulePost, patchPost, type BeatListItem } from '@/lib/api'
-import { chaveLocal, ehMesmoMes } from '@/lib/agenda'
+import { chaveLocal, dataDoBeatNoCalendario, ehMesmoMes } from '@/lib/agenda'
 import { AgendaHeader } from '@/components/agenda/AgendaHeader'
 import { MonthCalendar } from '@/components/agenda/MonthCalendar'
 import { BeatChipOverlay } from '@/components/agenda/BeatChip'
@@ -100,12 +100,13 @@ export default function AgendaPage() {
     return () => clearTimeout(t)
   }, [flash])
 
-  // Beats que aparecem como chip em alguma celula
-  const beatsAgendados = useMemo(
+  // Beats que aparecem como chip em alguma celula (precisam ter data e estado
+  // que indique presenca no calendario)
+  const beatsNoCalendario = useMemo(
     () =>
       beats.filter(
         (b) =>
-          !!b.scheduled_at &&
+          dataDoBeatNoCalendario(b) !== null &&
           (b.post_status === 'scheduled' || b.post_status === 'published'),
       ),
     [beats],
@@ -114,38 +115,40 @@ export default function AgendaPage() {
   // Agrupado por dia (chave local YYYY-MM-DD)
   const beatsPorDia = useMemo(() => {
     const mapa = new Map<string, BeatListItem[]>()
-    for (const b of beatsAgendados) {
-      if (!b.scheduled_at) continue
-      const d = new Date(b.scheduled_at)
+    for (const b of beatsNoCalendario) {
+      const d = dataDoBeatNoCalendario(b)
+      if (!d) continue
       const chave = chaveLocal(d)
       const arr = mapa.get(chave)
       if (arr) arr.push(b)
       else mapa.set(chave, [b])
     }
     for (const arr of mapa.values()) {
-      arr.sort(
-        (a, b) =>
-          new Date(a.scheduled_at!).getTime() - new Date(b.scheduled_at!).getTime(),
-      )
+      arr.sort((a, b) => {
+        const da = dataDoBeatNoCalendario(a)?.getTime() ?? 0
+        const db = dataDoBeatNoCalendario(b)?.getTime() ?? 0
+        return da - db
+      })
     }
     return mapa
-  }, [beatsAgendados])
+  }, [beatsNoCalendario])
 
   // Contadores no mes visivel
   const contadores = useMemo(() => {
     const { ano, mes } = mesVisivel
+    const agora = new Date()
     let agendados = 0
     let publicando = 0
     let publicadosNoMes = 0
     let rascunhos = 0
     for (const b of beats) {
-      const d = b.scheduled_at ? new Date(b.scheduled_at) : null
+      const d = dataDoBeatNoCalendario(b)
       const noMes = d ? ehMesmoMes(d, ano, mes) : false
       if (b.status === 'ready_for_review' && b.post_status !== 'scheduled' && b.post_status !== 'published') {
         rascunhos++
       }
       if (b.status === 'publishing' && noMes) publicando++
-      if (b.post_status === 'scheduled' && d && d > new Date() && noMes) agendados++
+      if (b.post_status === 'scheduled' && d && d > agora && noMes) agendados++
       if (b.post_status === 'published' && noMes && !b.youtube_deleted_at) publicadosNoMes++
     }
     return { agendados, publicando, publicadosNoMes, rascunhos }
@@ -192,9 +195,13 @@ export default function AgendaPage() {
     setArrastandoBeat(null)
 
     if (!beat || !dropData?.date || !token) return
-    if (!beat.scheduled_at) return // sem data anterior — caminho é o modal
+    if (beat.post_status === 'published') {
+      setFlash({ tipo: 'erro', msg: 'Beat já publicado não pode ser reagendado.' })
+      return
+    }
+    const dataAnterior = dataDoBeatNoCalendario(beat)
+    if (!dataAnterior) return
 
-    const dataAnterior = new Date(beat.scheduled_at)
     const novaData = new Date(dropData.date)
     novaData.setHours(
       dataAnterior.getHours(),

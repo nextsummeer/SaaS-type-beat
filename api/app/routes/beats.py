@@ -54,7 +54,8 @@ def list_beats(authorization: str = Header(...)):
     posts_result = (
         client.table("posts")
         .select(
-            "beat_id, titulo, status, scheduled_at, youtube_url, youtube_deleted_at, updated_at"
+            "beat_id, titulo, status, scheduled_at, published_at, "
+            "youtube_url, youtube_video_id, youtube_deleted_at, updated_at"
         )
         .in_("beat_id", beat_ids)
         .eq("variacao", "A")
@@ -79,7 +80,9 @@ def list_beats(authorization: str = Header(...)):
                 "titulo": post.get("titulo") if post else None,
                 "post_status": post.get("status") if post else None,
                 "scheduled_at": post.get("scheduled_at") if post else None,
+                "published_at": post.get("published_at") if post else None,
                 "youtube_url": post.get("youtube_url") if post else None,
+                "youtube_video_id": post.get("youtube_video_id") if post else None,
                 "youtube_deleted_at": post.get("youtube_deleted_at") if post else None,
             }
         )
