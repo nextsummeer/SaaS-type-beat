@@ -10,6 +10,7 @@
 - `contexto/time.md` — Composicao do time: Henrique, Gustavo, Rary [ativo]
 - `contexto/concorrentes/_index.md` — Panorama de concorrentes e ferramentas similares [ativo]
 - `contexto/concorrentes/beatvalet.md` — Concorrente direto, SaaS desktop FL Studio + BeatStars + YouTube [ativo]
+- `contexto/concorrentes/beatloadr.md` — Concorrente direto, SaaS web YouTube-only com bulk + calendario, mercado UE [ativo, importante]
 - `contexto/concorrentes/beatstars-upload-github.md` — Script open source de uso pessoal, nao concorrente [ativo]
 
 ## Decisoes
@@ -68,3 +69,4 @@
 - `sessoes/2026-05-14-pesquisa-vidiq-e-fix-cache-analytics.md` — Pesquisa profunda VidIQ (modelo, fontes de dados, metricas, concorrentes). Decisoes: analise de nicho vira Fase 3 do produto, usabilidade A+C, caminho hibrido (YT API + Spotify + autocomplete + Trends), modelo creditos. Auditoria MVP base: T2.8/T3.2/T6.1/T6.2/T6.3 confirmadas done. Capa IA pausada (Gustavo estudando). Bug cache stale do analytics corrigido (TTL adaptativo). [ativo, importante]
 - `sessoes/2026-05-18-custos-e-projecao-financeira.md` — T3.4 (usage_tracker centralizado). Auditoria de custos: $0.014 medido por upload, dominado por Claude. Projecao financeira em HTML standalone com tiers $9.99/$19.99. Pontos cegos: Stripe BR vs Pix recorrente, YouTube content policy 2026 (alegacao minha sobre BeatValet desmentida), OAuth ainda em modo Testing — beta bloqueado fora dos 4 test users. Pendencias: aumento quota YouTube + verification OAuth + dominio proprio. [ativo, importante]
 - `sessoes/2026-05-19-youtube-processamento-cancelado.md` — Debug do bug "Processamento cancelado" no teste do Rary. Causa: `-c:a copy` (MP3 em container MP4). Fix: trocar pra `-c:a aac -b:a 320k`. Thumbnail rejeitada por canal nao verificado eh problema separado, codigo ja trata. Loudness baixa no YouTube eh normalizacao -14 LUFS automatica, impossivel evitar. [ativo]
+- `sessoes/2026-05-19-calendario-agendamento-design.md` — Analise do calendario visual do Beatloadr + 3 variantes de escopo (LITE/MEDIO/COMPLETO) + decisao de adiar implementacao ate destravar OAuth verification, quota YouTube e teste do Rary. Infra (`scheduled_at`) ja pronta — falta so UI. [ativo, importante]

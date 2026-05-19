@@ -283,6 +283,34 @@ export async function fetchPost(beatId: string, token: string) {
   return res.json()
 }
 
+export interface RescheduleResponse {
+  ok: true
+  post_id: string
+  scheduled_at: string
+  synced_with_youtube: boolean
+}
+
+/** Reagenda um post (drag-and-drop no calendario). T6.19. */
+export async function reschedulePost(
+  postId: string,
+  token: string,
+  scheduledAt: Date,
+): Promise<RescheduleResponse> {
+  const res = await fetch(`${API_URL}/posts/${postId}/reschedule`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ scheduled_at: scheduledAt.toISOString() }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail ?? `Erro ${res.status} ao reagendar`)
+  }
+  return res.json()
+}
+
 export async function patchPost(
   postId: string,
   token: string,

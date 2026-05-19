@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Upload,
   Music,
+  CalendarRange,
   BarChart3,
   Trophy,
   Settings,
@@ -32,6 +33,7 @@ const navPrincipal: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/upload', label: 'Novo beat', icon: Upload },
   { href: '/beats', label: 'Meus beats', icon: Music, exact: true },
+  { href: '/agenda', label: 'Agenda', icon: CalendarRange, exact: true },
   {
     href: '/analytics',
     label: 'Analytics',

@@ -7,15 +7,20 @@
 
 | Ferramenta | Tipo | Plataformas cobertas | Mercado | Risco competitivo |
 |---|---|---|---|---|
+| [Beatloadr](beatloadr.md) | SaaS web | YouTube (bulk + calendario) | UE / global (ingles, euro) | **Alto** |
 | [BeatValet](beatvalet.md) | SaaS desktop (Win/Mac) | FL Studio + BeatStars + YouTube | Global / EUA (ingles) | **Alto** |
 | [beatstars-upload (GitHub)](beatstars-upload-github.md) | Script Python open source | BeatStars + YouTube (parcial) | Devs / hobbyistas | Baixo |
 
-## Conclusao estrategica (atualizada 2026-05-07)
+## Conclusao estrategica (atualizada 2026-05-19)
 
-- **BeatValet e o concorrente direto mais relevante.** Acabou de lancar (founding rate de 25 vagas ainda aberto), proposta tecnica sofisticada.
-- **Diferencial deles**: integracao com FL Studio (auto-export de stems via app desktop) e cobertura de BeatStars (canal de venda real).
-- **Diferencial nosso**: SaaS web (sem instalar, mobile-friendly, agendamento 24/7), mercado PT-BR, 3 pacotes A/B/C, visao de hub multi-fase.
-- **Onde estamos expostos**: nao cobrimos BeatStars no MVP. Produtor sentido vai precisar de segunda ferramenta. Plano de mitigacao: cobrir BeatStars na V1.5 via stack na nuvem ([detalhes](../../arquitetura/integracao-beatstars-futura.md)).
+- **Dois concorrentes diretos com proposta sobreposta**, atacando angulos diferentes:
+  - **Beatloadr** = mesmo recorte do BeatPost (YouTube-only, web) com **bulk + calendario** maduros. Sem IA generativa nem capa.
+  - **BeatValet** = recorte mais largo (FL Studio + BeatStars + YouTube) em desktop nativo. Cobre canal de venda que BeatPost nao cobre.
+- **Diferenciais do BeatPost vs ambos**: IA generativa real (Gemini + Claude, 3 pacotes A/B/C), capa por IA (fal.ai), analytics proprio ja em producao, gamificacao (conquistas), mercado PT-BR.
+- **Onde estamos expostos:**
+  - **vs Beatloadr**: sem bulk upload, sem calendario visual, sem billing. Eles cobram ha mais tempo e tem preco-ancora baixo (€9,99 / 30 uploads).
+  - **vs BeatValet**: nao cobrimos BeatStars no MVP — plano de mitigacao na V1.5 ([detalhes](../../arquitetura/integracao-beatstars-futura.md)).
+- **Tese:** ser o **melhor pro nicho PT-BR de type beats com IA real**. Generalistas em ingles (Beatloadr/BeatValet) nao competem em qualidade de saida nem em comunidade local.
 
 ## Como manter este indice
 

@@ -1,12 +1,12 @@
 # _tasks — [NOME] Fase 1 (MVP) @gustavo
 
 **Criado:** 2026-04-25
-**Atualizado:** 2026-05-19
+**Atualizado:** 2026-05-19 (tarde)
 **Outcome:** Produtor convidado faz login, escolhe estilo visual padrao (onboarding), conecta canal YouTube, sobe um beat (qualquer formato) informando artista de referencia (lista controlada + Spotify) e mood (cards visuais), opcionalmente envia capa propria, recebe capa gerada por IA + 3 variacoes A/B/C de titulo+descricao+tags geradas pela IA (com nomes inspirados em hits do artista via Spotify), edita o que quiser, confirma agendamento, e ve 3 videos publicados/agendados no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Meta: beta fechado setembro 2026.
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** T5.7 concluida em 2026-05-19 — fix codec audio MP4 (`-c:a copy` → `-c:a aac -b:a 320k`) pra resolver "Processamento cancelado" descoberto no teste do Rary. Aguardando (1) deploy Railway propagar, (2) Rary verificar telefone em youtube.com/verify pra capa custom, (3) Rary republicar beat `ee96c64f` (ready_for_review) pra validar. Pendencias criticas anteriores seguem ativas: aumento de quota YouTube Data API, OAuth verification Google, decisao final billing. Bloco capa IA (T2.6/T2.10/T2.11/T4.6-T4.11) segue PAUSADO.
+**Proximo passo:** T6.19 concluida (2026-05-19) — Calendario visual de agendamento (Variante B) entregue: backend `PATCH /posts/{id}/reschedule` + `update_scheduled_publish_at` no youtube_service (11 testes), `/agenda` com grid 7x6 estilo Studio Console (flame orange, hairlines, LEDs), drag-and-drop via @dnd-kit com PATCH otimista, modal de agendamento rapido reusando DateTimePicker. typecheck/build/47 testes backend verdes. Pendente: teste manual no browser. Bloqueadores criticos paralelos seguem ativos: (1) Rary republicar beat `ee96c64f` pra validar fix codec, (2) aumento de quota YouTube, (3) OAuth verification, (4) decisao final billing. Bloco capa IA segue PAUSADO.
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -761,6 +761,51 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
   - Tag chips com novo visual (border + background sutil, × bem posicionado)
 - **Criterio de pronto:** Upload não tem mais espaço vazio gigante à direita. Review tem dois painéis que fazem uso natural da largura. Typecheck verde.
 - **Dependencia:** T6.15
+
+#### `[x]` T6.19 — Calendário visual de agendamento (Variante B, interativo)
+
+- **Trigger:** Gustavo descobriu o Beatloadr em 2026-05-19 (concorrente direto mais alinhado ao recorte do BeatPost — SaaS web YouTube-only). Print do calendário mensal deles disparou a feature. Sessão de design e variantes em `docs/sessoes/2026-05-19-calendario-agendamento-design.md`. Variante B escolhida pelo Gustavo (LITE + drag-and-drop + agendamento rápido).
+- **Arquivos previstos:**
+  - `web/app/(app)/agenda/page.tsx` (novo — rota /agenda)
+  - `web/components/agenda/MonthCalendar.tsx` (novo — grid 7x6, células, números, cabeçalho)
+  - `web/components/agenda/BeatChip.tsx` (novo — chip arrastável com thumb + título + LED de status)
+  - `web/components/agenda/AgendaHeader.tsx` (novo — mês + nav + contadores LED)
+  - `web/components/agenda/QuickScheduleModal.tsx` (novo — modal abre ao clicar célula vazia, lista beats `ready_for_review`, reuso do `DateTimePicker`)
+  - `web/components/Sidebar.tsx` (adicionar item "Agenda" entre "Meus beats" e "Analytics")
+  - `web/lib/api.ts` (tipo + chamada `reschedulePost(postId, scheduledAt)`)
+  - `api/app/routes/posts.py` (novo endpoint `PATCH /api/posts/{post_id}/reschedule`)
+  - `api/tests/routes/test_posts_reschedule.py` (testes do endpoint — bloqueio publicado, RLS, validação data)
+  - `web/package.json` (adiciona `@dnd-kit/core` + `@dnd-kit/utilities`)
+- **O que fazer:**
+  1. Página `/agenda` server-rendered base + client island pro grid. Fetch inicial dos beats do mês via Supabase client.
+  2. Grid 7x6 que cobre o mês visível (semana começa no domingo, padrão BR). Dias fora do mês com opacity 0.4.
+  3. Cabeçalho mostra mês/ano em font-display, nav prev/today/next, 3 contadores estilo `chip-tech` com LEDs: AGENDADOS (info), NA FILA (warning), PUBLICADOS NO MÊS (success).
+  4. Hoje destacado: borda accent + LED pulse pequeno.
+  5. Beat agendado vira chip dentro da célula (thumb 24×24 da capa via signed URL, título line-clamp-1, LED da cor do `estadoVisual()` que já existe em `BeatCard.tsx`).
+  6. Hover em célula vazia (status `ready_for_review` arrastável OU click): célula ganha accent-line border + ícone "+" central.
+  7. Drag-and-drop via `@dnd-kit/core`: chip levanta com `shadow-glow-accent`, drop zone destacada com `accent-muted` + border. Drop atualiza `scheduled_at` via PATCH no backend + otimistic UI.
+  8. Click em chip → navega pra `/beats/[id]/review` (já existe).
+  9. Click em célula vazia → abre `QuickScheduleModal` com (a) lista de beats `ready_for_review` ainda não agendados, (b) `DateTimePicker` pré-preenchido com data clicada + hora 18:00 (preset do projeto).
+  10. Backend `PATCH /posts/{id}/reschedule`: valida ownership via RLS, valida que `post.youtube_video_id IS NULL` (bloqueio T6.11), valida data ≥ now, atualiza `scheduled_at`. 422 com mensagem clara em cada falha.
+  11. Sidebar: novo item "Agenda" com ícone `Calendar` do lucide, entre "Meus beats" e "Analytics".
+  12. Stagger reveal (`.rise rise-N`) na entrada do grid pra continuar a estética do projeto.
+- **Decisão visual:** conceito **"Studio Schedule"** — não copiar o purple do Beatloadr. Usar a paleta Studio Console existente (flame orange accent #ff5a1f, hairlines, LEDs, mono em números de dia e contadores). Direção alinhada com `Sidebar.tsx`, `BeatCard.tsx` e `DateTimePicker.tsx`.
+- **Critério de pronto:**
+  - Acesso via `/agenda` ou item da sidebar
+  - Beats com `scheduled_at` aparecem nos dias certos (timezone local BR)
+  - Drag de chip atualiza data e backend recebe PATCH (verificável em network tab + DB)
+  - Click em célula vazia abre modal com lista de drafts; agendamento confirmado aparece imediatamente
+  - Tentar arrastar beat já publicado → bloqueia (cursor not-allowed + tooltip)
+  - `pnpm typecheck` passa
+  - `pytest api/tests/routes/test_posts_reschedule.py -v` passa (≥4 testes: ownership, publicado, data passada, sucesso)
+  - Build Vercel passa
+- **Fora do escopo (V2 / variante C):**
+  - Bulk schedule (agendar N beats com regra de allocation)
+  - Recorrência ("toda terça às 18h")
+  - Recolorir por mood ou estilo
+  - View semanal ou diária
+- **Estimativa:** ~1 dia (backend 2h + grid+chips 3h + dnd+modal 2h + testes+typecheck 1h)
+- **Dependência:** T6.10 (DateTimePicker, ✅), T6.11 (bloqueio publicado, ✅)
 
 #### `[x]` T6.18 — Configurações + Dashboard com novo visual
 

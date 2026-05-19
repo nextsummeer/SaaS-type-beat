@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException
@@ -6,9 +7,14 @@ from pydantic import BaseModel
 
 from app.services.qstash_service import dispatch_publish_job
 from app.services.supabase_service import get_admin_client, validate_token
+from app.services.youtube_service import update_scheduled_publish_at
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 logger = logging.getLogger(__name__)
+
+
+class ReschedulePostRequest(BaseModel):
+    scheduled_at: str
 
 
 class PatchPostRequest(BaseModel):
@@ -105,3 +111,82 @@ def patch_post(
             logger.error("Falha ao disparar publish: beat=%s erro=%s", beat_id, exc)
 
     return {"ok": True, "updated": list(updates.keys())}
+
+
+@router.patch("/{post_id}/reschedule")
+def reschedule_post(
+    post_id: str,
+    body: ReschedulePostRequest,
+    authorization: str = Header(...),
+):
+    """Reagenda um post (drag-and-drop no calendario).
+
+    Aceita reagendamento enquanto o video ainda esta como private+agendado no YouTube.
+    Bloqueia se ja virou public (status='published') ou se ainda esta em processamento
+    (status='publishing'). Se o video ja existe no YouTube, chama videos.update pra
+    atualizar publishAt; senao, so atualiza scheduled_at no banco e o worker pega na hora.
+    """
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token inválido")
+    token = authorization.removeprefix("Bearer ")
+
+    try:
+        user = validate_token(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token inválido ou expirado")
+
+    try:
+        new_dt = datetime.fromisoformat(body.scheduled_at.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="scheduled_at em formato invalido (use ISO 8601)")
+    if new_dt.tzinfo is None:
+        new_dt = new_dt.replace(tzinfo=timezone.utc)
+    if new_dt <= datetime.now(timezone.utc):
+        raise HTTPException(status_code=422, detail="Nova data precisa ser no futuro")
+
+    client = get_admin_client()
+    row = (
+        client.table("posts")
+        .select("id, user_id, status, scheduled_at, youtube_video_id, published_at")
+        .eq("id", post_id)
+        .eq("user_id", str(user.id))
+        .maybe_single()
+        .execute()
+    )
+    if not row or not row.data:
+        raise HTTPException(status_code=404, detail="Post não encontrado")
+    post = row.data
+
+    if post.get("published_at") or post.get("status") == "published":
+        raise HTTPException(
+            status_code=409,
+            detail="Beat ja foi publicado no YouTube — edite pelo YouTube Studio",
+        )
+    if post.get("status") == "publishing":
+        raise HTTPException(
+            status_code=409,
+            detail="Beat esta sendo publicado agora — aguarde alguns segundos",
+        )
+
+    youtube_video_id = post.get("youtube_video_id")
+    if youtube_video_id:
+        try:
+            update_scheduled_publish_at(str(user.id), youtube_video_id, new_dt)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+        except Exception as exc:
+            logger.exception("Falha ao reagendar no YouTube post=%s", post_id)
+            raise HTTPException(status_code=502, detail=f"YouTube recusou o reagendamento: {exc}")
+
+    client.table("posts").update({"scheduled_at": new_dt.isoformat()}).eq("id", post_id).execute()
+    logger.info(
+        "Post %s reagendado para %s (youtube=%s)",
+        post_id, new_dt.isoformat(), bool(youtube_video_id),
+    )
+
+    return {
+        "ok": True,
+        "post_id": post_id,
+        "scheduled_at": new_dt.isoformat(),
+        "synced_with_youtube": bool(youtube_video_id),
+    }

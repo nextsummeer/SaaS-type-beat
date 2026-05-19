@@ -21,6 +21,8 @@ YOUTUBE_UPLOAD_QUOTA_UNITS = 1600
 YOUTUBE_THUMBNAIL_QUOTA_UNITS = 50
 # videos.list = 1 unit por chunk de ate 50 IDs (usado em realtime stats)
 YOUTUBE_LIST_QUOTA_UNITS = 1
+# videos.update = 50 units por chamada (usado pra reagendar publishAt)
+YOUTUBE_UPDATE_QUOTA_UNITS = 50
 # Cache curto pra realtime stats: balance entre frescor e custo de quota
 CACHE_TTL_REALTIME_MINUTES = 5
 REALTIME_CACHE_KEY = "realtime:my-beats"
@@ -432,3 +434,65 @@ def upload_video(
         "scheduled": is_scheduled,
         "privacy_status_final": privacy_status if not is_scheduled else "private",
     }
+
+
+def update_scheduled_publish_at(
+    user_id: str,
+    video_id: str,
+    new_scheduled_at: datetime,
+) -> dict:
+    """Atualiza o publishAt de um video que ainda esta como private+agendado no YouTube.
+
+    Usado quando o produtor reagenda um beat ja enviado via drag-and-drop no calendario.
+    O video precisa estar com privacyStatus='private' (ainda nao publicado).
+    Quando o YouTube ja virou o video pra public na hora original, publishAt nao se aplica
+    mais — a API aceita a chamada mas o efeito e nulo. O caller deve bloquear esse caso.
+
+    Custo: 50 units (videos.update).
+    """
+    if new_scheduled_at.tzinfo is None:
+        new_scheduled_at = new_scheduled_at.replace(tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
+    if new_scheduled_at <= now:
+        raise ValueError("Nova data precisa ser no futuro")
+
+    account = _load_account(user_id)
+    credentials = _build_credentials(account)
+    if not credentials.valid:
+        credentials.refresh(GoogleRequest())
+        _persist_refreshed_token(account["account_id"], credentials)
+
+    youtube = build("youtube", "v3", credentials=credentials, cache_discovery=False)
+    publish_at_iso = new_scheduled_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    started = time.monotonic()
+    try:
+        youtube.videos().update(
+            part="status",
+            body={
+                "id": video_id,
+                "status": {
+                    "privacyStatus": "private",
+                    "publishAt": publish_at_iso,
+                    "selfDeclaredMadeForKids": False,
+                },
+            },
+        ).execute()
+    except HttpError as exc:
+        logger.error("[YT_RESCHEDULE] erro ao atualizar publishAt video=%s: %s", video_id, exc)
+        raise
+    duration_ms = int((time.monotonic() - started) * 1000)
+    logger.info("[YT_RESCHEDULE] video=%s novo publishAt=%s", video_id, publish_at_iso)
+
+    usage_tracker.track(
+        user_id=user_id,
+        feature="youtube_data_api",
+        duration_ms=duration_ms,
+        metadata={
+            "endpoint": "videos.update",
+            "quota_units": YOUTUBE_UPDATE_QUOTA_UNITS,
+            "video_id": video_id,
+        },
+    )
+
+    return {"video_id": video_id, "publish_at": publish_at_iso}
