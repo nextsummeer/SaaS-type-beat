@@ -56,21 +56,25 @@ export function BeatChip({ beat, onClick }: BeatChipProps) {
 
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.35 : desabilitado ? 0.72 : 1,
+    opacity: isDragging ? 0.35 : desabilitado ? 0.78 : 1,
     cursor: desabilitado ? 'pointer' : isDragging ? 'grabbing' : 'grab',
-    background: noYoutube ? 'var(--bg-surface)' : 'var(--bg-elevated)',
-    border: `1px ${noYoutube ? 'dashed' : 'solid'} var(--border)`,
-    borderRadius: 6,
-    padding: '4px 6px 4px 4px',
+    background: noYoutube
+      ? 'var(--bg-base)'
+      : 'var(--bg-elevated)',
+    border: `1px ${noYoutube ? 'dashed' : 'solid'} ${
+      noYoutube ? 'var(--border)' : 'var(--border-strong)'
+    }`,
+    borderRadius: 7,
+    padding: '5px 7px 5px 5px',
     display: 'flex',
     alignItems: 'center',
-    gap: 6,
-    fontSize: 11,
+    gap: 7,
+    fontSize: 12,
     fontWeight: 500,
-    lineHeight: 1.1,
+    lineHeight: 1.15,
     width: '100%',
     color: 'var(--text-secondary)',
-    transition: 'background 0.15s ease, border-color 0.15s ease',
+    transition: 'background 0.15s ease, border-color 0.15s ease, transform 0.15s ease',
     touchAction: 'none',
   }
 
@@ -104,10 +108,11 @@ export function BeatChip({ beat, onClick }: BeatChipProps) {
       <span
         className="relative shrink-0 overflow-hidden"
         style={{
-          width: 18,
-          height: 18,
-          borderRadius: 3,
+          width: 22,
+          height: 22,
+          borderRadius: 4,
           background: 'var(--bg-overlay)',
+          border: '1px solid var(--border)',
         }}
       >
         {coverUrl ? (
@@ -126,7 +131,8 @@ export function BeatChip({ beat, onClick }: BeatChipProps) {
       <span
         className="line-clamp-1 min-w-0 flex-1 text-left"
         style={{
-          color: noYoutube ? 'var(--text-secondary)' : 'var(--text-primary)',
+          color: noYoutube ? 'var(--text-muted)' : 'var(--text-primary)',
+          fontWeight: noYoutube ? 400 : 500,
         }}
       >
         {beat.titulo ?? 'Aguardando IA'}
@@ -135,10 +141,10 @@ export function BeatChip({ beat, onClick }: BeatChipProps) {
       {/* Cadeado em beats que ja foram pro YouTube (deixa claro que e read-only) */}
       {noYoutube && (
         <Lock
-          size={9}
+          size={11}
           strokeWidth={2.4}
           className="shrink-0"
-          style={{ color: 'var(--text-subtle)' }}
+          style={{ color: 'var(--text-muted)' }}
           aria-hidden
         />
       )}
@@ -146,7 +152,7 @@ export function BeatChip({ beat, onClick }: BeatChipProps) {
       {/* LED de status */}
       <span
         className="led shrink-0"
-        style={{ color: estado.cor, width: 5, height: 5 }}
+        style={{ color: estado.cor, width: 6, height: 6 }}
         aria-label={estado.label}
       />
     </button>
@@ -176,26 +182,32 @@ export function BeatChipOverlay({ beat }: { beat: BeatListItem }) {
     <div
       style={{
         background: 'var(--bg-elevated)',
-        border: '1px solid var(--accent-line)',
-        borderRadius: 6,
-        padding: '4px 6px 4px 4px',
+        border: '1px solid var(--accent)',
+        borderRadius: 7,
+        padding: '5px 7px 5px 5px',
         display: 'flex',
         alignItems: 'center',
-        gap: 6,
-        fontSize: 11,
+        gap: 7,
+        fontSize: 12,
         fontWeight: 500,
-        lineHeight: 1.1,
-        minWidth: 140,
-        maxWidth: 220,
+        lineHeight: 1.15,
+        minWidth: 150,
+        maxWidth: 240,
         color: 'var(--text-primary)',
-        boxShadow: 'var(--shadow-glow-accent), 0 8px 24px rgba(0,0,0,0.6)',
+        boxShadow: 'var(--shadow-glow-accent), 0 12px 32px rgba(0,0,0,0.7)',
         transform: 'rotate(-1.5deg) scale(1.05)',
         cursor: 'grabbing',
       }}
     >
       <span
         className="relative shrink-0 overflow-hidden"
-        style={{ width: 18, height: 18, borderRadius: 3, background: 'var(--bg-overlay)' }}
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 4,
+          background: 'var(--bg-overlay)',
+          border: '1px solid var(--accent-line)',
+        }}
       >
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -205,7 +217,7 @@ export function BeatChipOverlay({ beat }: { beat: BeatListItem }) {
       <span className="line-clamp-1 min-w-0 flex-1 text-left">
         {beat.titulo ?? 'Aguardando IA'}
       </span>
-      <span className="led shrink-0" style={{ color: estado.cor, width: 5, height: 5 }} />
+      <span className="led shrink-0" style={{ color: estado.cor, width: 6, height: 6 }} />
     </div>
   )
 }

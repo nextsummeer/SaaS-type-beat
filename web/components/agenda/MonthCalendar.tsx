@@ -35,32 +35,40 @@ export function MonthCalendar({
   return (
     <section
       style={{
-        border: '1px solid var(--border)',
+        border: '1px solid var(--border-strong)',
         borderRadius: 'var(--radius-lg)',
         background: 'var(--bg-surface)',
         overflow: 'hidden',
+        boxShadow: 'var(--shadow-card)',
       }}
     >
       {/* Cabecalho de dias da semana */}
       <div
         className="grid grid-cols-7"
-        style={{ borderBottom: '1px solid var(--border)' }}
+        style={{
+          borderBottom: '1px solid var(--border-strong)',
+          background: 'var(--bg-base)',
+        }}
       >
-        {NOMES_DIAS_SEMANA.map((nome) => (
-          <div
-            key={nome}
-            className="font-mono"
-            style={{
-              padding: '10px 12px',
-              fontSize: 10,
-              letterSpacing: '0.16em',
-              color: 'var(--text-subtle)',
-              borderRight: '1px solid var(--border-muted)',
-            }}
-          >
-            {nome}
-          </div>
-        ))}
+        {NOMES_DIAS_SEMANA.map((nome, idx) => {
+          const ehFimSemana = idx === 0 || idx === 6
+          return (
+            <div
+              key={nome}
+              className="font-mono"
+              style={{
+                padding: '12px 14px',
+                fontSize: 11,
+                fontWeight: 500,
+                letterSpacing: '0.18em',
+                color: ehFimSemana ? 'var(--text-subtle)' : 'var(--text-muted)',
+                borderRight: idx === 6 ? 'none' : '1px solid var(--border)',
+              }}
+            >
+              {nome}
+            </div>
+          )
+        })}
       </div>
 
       {/* Grid 6x7 */}
@@ -129,6 +137,13 @@ function DayCell({
   const visiveis = beats.slice(0, MAX_CHIPS_VISIVEIS)
   const extras = Math.max(0, beats.length - MAX_CHIPS_VISIVEIS)
 
+  // Background da celula: hoje ganha tinta sutil de accent pra brilhar
+  const bgCelula = isOver
+    ? 'var(--accent-muted)'
+    : ehHoje
+      ? 'rgba(255, 90, 31, 0.04)'
+      : 'transparent'
+
   return (
     <div
       ref={setNodeRef}
@@ -140,24 +155,26 @@ function DayCell({
         }
       }}
       data-cell-bg="1"
-      className="rise group relative flex min-h-[110px] flex-col p-2 transition-colors"
+      className="rise group relative flex min-h-[118px] flex-col p-2.5 transition-colors"
       style={{
-        background: isOver ? 'var(--accent-muted)' : 'transparent',
-        borderRight: ehUltimaColuna ? 'none' : '1px solid var(--border-muted)',
-        borderBottom: ehUltimaLinha ? 'none' : '1px solid var(--border-muted)',
-        opacity: ehDoMesAtual ? 1 : 0.35,
+        background: bgCelula,
+        borderRight: ehUltimaColuna ? 'none' : '1px solid var(--border)',
+        borderBottom: ehUltimaLinha ? 'none' : '1px solid var(--border)',
+        opacity: ehDoMesAtual ? 1 : 0.45,
         cursor: podeAgendar ? 'pointer' : 'default',
         animationDelay: `${riseDelay}s`,
-        outline: isOver ? '1px solid var(--accent)' : 'none',
+        outline: isOver ? '1px solid var(--accent)' : ehHoje ? '1px solid var(--accent-line)' : 'none',
         outlineOffset: '-1px',
       }}
       onMouseEnter={(e) => {
         if (!podeAgendar || isOver) return
-        e.currentTarget.style.background = 'rgba(255,255,255,0.015)'
+        e.currentTarget.style.background = ehHoje
+          ? 'rgba(255, 90, 31, 0.08)'
+          : 'rgba(255,255,255,0.025)'
       }}
       onMouseLeave={(e) => {
         if (!podeAgendar || isOver) return
-        e.currentTarget.style.background = 'transparent'
+        e.currentTarget.style.background = bgCelula
       }}
     >
       {/* Numero do dia + indicador hoje */}
@@ -169,16 +186,17 @@ function DayCell({
         <span
           className="font-mono tabular"
           style={{
-            fontSize: 12,
-            fontWeight: ehHoje ? 600 : 400,
+            fontSize: 14,
+            fontWeight: ehHoje ? 700 : 500,
             color: ehHoje
               ? 'var(--accent)'
               : ehDoMesAtual
                 ? ehFimSemana
                   ? 'var(--text-muted)'
-                  : 'var(--text-secondary)'
-                : 'var(--text-subtle)',
+                  : 'var(--text-primary)'
+                : 'var(--text-muted)',
             letterSpacing: '0.02em',
+            lineHeight: 1,
           }}
         >
           {String(data.getDate()).padStart(2, '0')}
@@ -186,7 +204,7 @@ function DayCell({
         {ehHoje && (
           <span
             className="led led-pulse"
-            style={{ color: 'var(--accent)', width: 5, height: 5, marginTop: 4 }}
+            style={{ color: 'var(--accent)', width: 6, height: 6, marginTop: 4 }}
           />
         )}
       </div>
@@ -195,17 +213,27 @@ function DayCell({
       {podeAgendar && !isOver && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100"
+          className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100"
         >
           <span
-            className="flex h-7 w-7 items-center justify-center rounded-full"
+            className="flex h-9 w-9 items-center justify-center rounded-full"
             style={{
               background: 'var(--accent-muted)',
               border: '1px dashed var(--accent-line)',
               color: 'var(--accent)',
             }}
           >
-            <Plus size={14} strokeWidth={2.2} />
+            <Plus size={16} strokeWidth={2.4} />
+          </span>
+          <span
+            className="font-mono uppercase"
+            style={{
+              fontSize: 9,
+              letterSpacing: '0.14em',
+              color: 'var(--accent)',
+            }}
+          >
+            Programar
           </span>
         </div>
       )}
@@ -219,13 +247,15 @@ function DayCell({
           <span
             className="font-mono uppercase"
             style={{
-              fontSize: 10,
-              letterSpacing: '0.16em',
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: '0.18em',
               color: 'var(--accent)',
-              padding: '4px 8px',
+              padding: '5px 10px',
               background: 'var(--bg-base)',
               border: '1px solid var(--accent)',
               borderRadius: 4,
+              boxShadow: 'var(--shadow-glow-accent)',
             }}
           >
             Soltar aqui
