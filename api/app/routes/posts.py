@@ -7,7 +7,6 @@ from pydantic import BaseModel
 
 from app.services.qstash_service import dispatch_publish_job
 from app.services.supabase_service import get_admin_client, validate_token
-from app.services.youtube_service import update_scheduled_publish_at
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 logger = logging.getLogger(__name__)
@@ -157,36 +156,28 @@ def reschedule_post(
         raise HTTPException(status_code=404, detail="Post não encontrado")
     post = row.data
 
-    if post.get("published_at") or post.get("status") == "published":
-        raise HTTPException(
-            status_code=409,
-            detail="Beat ja foi publicado no YouTube — edite pelo YouTube Studio",
-        )
     if post.get("status") == "publishing":
         raise HTTPException(
             status_code=409,
             detail="Beat esta sendo publicado agora — aguarde alguns segundos",
         )
 
-    youtube_video_id = post.get("youtube_video_id")
-    if youtube_video_id:
-        try:
-            update_scheduled_publish_at(str(user.id), youtube_video_id, new_dt)
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc))
-        except Exception as exc:
-            logger.exception("Falha ao reagendar no YouTube post=%s", post_id)
-            raise HTTPException(status_code=502, detail=f"YouTube recusou o reagendamento: {exc}")
+    # Bloqueio amplo: qualquer beat ja enviado pro YouTube (mesmo agendado pra
+    # futuro) nao pode ser reagendado por aqui. Isso evita 403 'insufficient
+    # scopes' (videos.update precisa de scope 'youtube' full, nao temos) e
+    # cobre o gotcha do post.status='scheduled' preso apos publicacao.
+    if post.get("youtube_video_id"):
+        raise HTTPException(
+            status_code=409,
+            detail="Vídeo já está no YouTube — pra mudar o agendamento, edite pelo YouTube Studio.",
+        )
 
     client.table("posts").update({"scheduled_at": new_dt.isoformat()}).eq("id", post_id).execute()
-    logger.info(
-        "Post %s reagendado para %s (youtube=%s)",
-        post_id, new_dt.isoformat(), bool(youtube_video_id),
-    )
+    logger.info("Post %s reagendado para %s (DB-only)", post_id, new_dt.isoformat())
 
     return {
         "ok": True,
         "post_id": post_id,
         "scheduled_at": new_dt.isoformat(),
-        "synced_with_youtube": bool(youtube_video_id),
+        "synced_with_youtube": False,
     }

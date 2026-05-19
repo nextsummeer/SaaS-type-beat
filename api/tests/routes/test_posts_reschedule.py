@@ -119,25 +119,28 @@ def test_reschedule_post_de_outro_user_da_404():
     assert resp.status_code == 404
 
 
-def test_reschedule_post_ja_publicado_da_409():
+def test_reschedule_post_ja_no_youtube_da_409():
+    """Beat com youtube_video_id setado (publicado de verdade ou apenas agendado
+    com video private+publishAt) nao pode ser reagendado — videos.update exige
+    scope 'youtube' full que ainda nao pedimos."""
     mock_sb = _supabase_with_post({
         "id": POST_ID,
         "user_id": USER_ID,
-        "status": "published",
-        "scheduled_at": _future_iso(-48),
+        "status": "scheduled",
+        "scheduled_at": _future_iso(),
         "youtube_video_id": VIDEO_ID,
-        "published_at": "2026-05-10T18:00:00Z",
+        "published_at": None,
     })
     with patch("app.routes.posts.validate_token", return_value=_user()), patch(
         "app.routes.posts.get_admin_client", return_value=mock_sb
     ):
         resp = client.patch(
             f"/posts/{POST_ID}/reschedule",
-            json={"scheduled_at": _future_iso()},
+            json={"scheduled_at": _future_iso(72)},
             headers={"Authorization": f"Bearer {TOKEN}"},
         )
     assert resp.status_code == 409
-    assert "publicado" in resp.json()["detail"].lower()
+    assert "youtube" in resp.json()["detail"].lower()
 
 
 def test_reschedule_post_em_publishing_da_409():
@@ -176,7 +179,7 @@ def test_reschedule_sem_video_no_youtube_atualiza_so_db():
     })
     with patch("app.routes.posts.validate_token", return_value=_user()), patch(
         "app.routes.posts.get_admin_client", return_value=mock_sb
-    ), patch("app.routes.posts.update_scheduled_publish_at") as mock_yt:
+    ):
         resp = client.patch(
             f"/posts/{POST_ID}/reschedule",
             json={"scheduled_at": _future_iso(72)},
@@ -187,61 +190,25 @@ def test_reschedule_sem_video_no_youtube_atualiza_so_db():
     body = resp.json()
     assert body["ok"] is True
     assert body["synced_with_youtube"] is False
-    mock_yt.assert_not_called()
     mock_sb.table.return_value.update.assert_called_once()
 
 
-def test_reschedule_com_video_chama_youtube_update():
-    """Post com youtube_video_id — chama update_scheduled_publish_at + atualiza DB."""
+def test_reschedule_publicado_efetivo_da_409():
+    """status='published' tambem bloqueia (caso classico)."""
     mock_sb = _supabase_with_post({
         "id": POST_ID,
         "user_id": USER_ID,
-        "status": "scheduled",
-        "scheduled_at": _future_iso(24),
+        "status": "published",
+        "scheduled_at": _future_iso(-48),
         "youtube_video_id": VIDEO_ID,
-        "published_at": None,
+        "published_at": "2026-05-10T18:00:00Z",
     })
     with patch("app.routes.posts.validate_token", return_value=_user()), patch(
         "app.routes.posts.get_admin_client", return_value=mock_sb
-    ), patch(
-        "app.routes.posts.update_scheduled_publish_at",
-        return_value={"video_id": VIDEO_ID, "publish_at": "..."},
-    ) as mock_yt:
-        resp = client.patch(
-            f"/posts/{POST_ID}/reschedule",
-            json={"scheduled_at": _future_iso(72)},
-            headers={"Authorization": f"Bearer {TOKEN}"},
-        )
-
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["synced_with_youtube"] is True
-    mock_yt.assert_called_once()
-    args, kwargs = mock_yt.call_args
-    assert args[0] == USER_ID
-    assert args[1] == VIDEO_ID
-    mock_sb.table.return_value.update.assert_called_once()
-
-
-def test_reschedule_youtube_falha_da_502():
-    mock_sb = _supabase_with_post({
-        "id": POST_ID,
-        "user_id": USER_ID,
-        "status": "scheduled",
-        "scheduled_at": _future_iso(24),
-        "youtube_video_id": VIDEO_ID,
-        "published_at": None,
-    })
-    with patch("app.routes.posts.validate_token", return_value=_user()), patch(
-        "app.routes.posts.get_admin_client", return_value=mock_sb
-    ), patch(
-        "app.routes.posts.update_scheduled_publish_at",
-        side_effect=Exception("403 Forbidden"),
     ):
         resp = client.patch(
             f"/posts/{POST_ID}/reschedule",
-            json={"scheduled_at": _future_iso(72)},
+            json={"scheduled_at": _future_iso()},
             headers={"Authorization": f"Bearer {TOKEN}"},
         )
-    assert resp.status_code == 502
-    assert "youtube" in resp.json()["detail"].lower()
+    assert resp.status_code == 409
