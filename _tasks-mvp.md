@@ -762,6 +762,32 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Upload não tem mais espaço vazio gigante à direita. Review tem dois painéis que fazem uso natural da largura. Typecheck verde.
 - **Dependencia:** T6.15
 
+#### `[x]` T6.20 — Drag-and-drop no upload + widget "Próximas publicações" no dashboard
+
+- **Trigger:** 2026-05-19 (continuação da sessão T6.19) — Gustavo pediu pra investigar o que mais do Beatloadr valeria copiar tirando bulk. Decisão de fazer 2 itens: (B) drag-and-drop no upload de áudio e capa, (C) widget de próximas publicações agendadas no dashboard. Pacotes A (aceitar WAV/FLAC) e D (loudnorm) descartados: A por trade-offs de banda/storage e B por proteção contra roubo de WAV, D porque BeatPost conscientemente NÃO normaliza áudio (preserva master do produtor — documentado em memory `project_audio_nao_e_normalizado`).
+- **Arquivos previstos:**
+  - `web/components/UploadForm.tsx` (adiciona handlers onDragOver/onDragLeave/onDrop nos botões de áudio e capa)
+  - `web/components/agenda/ProximasPublicacoesWidget.tsx` (novo)
+  - `web/app/(app)/dashboard/page.tsx` (inclui o widget)
+- **O que fazer:**
+  1. **Drag-and-drop áudio:** zona do botão existente passa a aceitar drop. Visual: hover state extra com borda accent solid + shadow-glow-accent + label "Solte aqui" quando arrastando. Validação client-side: rejeita arquivo não-MP3 com aviso ("Só MP3 — converta antes de subir").
+  2. **Drag-and-drop capa:** mesma lógica pro botão de cover. Aceita JPG/PNG, rejeita outros.
+  3. **Widget Próximas Publicações:** card no dashboard mostrando até 5 próximos beats com `scheduled_at` futuro. Cada linha: thumb 32×32 + título + data formatada (DD/MM HH:mm) + contador "em X dias" / "amanhã" / "em X horas". Click vai pra `/beats/[id]/review`. Empty state: "Nenhuma publicação agendada. [Ir pra agenda]". Reusa `useCoverUrl` do BeatCard.
+- **Critério de pronto:**
+  - Soltar MP3 no botão de áudio preenche o file (sem precisar clicar)
+  - Soltar arquivo errado (ex: PDF) mostra aviso vermelho 3s e ignora
+  - Soltar JPG/PNG no botão de capa preenche
+  - Dashboard mostra widget com beats agendados (ordenados por data crescente)
+  - Vazio mostra empty state com CTA "Ir pra agenda"
+  - `pnpm build` passa (validar Suspense/prerender)
+- **Decisão visual:** mantém linguagem Studio Console (flame orange accent, hairlines, LEDs). Drag ativo no botão usa `shadow-glow-accent` + borda solid accent. Widget no dashboard segue padrão dos cards já existentes (bg-surface + border + radius-lg).
+- **Fora do escopo:**
+  - Múltiplos formatos de áudio (aceitar WAV/FLAC) — descartado por trade-offs
+  - Múltiplos arquivos de uma vez (bulk upload) — fora do MVP
+  - Drag pra reordenar publicações no widget — só visualização
+- **Estimativa:** ~3-4h (B: 2h, C: 1-2h)
+- **Dependência:** T6.19 (rota /agenda + tipo BeatListItem com scheduled_at)
+
 #### `[x]` T6.19 — Calendário visual de agendamento (Variante B, interativo)
 
 - **Trigger:** Gustavo descobriu o Beatloadr em 2026-05-19 (concorrente direto mais alinhado ao recorte do BeatPost — SaaS web YouTube-only). Print do calendário mensal deles disparou a feature. Sessão de design e variantes em `docs/sessoes/2026-05-19-calendario-agendamento-design.md`. Variante B escolhida pelo Gustavo (LITE + drag-and-drop + agendamento rápido).

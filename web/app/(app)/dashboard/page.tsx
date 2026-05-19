@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { DashboardGreeting } from '@/components/DashboardGreeting'
 import { DashboardStats } from '@/components/DashboardStats'
+import { ProximasPublicacoesWidget } from '@/components/agenda/ProximasPublicacoesWidget'
 
 export default async function DashboardPage() {
   const api = await healthCheck()
@@ -31,6 +32,9 @@ export default async function DashboardPage() {
 
       {/* STATS GRID — dados reais via /beats e /analytics/my-beats */}
       <DashboardStats />
+
+      {/* PRÓXIMAS PUBLICAÇÕES — widget da agenda */}
+      <ProximasPublicacoesWidget />
 
       {/* AÇÃO PRINCIPAL — upload */}
       <section

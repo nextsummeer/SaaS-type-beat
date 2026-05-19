@@ -36,6 +36,9 @@ export function UploadForm() {
   const [audioProgress, setAudioProgress] = useState(0)
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [audioDragOver, setAudioDragOver] = useState(false)
+  const [coverDragOver, setCoverDragOver] = useState(false)
+  const [dropAviso, setDropAviso] = useState<string | null>(null)
 
   const bpmNum = Number(bpm)
   const bpmValid = Number.isFinite(bpmNum) && bpmNum >= 40 && bpmNum <= 300
@@ -53,6 +56,43 @@ export function UploadForm() {
 
   function setArtista(idx: number, valor: string) {
     setArtistas((prev) => prev.map((a, i) => (i === idx ? valor : a)))
+  }
+
+  function exibirAviso(msg: string) {
+    setDropAviso(msg)
+    setTimeout(() => setDropAviso(null), 3500)
+  }
+
+  function handleAudioDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setAudioDragOver(false)
+    if (uploading) return
+    const arquivo = e.dataTransfer.files?.[0]
+    if (!arquivo) return
+    const nomeLower = arquivo.name.toLowerCase()
+    const ehMp3 = arquivo.type === 'audio/mpeg' || nomeLower.endsWith('.mp3')
+    if (!ehMp3) {
+      exibirAviso('Só MP3 por enquanto — converta o arquivo antes de soltar.')
+      return
+    }
+    setAudioFile(arquivo)
+  }
+
+  function handleCoverDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setCoverDragOver(false)
+    if (uploading) return
+    const arquivo = e.dataTransfer.files?.[0]
+    if (!arquivo) return
+    const ehImg =
+      arquivo.type === 'image/jpeg' ||
+      arquivo.type === 'image/png' ||
+      /\.(jpe?g|png)$/i.test(arquivo.name)
+    if (!ehImg) {
+      exibirAviso('Capa precisa ser JPG ou PNG.')
+      return
+    }
+    setCoverFile(arquivo)
   }
 
   function adicionarArtista() {
@@ -376,23 +416,72 @@ export function UploadForm() {
         <button
           type="button"
           onClick={() => audioRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault()
+            if (!uploading) setAudioDragOver(true)
+          }}
+          onDragLeave={() => setAudioDragOver(false)}
+          onDrop={handleAudioDrop}
           disabled={uploading}
-          className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed border-zinc-700 bg-zinc-900 px-6 py-8 text-center transition hover:border-orange-500 hover:bg-zinc-800/50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-8 text-center transition-all disabled:cursor-not-allowed disabled:opacity-50"
+          style={{
+            borderColor: audioDragOver
+              ? 'var(--accent)'
+              : audioFile
+                ? 'rgba(255, 90, 31, 0.4)'
+                : 'var(--border-strong)',
+            background: audioDragOver
+              ? 'var(--accent-muted)'
+              : audioFile
+                ? 'var(--bg-elevated)'
+                : 'var(--bg-surface)',
+            boxShadow: audioDragOver ? 'var(--shadow-glow-accent)' : 'none',
+            transform: audioDragOver ? 'scale(1.005)' : 'scale(1)',
+          }}
         >
-          {audioFile ? (
+          {audioDragOver ? (
+            <>
+              <span
+                className="led led-pulse"
+                style={{ color: 'var(--accent)', width: 10, height: 10 }}
+              />
+              <div className="flex flex-col gap-1">
+                <p
+                  className="font-mono uppercase"
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    letterSpacing: '0.16em',
+                    color: 'var(--accent)',
+                  }}
+                >
+                  Solte o áudio aqui
+                </p>
+                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                  Aceitando MP3
+                </p>
+              </div>
+            </>
+          ) : audioFile ? (
             <>
               <Music className="h-8 w-8 text-orange-400" />
               <div>
                 <p className="text-sm font-medium text-white">{audioFile.name}</p>
-                <p className="text-xs text-zinc-400">{(audioFile.size / 1024 / 1024).toFixed(1)} MB</p>
+                <p className="text-xs text-zinc-400">
+                  {(audioFile.size / 1024 / 1024).toFixed(1)} MB
+                </p>
               </div>
             </>
           ) : (
             <>
               <UploadCloud className="h-8 w-8 text-zinc-500" />
-              <div>
-                <p className="text-sm text-zinc-300">Clique para selecionar o áudio</p>
-                <p className="text-xs text-zinc-500">Somente MP3 — com sua tag de produtor no áudio</p>
+              <div className="flex flex-col gap-1">
+                <p className="text-sm text-zinc-300">
+                  Arraste o MP3 aqui ou <span style={{ color: 'var(--accent)' }}>clique para escolher</span>
+                </p>
+                <p className="text-xs text-zinc-500">
+                  Somente MP3 — com sua tag de produtor no áudio
+                </p>
               </div>
             </>
           )}
@@ -430,18 +519,60 @@ export function UploadForm() {
         <button
           type="button"
           onClick={() => coverRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault()
+            if (!uploading) setCoverDragOver(true)
+          }}
+          onDragLeave={() => setCoverDragOver(false)}
+          onDrop={handleCoverDrop}
           disabled={uploading}
-          className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed border-zinc-700 bg-zinc-900 px-6 py-5 text-center transition hover:border-orange-500 hover:bg-zinc-800/50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-5 text-center transition-all disabled:cursor-not-allowed disabled:opacity-50"
+          style={{
+            borderColor: coverDragOver
+              ? 'var(--accent)'
+              : coverFile
+                ? 'rgba(255, 90, 31, 0.4)'
+                : 'var(--border-strong)',
+            background: coverDragOver
+              ? 'var(--accent-muted)'
+              : coverFile
+                ? 'var(--bg-elevated)'
+                : 'var(--bg-surface)',
+            boxShadow: coverDragOver ? 'var(--shadow-glow-accent)' : 'none',
+            transform: coverDragOver ? 'scale(1.005)' : 'scale(1)',
+          }}
         >
-          {coverFile ? (
+          {coverDragOver ? (
             <>
+              <span
+                className="led led-pulse"
+                style={{ color: 'var(--accent)', width: 9, height: 9 }}
+              />
+              <p
+                className="font-mono uppercase"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: '0.16em',
+                  color: 'var(--accent)',
+                }}
+              >
+                Solte a capa aqui
+              </p>
+            </>
+          ) : coverFile ? (
+            <>
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <Image className="h-6 w-6 text-orange-400" />
               <p className="text-sm font-medium text-white">{coverFile.name}</p>
             </>
           ) : (
             <>
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <Image className="h-6 w-6 text-zinc-500" />
-              <p className="text-sm text-zinc-500">Clique para adicionar a capa (JPG ou PNG)</p>
+              <p className="text-sm text-zinc-500">
+                Arraste ou <span style={{ color: 'var(--accent)' }}>clique para adicionar</span> (JPG ou PNG)
+              </p>
             </>
           )}
         </button>
@@ -453,6 +584,21 @@ export function UploadForm() {
           onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
         />
       </div>
+
+      {/* Aviso transitorio do drag-and-drop */}
+      {dropAviso && (
+        <div
+          className="rise flex items-center gap-2 rounded-lg px-4 py-3 text-sm"
+          style={{
+            background: 'rgba(245, 158, 11, 0.1)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            color: '#fcd34d',
+          }}
+        >
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {dropAviso}
+        </div>
+      )}
 
       {/* Error */}
       {status === 'error' && error && (
