@@ -118,10 +118,21 @@ export function ehPublicadoEfetivo(b: BeatStatusInfo): boolean {
   return false
 }
 
-/** Beat agendado pra futuro — pode ser reagendado livremente. */
+/** Beat com data futura na agenda. Cobre dois casos:
+ *  - Rascunho programado (status='ready_for_review' + scheduled_at): so no DB,
+ *    nao foi pro YouTube ainda — pode arrastar livremente.
+ *  - Agendado no YouTube (status='scheduled' + youtube_video_id + futuro):
+ *    ja virou private+publishAt la, drag bloqueado (precisaria scope full).
+ */
 export function ehAgendadoFuturo(b: BeatStatusInfo): boolean {
-  if (b.post_status !== 'scheduled') return false
   if (!b.scheduled_at) return false
+  if (ehDeletadoYoutube(b)) return false
+  if (ehPublicadoEfetivo(b)) return false
   const dt = new Date(b.scheduled_at)
   return !isNaN(dt.getTime()) && dt > new Date()
+}
+
+/** Beat ainda nao foi pro YouTube — drag-and-drop afeta so o DB, seguro. */
+export function podeReagendarLivremente(b: BeatStatusInfo): boolean {
+  return !b.youtube_video_id && !ehDeletadoYoutube(b)
 }

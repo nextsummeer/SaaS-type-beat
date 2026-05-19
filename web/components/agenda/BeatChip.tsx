@@ -6,7 +6,7 @@ import { Lock } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { estadoVisual } from '@/components/BeatCard'
-import { ehPublicadoEfetivo, ehDeletadoYoutube } from '@/lib/agenda'
+import { ehPublicadoEfetivo, ehDeletadoYoutube, podeReagendarLivremente } from '@/lib/agenda'
 import type { BeatListItem } from '@/lib/api'
 
 interface BeatChipProps {
@@ -19,8 +19,10 @@ export function BeatChip({ beat, onClick }: BeatChipProps) {
   const estado = estadoVisual(beat)
   const removido = ehDeletadoYoutube(beat)
   const publicado = ehPublicadoEfetivo(beat)
-  // Beat ja publicado ou removido — chip vira read-only (sem drag, click vai pro YouTube/review)
-  const desabilitado = removido || publicado
+  const noYoutube = !!beat.youtube_video_id
+  // Drag permitido apenas pra beats que ainda nao foram pro YouTube — assim
+  // a atualizacao e DB-only e nao precisa de scope OAuth full.
+  const desabilitado = removido || !podeReagendarLivremente(beat)
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `beat-${beat.id}`,
@@ -45,17 +47,19 @@ export function BeatChip({ beat, onClick }: BeatChipProps) {
   }, [beat.cover_path])
 
   const tituloTooltip = publicado
-    ? `${beat.titulo ?? 'Beat'} · Publicado (não pode reagendar)`
-    : removido
-      ? `${beat.titulo ?? 'Beat'} · Removido do YouTube`
-      : `${beat.titulo ?? 'Aguardando IA'} · ${estado.label} · arraste para reagendar`
+    ? `${beat.titulo ?? 'Beat'} · Publicado · edite pelo YouTube Studio`
+    : noYoutube
+      ? `${beat.titulo ?? 'Beat'} · Já no YouTube · edite pelo YouTube Studio`
+      : removido
+        ? `${beat.titulo ?? 'Beat'} · Removido do YouTube`
+        : `${beat.titulo ?? 'Aguardando IA'} · ${estado.label} · arraste para reagendar`
 
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.35 : desabilitado ? 0.72 : 1,
     cursor: desabilitado ? 'pointer' : isDragging ? 'grabbing' : 'grab',
-    background: publicado ? 'var(--bg-surface)' : 'var(--bg-elevated)',
-    border: `1px ${publicado ? 'dashed' : 'solid'} var(--border)`,
+    background: noYoutube ? 'var(--bg-surface)' : 'var(--bg-elevated)',
+    border: `1px ${noYoutube ? 'dashed' : 'solid'} var(--border)`,
     borderRadius: 6,
     padding: '4px 6px 4px 4px',
     display: 'flex',
@@ -122,14 +126,14 @@ export function BeatChip({ beat, onClick }: BeatChipProps) {
       <span
         className="line-clamp-1 min-w-0 flex-1 text-left"
         style={{
-          color: publicado ? 'var(--text-secondary)' : 'var(--text-primary)',
+          color: noYoutube ? 'var(--text-secondary)' : 'var(--text-primary)',
         }}
       >
         {beat.titulo ?? 'Aguardando IA'}
       </span>
 
-      {/* Cadeado em publicados (deixa claro que e read-only) */}
-      {publicado && (
+      {/* Cadeado em beats que ja foram pro YouTube (deixa claro que e read-only) */}
+      {noYoutube && (
         <Lock
           size={9}
           strokeWidth={2.4}

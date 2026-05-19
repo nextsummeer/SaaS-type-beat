@@ -228,6 +228,20 @@ function QuickScheduleModalContent({
                 />
               </div>
 
+              {/* Nota explicando que programar != publicar */}
+              <p
+                style={{
+                  fontSize: 11.5,
+                  color: 'var(--text-subtle)',
+                  lineHeight: 1.5,
+                  marginTop: -4,
+                }}
+              >
+                Programar só salva a data na agenda. Pra publicar de verdade no
+                YouTube, vá em <strong style={{ color: 'var(--text-muted)' }}>revisão</strong>{' '}
+                do beat e clique em &ldquo;Confirmar agendamento&rdquo;.
+              </p>
+
               {/* Atalho secundario: subir beat com a data ja pre-marcada */}
               <button
                 type="button"
@@ -320,7 +334,7 @@ function QuickScheduleModalContent({
                   }}
                 >
                   {salvando ? <Loader2 size={14} className="animate-spin" /> : null}
-                  {salvando ? 'Agendando…' : 'Agendar'}
+                  {salvando ? 'Programando…' : 'Programar'}
                 </button>
               </div>
             </>

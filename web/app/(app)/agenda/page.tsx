@@ -22,6 +22,7 @@ import {
   ehDeletadoYoutube,
   ehMesmoMes,
   ehPublicadoEfetivo,
+  podeReagendarLivremente,
 } from '@/lib/agenda'
 import { AgendaHeader } from '@/components/agenda/AgendaHeader'
 import { MonthCalendar } from '@/components/agenda/MonthCalendar'
@@ -107,8 +108,11 @@ export default function AgendaPage() {
     return () => clearTimeout(t)
   }, [flash])
 
-  // Beats que aparecem como chip em alguma celula (precisam ter data e estado
-  // que indique presenca no calendario). Beats deletados do YouTube saem da agenda.
+  // Beats que aparecem como chip em alguma celula. Cobre:
+  //   - rascunho com data planejada (programado via modal, sem ir pro YT)
+  //   - agendado no YT (futuro, com youtube_video_id)
+  //   - publicado no YT (passado, com youtube_video_id)
+  // Beats deletados do YouTube ficam fora.
   const beatsNoCalendario = useMemo(
     () =>
       beats.filter((b) => {
@@ -205,10 +209,10 @@ export default function AgendaPage() {
     setArrastandoBeat(null)
 
     if (!beat || !dropData?.date || !token) return
-    if (ehPublicadoEfetivo(beat)) {
+    if (!podeReagendarLivremente(beat)) {
       setFlash({
         tipo: 'erro',
-        msg: 'Beat já publicado no YouTube — edite pelo YouTube Studio.',
+        msg: 'Vídeo já está no YouTube — pra mudar a data, edite pelo YouTube Studio.',
       })
       return
     }
@@ -272,27 +276,24 @@ export default function AgendaPage() {
     const postId = postIds[beat.id]
     if (!postId) throw new Error('Post não encontrado pra esse beat')
 
-    // Usa o PATCH /posts/{id} com status=scheduled (dispara worker)
+    // IMPORTANTE: nao mandamos status='scheduled' aqui de proposito.
+    // Programar na agenda = so salvar a data no DB. O beat continua como
+    // rascunho ('ready_for_review') e o worker NAO dispara — assim o user
+    // pode reagendar via drag livremente. Pra publicar de verdade no YouTube,
+    // o user vai pra /review e clica 'Confirmar agendamento' (la sim dispara).
     await patchPost(postId, token, {
       scheduled_at: scheduledAt.toISOString(),
-      status: 'scheduled',
     })
 
     setBeats((prev) =>
       prev.map((b) =>
-        b.id === beat.id
-          ? {
-              ...b,
-              scheduled_at: scheduledAt.toISOString(),
-              post_status: 'scheduled',
-            }
-          : b,
+        b.id === beat.id ? { ...b, scheduled_at: scheduledAt.toISOString() } : b,
       ),
     )
     setModalAberto(false)
     setFlash({
       tipo: 'ok',
-      msg: `${beat.titulo ?? 'Beat'} agendado pra ${scheduledAt.toLocaleDateString('pt-BR')}.`,
+      msg: `${beat.titulo ?? 'Beat'} programado pra ${scheduledAt.toLocaleDateString('pt-BR')}. Confirme a publicação na revisão pra subir no YouTube.`,
     })
   }
 
