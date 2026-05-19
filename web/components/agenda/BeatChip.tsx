@@ -2,9 +2,11 @@
 
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
+import { Lock } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { estadoVisual } from '@/components/BeatCard'
+import { ehPublicadoEfetivo, ehDeletadoYoutube } from '@/lib/agenda'
 import type { BeatListItem } from '@/lib/api'
 
 interface BeatChipProps {
@@ -15,8 +17,8 @@ interface BeatChipProps {
 /** Chip arrastavel exibido dentro de uma celula do calendario. */
 export function BeatChip({ beat, onClick }: BeatChipProps) {
   const estado = estadoVisual(beat)
-  const removido = !!beat.youtube_deleted_at
-  const publicado = beat.post_status === 'published'
+  const removido = ehDeletadoYoutube(beat)
+  const publicado = ehPublicadoEfetivo(beat)
   // Beat ja publicado ou removido — chip vira read-only (sem drag, click vai pro YouTube/review)
   const desabilitado = removido || publicado
 
@@ -119,10 +121,23 @@ export function BeatChip({ beat, onClick }: BeatChipProps) {
       {/* Titulo */}
       <span
         className="line-clamp-1 min-w-0 flex-1 text-left"
-        style={{ color: 'var(--text-primary)' }}
+        style={{
+          color: publicado ? 'var(--text-secondary)' : 'var(--text-primary)',
+        }}
       >
         {beat.titulo ?? 'Aguardando IA'}
       </span>
+
+      {/* Cadeado em publicados (deixa claro que e read-only) */}
+      {publicado && (
+        <Lock
+          size={9}
+          strokeWidth={2.4}
+          className="shrink-0"
+          style={{ color: 'var(--text-subtle)' }}
+          aria-hidden
+        />
+      )}
 
       {/* LED de status */}
       <span

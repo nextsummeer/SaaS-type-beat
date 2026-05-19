@@ -87,3 +87,41 @@ export function dataDoBeatNoCalendario(beat: {
   const d = new Date(fonte)
   return isNaN(d.getTime()) ? null : d
 }
+
+interface BeatStatusInfo {
+  post_status: string | null
+  scheduled_at: string | null
+  youtube_video_id: string | null
+  youtube_deleted_at: string | null
+  status: string
+}
+
+/** Beat foi deletado do YouTube pelo proprio produtor. */
+export function ehDeletadoYoutube(b: BeatStatusInfo): boolean {
+  return !!b.youtube_deleted_at
+}
+
+/** Beat ja virou public no YouTube (e nao pode mais ser reagendado).
+ *
+ *  Importante: post.status pode ficar 'scheduled' mesmo apos a hora chegar,
+ *  porque publish.py seta uma unica vez no upload e nao revisita. Por isso
+ *  detectamos publicacao efetiva tambem pelo combo
+ *  `youtube_video_id != null AND scheduled_at <= agora`.
+ */
+export function ehPublicadoEfetivo(b: BeatStatusInfo): boolean {
+  if (ehDeletadoYoutube(b)) return false
+  if (b.post_status === 'published') return true
+  if (b.youtube_video_id && b.scheduled_at) {
+    const dt = new Date(b.scheduled_at)
+    if (!isNaN(dt.getTime()) && dt <= new Date()) return true
+  }
+  return false
+}
+
+/** Beat agendado pra futuro — pode ser reagendado livremente. */
+export function ehAgendadoFuturo(b: BeatStatusInfo): boolean {
+  if (b.post_status !== 'scheduled') return false
+  if (!b.scheduled_at) return false
+  const dt = new Date(b.scheduled_at)
+  return !isNaN(dt.getTime()) && dt > new Date()
+}

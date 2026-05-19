@@ -15,7 +15,14 @@ import {
 import { CalendarRange, Loader2, Upload, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { fetchBeats, reschedulePost, patchPost, type BeatListItem } from '@/lib/api'
-import { chaveLocal, dataDoBeatNoCalendario, ehMesmoMes } from '@/lib/agenda'
+import {
+  chaveLocal,
+  dataDoBeatNoCalendario,
+  ehAgendadoFuturo,
+  ehDeletadoYoutube,
+  ehMesmoMes,
+  ehPublicadoEfetivo,
+} from '@/lib/agenda'
 import { AgendaHeader } from '@/components/agenda/AgendaHeader'
 import { MonthCalendar } from '@/components/agenda/MonthCalendar'
 import { BeatChipOverlay } from '@/components/agenda/BeatChip'
@@ -101,14 +108,14 @@ export default function AgendaPage() {
   }, [flash])
 
   // Beats que aparecem como chip em alguma celula (precisam ter data e estado
-  // que indique presenca no calendario)
+  // que indique presenca no calendario). Beats deletados do YouTube saem da agenda.
   const beatsNoCalendario = useMemo(
     () =>
-      beats.filter(
-        (b) =>
-          dataDoBeatNoCalendario(b) !== null &&
-          (b.post_status === 'scheduled' || b.post_status === 'published'),
-      ),
+      beats.filter((b) => {
+        if (ehDeletadoYoutube(b)) return false
+        if (dataDoBeatNoCalendario(b) === null) return false
+        return ehAgendadoFuturo(b) || ehPublicadoEfetivo(b)
+      }),
     [beats],
   )
 
@@ -136,7 +143,6 @@ export default function AgendaPage() {
   // Contadores no mes visivel
   const contadores = useMemo(() => {
     const { ano, mes } = mesVisivel
-    const agora = new Date()
     let agendados = 0
     let publicando = 0
     let publicadosNoMes = 0
@@ -144,12 +150,16 @@ export default function AgendaPage() {
     for (const b of beats) {
       const d = dataDoBeatNoCalendario(b)
       const noMes = d ? ehMesmoMes(d, ano, mes) : false
-      if (b.status === 'ready_for_review' && b.post_status !== 'scheduled' && b.post_status !== 'published') {
+      if (
+        b.status === 'ready_for_review' &&
+        b.post_status !== 'scheduled' &&
+        b.post_status !== 'published'
+      ) {
         rascunhos++
       }
       if (b.status === 'publishing' && noMes) publicando++
-      if (b.post_status === 'scheduled' && d && d > agora && noMes) agendados++
-      if (b.post_status === 'published' && noMes && !b.youtube_deleted_at) publicadosNoMes++
+      if (noMes && ehAgendadoFuturo(b)) agendados++
+      if (noMes && ehPublicadoEfetivo(b)) publicadosNoMes++
     }
     return { agendados, publicando, publicadosNoMes, rascunhos }
   }, [beats, mesVisivel])
@@ -195,8 +205,11 @@ export default function AgendaPage() {
     setArrastandoBeat(null)
 
     if (!beat || !dropData?.date || !token) return
-    if (beat.post_status === 'published') {
-      setFlash({ tipo: 'erro', msg: 'Beat já publicado não pode ser reagendado.' })
+    if (ehPublicadoEfetivo(beat)) {
+      setFlash({
+        tipo: 'erro',
+        msg: 'Beat já publicado no YouTube — edite pelo YouTube Studio.',
+      })
       return
     }
     const dataAnterior = dataDoBeatNoCalendario(beat)
