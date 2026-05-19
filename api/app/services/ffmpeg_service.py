@@ -73,8 +73,9 @@ def _prepare_canvas(cover_path: str) -> str:
 def audio_to_mp4(mp3_path: str, cover_path: str, output_path: str) -> None:
     """
     Gera MP4 com capa estatica + audio.
-    -r 1 + -c:a copy: capa nao precisa de 30fps, mantem MP3 sem reencode.
-    Resultado: arquivo ~5x menor e gera ~10x mais rapido que -r 30 -c:a aac.
+    -r 1: capa estatica nao precisa de 30fps, arquivo ~5x menor.
+    -c:a aac 320k: YouTube recusa processar MP3 em container MP4 ("Processamento
+    cancelado"). AAC 320k e transparente pro ouvido humano e custa ~30MB de RAM.
     """
     for label, path in (("mp3", mp3_path), ("cover", cover_path)):
         if not os.path.exists(path):
@@ -106,7 +107,7 @@ def audio_to_mp4(mp3_path: str, cover_path: str, output_path: str) -> None:
         "-bf", "0", "-g", "1",
         "-crf", "23",
         "-r", "1", "-pix_fmt", "yuv420p",
-        "-c:a", "copy",
+        "-c:a", "aac", "-b:a", "320k",
         "-shortest", "-movflags", "+faststart",
         output_path,
     ]

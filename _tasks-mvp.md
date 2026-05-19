@@ -1,12 +1,12 @@
 # _tasks — [NOME] Fase 1 (MVP) @gustavo
 
 **Criado:** 2026-04-25
-**Atualizado:** 2026-05-18
+**Atualizado:** 2026-05-19
 **Outcome:** Produtor convidado faz login, escolhe estilo visual padrao (onboarding), conecta canal YouTube, sobe um beat (qualquer formato) informando artista de referencia (lista controlada + Spotify) e mood (cards visuais), opcionalmente envia capa propria, recebe capa gerada por IA + 3 variacoes A/B/C de titulo+descricao+tags geradas pela IA (com nomes inspirados em hits do artista via Spotify), edita o que quiser, confirma agendamento, e ve 3 videos publicados/agendados no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Meta: beta fechado setembro 2026.
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** Sessao 2026-05-18 fechou com T3.4 concluida + auditoria de custos completa em `docs/referencias/custos-da-operacao.md` + projecao financeira em HTML standalone (`docs/financeiro/projecao-custos-2026-05-18.html`). Pendencias criticas identificadas mas NAO transformadas em task ainda: (1) aumento de quota YouTube Data API (bloqueia beta — 6 uploads/dia hoje), (2) OAuth verification Google (modo Testing limita a 100 emails manuais), (3) decisao final de billing Stripe BR multi-moeda vs Pix recorrente. Bloco capa IA (T2.6/T2.10/T2.11/T4.6-T4.11) segue PAUSADO. **Proxima sessao (planejada por Gustavo):** discussao sobre analise de nicho e conteudo educacional (Fase 3 do produto, ja pre-planejada em 2026-05-14).
+**Proximo passo:** T5.7 concluida em 2026-05-19 — fix codec audio MP4 (`-c:a copy` → `-c:a aac -b:a 320k`) pra resolver "Processamento cancelado" descoberto no teste do Rary. Aguardando (1) deploy Railway propagar, (2) Rary verificar telefone em youtube.com/verify pra capa custom, (3) Rary republicar beat `ee96c64f` (ready_for_review) pra validar. Pendencias criticas anteriores seguem ativas: aumento de quota YouTube Data API, OAuth verification Google, decisao final billing. Bloco capa IA (T2.6/T2.10/T2.11/T4.6-T4.11) segue PAUSADO.
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -583,6 +583,18 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Pipeline ponta-a-ponta passa
 - **Dependencia:** T5.4
 
+#### `[x]` T5.7 — Fix codec audio MP4 (YouTube recusava processar MP3 em container)
+
+- **Arquivo:** `api/app/services/ffmpeg_service.py`
+- **Bug:** Teste do Rary em 2026-05-19 publicou no YouTube com sucesso (200 OK, video_id retornado), mas o YouTube recusou processar o MP4 ("Processamento cancelado. Nao foi possivel processar o video"). Logs Railway confirmaram: ffmpeg ok, upload ok, falha aconteceu no processamento async do YouTube apos o upload (sem webhook de volta). Status do post ficou `published` mesmo o video estando quebrado.
+- **Causa:** `-c:a copy` colocava MP3 cru em container MP4. YouTube lista como "suportado" mas eh instavel; recomendacao da industria eh AAC.
+- **Fix:** Trocar `-c:a copy` por `-c:a aac -b:a 320k`. Re-encoda audio uma vez (perda inaudivel a 320k) em troca de upload confiavel. Custo RAM ~30MB extra, cabe no Railway free. Demais flags low-memory (`-r 1`, `-g 1`, `-bf 0`, `profile baseline`) mantidas pra nao voltar OOM.
+- **Achado paralelo (nao mexido):** Thumbnail rejeitada com 403 porque canal do Rary nao tem telefone verificado em [youtube.com/verify](https://youtube.com/verify). Codigo ja trata isso em try/except — video sobe sem capa custom. So precisa avisar o Rary se quiser capa de volta.
+- **Sobre o som baixo no YouTube:** nao eh nosso pipeline. Convert worker nao toca em audio (`convert.py:29`). YouTube normaliza tudo pra -14 LUFS automaticamente, impossivel evitar. Vale pra qualquer upload.
+- **Dependencia:** T5.4
+- **Doc:** `docs/sessoes/2026-05-19-youtube-processamento-cancelado.md`
+- **Pos-deploy:** Rary tem que (1) verificar telefone se quiser thumbnail custom, (2) republicar beat `ee96c64f` que ficou em `ready_for_review`.
+
 ---
 
 ### Fase 6 — Polimento dashboard + handoff (Gustavo executa)
@@ -764,6 +776,8 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 ---
 
 ## Historico de chats
+
+- **2026-05-19** — T5.7 concluida. Bug "Processamento cancelado" descoberto no teste do Rary (primeiro uso real fora do dev). Logs Railway confirmaram que ffmpeg+upload subiram OK (video_id=AJF3MRJGRFo) mas YouTube recusou processar o arquivo no async (sem webhook de volta — `status` ficou `published` mesmo com video quebrado). Causa: `-c:a copy` colocava MP3 cru em container MP4. Fix: `-c:a aac -b:a 320k` em `ffmpeg_service.py` (re-encoda 1x, perda inaudivel a 320k). Demais flags low-memory mantidas pra nao voltar OOM. Achado paralelo: thumbnail rejeitada com 403 porque canal do Rary nao tem telefone verificado — codigo ja trata em try/except, so precisa avisar. Achado terceiro (pergunta do Gustavo): som baixo no YouTube nao eh nosso pipeline, eh normalizacao -14 LUFS automatica do YouTube, impossivel evitar. Pos-deploy: Rary tem que republicar `ee96c64f` (ready_for_review) pra validar. Doc: `docs/sessoes/2026-05-19-youtube-processamento-cancelado.md`. 39 testes verdes.
 
 - **2026-05-18** — Sessao longa de custos + projecao financeira (detalhes em `docs/sessoes/2026-05-18-custos-e-projecao-financeira.md`). **T3.4 concluida:** `api/app/services/usage_tracker.py` plugado em Gemini/Claude/YouTube. Custo real medido por upload: **$0.014** (so Claude — Gemini deu timeout no Google Search, YouTube e free). 22 testes verdes. Criado `docs/referencias/custos-da-operacao.md` com auditoria completa de plataformas + queries SQL pra consultar gasto por beat. Criado `docs/financeiro/projecao-custos-2026-05-18.html` (HTML standalone) com projecao em tiers $9.99/$19.99, 20 uploads/mes, mix 70/30, breakeven, custo total/user em escala (de $8.23 com 1 user ate $2.25 com 1000). Discutidos pontos cegos honestos: Stripe BR multi-moeda vs Pix recorrente (Asaas) pra brasileiros; YouTube content policy 2026 (alegacao minha sobre BeatValet desmentida — pesquisa real confirmou que automacao via API e OK, mas spam/inauthentic-content policy atinge type beats sem variacao); estado do OAuth verification descoberto durante a sessao (modo Testing — beta abre bloqueado fora dos 4 emails ja cadastrados). Decisoes pendentes registradas: precos finais, billing (Stripe vs Pix), dominio proprio, politica de privacidade, audit OAuth (4-6 semanas), aumento quota YouTube (critico). Gustavo pediu pra fechar essa sessao aqui e na proxima discutir analise de nicho + conteudo educacional (Fase 3 do produto).
 
