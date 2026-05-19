@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { UploadForm } from '@/components/UploadForm'
 import { ShieldCheck, Zap, Music2, FileAudio2 } from 'lucide-react'
 
@@ -93,7 +94,9 @@ export default function UploadPage() {
         </div>
 
         <div className="p-8">
-          <UploadForm />
+          <Suspense fallback={<div style={{ minHeight: 320 }} />}>
+            <UploadForm />
+          </Suspense>
         </div>
       </div>
 
