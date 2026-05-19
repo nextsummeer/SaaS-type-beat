@@ -381,23 +381,18 @@ function ConfiguracoesContent() {
           {/* Banner: reautorizar pra liberar Analytics */}
           {account && precisaReautorizarAnalytics(account) && (
             <div
-              className="relative overflow-hidden rounded-xl p-5"
+              className="relative overflow-hidden rounded-2xl p-5"
               style={{
-                background: 'linear-gradient(135deg, rgba(255,90,31,0.08), rgba(255,90,31,0.02))',
-                border: '1px solid rgba(255,90,31,0.25)',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-medium)',
               }}
             >
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full"
-                style={{ background: 'radial-gradient(circle, var(--accent-glow), transparent 70%)', opacity: 0.4 }}
-              />
               <div className="relative flex items-start gap-3">
                 <div
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-                  style={{ background: 'var(--accent-muted)', border: '1px solid rgba(255,90,31,0.3)' }}
+                  style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
                 >
-                  <BarChart3 className="h-5 w-5" style={{ color: 'var(--accent)' }} />
+                  <BarChart3 className="h-5 w-5" style={{ color: 'var(--text-secondary)' }} />
                 </div>
                 <div className="flex-1">
                   <p className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>

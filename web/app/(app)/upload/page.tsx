@@ -11,27 +11,27 @@ export default function UploadPage() {
     <div className="mx-auto max-w-3xl">
       {/* Hero */}
       <div className="rise rise-1 flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <span className="led led-pulse" style={{ color: 'var(--accent)' }} />
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-muted)' }}>
+        <div className="flex items-center gap-2.5">
+          <span className="led led-pulse" style={{ color: 'var(--led-success)' }} />
+          <span className="font-mono uppercase" style={{ fontSize: 10.5, letterSpacing: '0.22em', color: 'var(--text-muted)' }}>
             upload · step 01 / 05
           </span>
         </div>
         <h1
           className="font-display text-[40px] font-semibold leading-[1.05] tracking-tight"
-          style={{ color: 'var(--text-primary)' }}
+          style={{ color: 'var(--text-primary)', letterSpacing: '-0.028em' }}
         >
-          Novo beat<span style={{ color: 'var(--accent)' }}>.</span>
+          Novo beat.
         </h1>
-        <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
           Envie seu MP3 e a IA monta título, descrição, tags e capa em menos de 2 minutos.
           Você revisa e publica direto no YouTube.
         </p>
       </div>
 
       {/* Pipeline preview */}
-      <div className="rise rise-2 mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>
-        <span style={{ color: 'var(--accent)' }}>upload</span>
+      <div className="rise rise-2 mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono uppercase" style={{ fontSize: 10, letterSpacing: '0.20em', color: 'var(--text-subtle)' }}>
+        <span style={{ color: 'var(--text-primary)' }}>upload</span>
         <span>→</span>
         <span>convert</span>
         <span>→</span>
@@ -44,19 +44,14 @@ export default function UploadPage() {
 
       {/* Aviso da tag */}
       <div
-        className="rise rise-3 relative mt-6 flex items-start gap-3 overflow-hidden rounded-xl px-5 py-4"
+        className="rise rise-3 relative mt-6 flex items-start gap-3 overflow-hidden rounded-2xl px-5 py-4"
         style={{
-          background: 'linear-gradient(135deg, rgba(255,90,31,0.08), rgba(255,90,31,0.02))',
-          border: '1px solid rgba(255,90,31,0.22)',
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-subtle)',
         }}
       >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full"
-          style={{ background: 'radial-gradient(circle, var(--accent-glow), transparent 70%)', opacity: 0.4 }}
-        />
-        <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: 'var(--accent-muted)', border: '1px solid rgba(255,90,31,0.3)' }}>
-          <ShieldCheck className="h-4 w-4" style={{ color: 'var(--accent)' }} />
+        <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+          <ShieldCheck className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
         </div>
         <div className="relative flex-1">
           <p className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -74,21 +69,20 @@ export default function UploadPage() {
         className="rise rise-4 relative mt-6 overflow-hidden rounded-2xl"
         style={{
           background: 'var(--bg-surface)',
-          border: '1px solid var(--border)',
-          boxShadow: 'var(--shadow-card)',
+          border: '1px solid var(--border-subtle)',
         }}
       >
         {/* Faixa superior decorativa */}
         <div
           className="flex items-center gap-3 border-b px-6 py-3"
-          style={{ borderColor: 'var(--border-muted)', background: 'var(--bg-base)' }}
+          style={{ borderColor: 'var(--border-subtle)' }}
         >
-          <FileAudio2 size={14} style={{ color: 'var(--accent)' }} />
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>
+          <FileAudio2 size={14} style={{ color: 'var(--text-muted)' }} />
+          <span className="font-mono uppercase" style={{ fontSize: 10, letterSpacing: '0.22em', color: 'var(--text-secondary)' }}>
             input · MP3 stereo · até 50MB
           </span>
-          <span className="ml-auto flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-subtle)' }}>
-            <Zap size={10} style={{ color: 'var(--accent)' }} />
+          <span className="ml-auto flex items-center gap-1.5 font-mono uppercase" style={{ fontSize: 10, letterSpacing: '0.18em', color: 'var(--text-muted)' }}>
+            <Zap size={10} style={{ color: 'var(--text-muted)' }} />
             ia ready
           </span>
         </div>

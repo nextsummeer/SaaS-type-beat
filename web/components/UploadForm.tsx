@@ -2,7 +2,7 @@
 
 import { useState, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { UploadCloud, AlertCircle, Music, Image, Plus, X, Check, Store, ExternalLink, CalendarClock } from 'lucide-react'
+import { UploadCloud, AlertCircle, Music, Image, Plus, X, Check, Store, ExternalLink, CalendarClock, Sparkles, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { uploadWithProgress } from '@/lib/storage'
 
@@ -43,7 +43,6 @@ export function UploadForm() {
   const bpmNum = Number(bpm)
   const bpmValid = Number.isFinite(bpmNum) && bpmNum >= 40 && bpmNum <= 300
   const artistasLimpos = artistas.map((a) => a.trim()).filter((a) => a.length > 0)
-  // Remove duplicatas (case-insensitive)
   const artistasUnicos = artistasLimpos.filter(
     (a, i) => artistasLimpos.findIndex((b) => b.toLowerCase() === a.toLowerCase()) === i,
   )
@@ -142,7 +141,6 @@ export function UploadForm() {
       }
       await uploadWithProgress(coverSigned.signedUrl, coverFile!)
 
-      // Registra o beat no banco e dispara o pipeline
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Sessão expirada')
 
@@ -171,12 +169,11 @@ export function UploadForm() {
 
       const { id: dbBeatId } = await apiRes.json()
 
-      // Guarda o pre-agendamento pra /review consumir quando o beat ficar pronto
       if (preAgendar && typeof window !== 'undefined') {
         try {
           sessionStorage.setItem(PRE_SCHEDULE_KEY(dbBeatId), preAgendar.toISOString())
         } catch {
-          // sessionStorage pode estar bloqueado em modo privado — nao e critico
+          // sessionStorage pode estar bloqueado em modo privado
         }
       }
 
@@ -189,23 +186,30 @@ export function UploadForm() {
 
   const uploading = status === 'uploading'
 
+  const inputBase: React.CSSProperties = {
+    background: 'rgba(255, 255, 255, 0.03)',
+    border: '1px solid var(--border-subtle)',
+    borderRadius: 10,
+    color: 'var(--text-primary)',
+  }
+
   return (
     <form onSubmit={handleSubmit} className="flex max-w-lg flex-col gap-6">
-      {/* Banner pre-agendamento (quando vier do calendario com ?agendar_em=) */}
+      {/* Banner pre-agendamento */}
       {preAgendar && (
         <div
           className="flex items-start gap-3 rounded-lg"
           style={{
             padding: '12px 14px',
-            background: 'var(--accent-muted)',
-            border: '1px solid var(--accent-line)',
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid var(--border-medium)',
           }}
         >
-          <CalendarClock size={16} style={{ color: 'var(--accent)', marginTop: 2 }} />
+          <CalendarClock size={16} style={{ color: 'var(--text-primary)', marginTop: 2 }} />
           <div className="flex-1">
             <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>
               Esse beat vai ser pré-agendado pra{' '}
-              <strong style={{ color: 'var(--accent)' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>
                 {new Intl.DateTimeFormat('pt-BR', {
                   day: '2-digit',
                   month: 'long',
@@ -221,11 +225,11 @@ export function UploadForm() {
         </div>
       )}
 
-      {/* Artistas (lista) + BPM */}
+      {/* Artistas + BPM */}
       <div className="space-y-4">
         <div>
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
-            {labelArtistas} <span className="text-red-400">*</span>
+          <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+            {labelArtistas} <span style={{ color: 'var(--led-error)' }}>*</span>
           </label>
           <div className="flex flex-wrap items-center gap-2">
             {artistas.map((valor, idx) => (
@@ -236,7 +240,7 @@ export function UploadForm() {
                   onChange={(e) => setArtista(idx, e.target.value)}
                   disabled={uploading}
                   placeholder={idx === 0 ? 'Ex: Drake, Travis Scott...' : 'Outro artista'}
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 pr-9 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-orange-500 focus:ring-1 focus:ring-orange-500 disabled:opacity-50"
+                  className="field-input pr-9 disabled:opacity-50"
                 />
                 {idx > 0 && (
                   <button
@@ -244,7 +248,16 @@ export function UploadForm() {
                     onClick={() => removerArtista(idx)}
                     disabled={uploading}
                     aria-label={`Remover artista ${idx + 1}`}
-                    className="absolute right-2 flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 transition hover:bg-zinc-800 hover:text-red-400 disabled:opacity-50"
+                    className="absolute right-2 flex h-6 w-6 items-center justify-center rounded-md transition"
+                    style={{ color: 'var(--text-muted)' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(248,113,113,0.10)'
+                      e.currentTarget.style.color = 'var(--led-error)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = 'var(--text-muted)'
+                    }}
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -256,7 +269,22 @@ export function UploadForm() {
                 type="button"
                 onClick={adicionarArtista}
                 disabled={uploading}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-zinc-700 bg-zinc-900/50 px-3 py-3 text-sm font-medium text-zinc-400 transition hover:border-orange-500 hover:bg-zinc-800 hover:text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-dashed px-3 py-3 text-sm font-medium transition"
+                style={{
+                  borderColor: 'var(--border-medium)',
+                  color: 'var(--text-muted)',
+                  background: 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-strong)'
+                  e.currentTarget.style.color = 'var(--text-primary)'
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-medium)'
+                  e.currentTarget.style.color = 'var(--text-muted)'
+                  e.currentTarget.style.background = 'transparent'
+                }}
               >
                 <Plus className="h-4 w-4" />
                 Adicionar
@@ -264,13 +292,13 @@ export function UploadForm() {
             )}
           </div>
           {artistasLimpos.length > artistasUnicos.length && (
-            <p className="mt-1 text-xs text-amber-400">Artista duplicado ignorado.</p>
+            <p className="mt-1 text-xs" style={{ color: 'var(--led-warning)' }}>Artista duplicado ignorado.</p>
           )}
         </div>
 
         <div className="max-w-[140px]">
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
-            BPM <span className="text-red-400">*</span>
+          <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+            BPM <span style={{ color: 'var(--led-error)' }}>*</span>
           </label>
           <input
             type="number"
@@ -280,12 +308,12 @@ export function UploadForm() {
             min={40}
             max={300}
             placeholder="140"
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-orange-500 focus:ring-1 focus:ring-orange-500 disabled:opacity-50"
+            className="field-input disabled:opacity-50"
           />
         </div>
       </div>
 
-      {/* Link da loja (condicional) — card toggleable */}
+      {/* Link da loja */}
       <div className="space-y-3">
         <button
           type="button"
@@ -295,32 +323,30 @@ export function UploadForm() {
           disabled={uploading}
           className="group flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50"
           style={{
-            background: jaPublicado ? 'var(--accent-muted)' : 'var(--bg-elevated)',
+            background: jaPublicado ? 'rgba(255,255,255,0.05)' : 'var(--bg-surface)',
             border: jaPublicado
-              ? '1px solid rgba(255, 90, 31, 0.4)'
-              : '1px solid var(--border)',
-            boxShadow: jaPublicado ? 'var(--shadow-glow-accent)' : 'none',
+              ? '1px solid var(--border-strong)'
+              : '1px solid var(--border-subtle)',
           }}
           onMouseEnter={(e) => {
             if (!jaPublicado && !uploading) {
-              e.currentTarget.style.borderColor = 'var(--border-strong)'
-              e.currentTarget.style.background = 'var(--bg-overlay)'
+              e.currentTarget.style.borderColor = 'var(--border-medium)'
+              e.currentTarget.style.background = 'var(--bg-elevated)'
             }
           }}
           onMouseLeave={(e) => {
             if (!jaPublicado && !uploading) {
-              e.currentTarget.style.borderColor = 'var(--border)'
-              e.currentTarget.style.background = 'var(--bg-elevated)'
+              e.currentTarget.style.borderColor = 'var(--border-subtle)'
+              e.currentTarget.style.background = 'var(--bg-surface)'
             }
           }}
         >
-          {/* Check custom */}
           <span
             className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md transition-all"
             style={{
-              background: jaPublicado ? 'var(--accent)' : 'transparent',
+              background: jaPublicado ? '#FFFFFF' : 'transparent',
               border: jaPublicado
-                ? '1px solid var(--accent)'
+                ? '1px solid #FFFFFF'
                 : '1.5px solid var(--border-strong)',
             }}
           >
@@ -328,36 +354,28 @@ export function UploadForm() {
               size={13}
               strokeWidth={3}
               style={{
-                color: '#fff',
+                color: '#000',
                 opacity: jaPublicado ? 1 : 0,
                 transition: 'opacity 0.18s',
               }}
             />
           </span>
 
-          {/* Ícone Store contextual */}
           <span
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors"
             style={{
-              background: jaPublicado
-                ? 'rgba(255, 90, 31, 0.18)'
-                : 'var(--bg-surface)',
+              background: jaPublicado ? 'rgba(255,255,255,0.06)' : 'var(--bg-elevated)',
               border: '1px solid',
-              borderColor: jaPublicado
-                ? 'rgba(255, 90, 31, 0.4)'
-                : 'var(--border-muted)',
+              borderColor: jaPublicado ? 'var(--border-medium)' : 'var(--border-subtle)',
             }}
           >
             <Store
               size={16}
               strokeWidth={1.75}
-              style={{
-                color: jaPublicado ? 'var(--accent)' : 'var(--text-muted)',
-              }}
+              style={{ color: jaPublicado ? 'var(--text-primary)' : 'var(--text-muted)' }}
             />
           </span>
 
-          {/* Texto */}
           <span className="flex flex-1 flex-col gap-0.5">
             <span
               className="text-[14px] font-medium leading-tight"
@@ -367,7 +385,7 @@ export function UploadForm() {
             </span>
             <span
               className="text-[11.5px] leading-tight"
-              style={{ color: 'var(--text-subtle)' }}
+              style={{ color: 'var(--text-muted)' }}
             >
               BeatStars, Airbit, Traktrain, etc
             </span>
@@ -381,27 +399,20 @@ export function UploadForm() {
           >
             <div
               className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 transition focus-within:ring-1"
-              style={{
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-              }}
+              style={inputBase}
             >
-              <ExternalLink
-                size={14}
-                style={{ color: 'var(--text-subtle)' }}
-                className="shrink-0"
-              />
+              <ExternalLink size={14} style={{ color: 'var(--text-muted)' }} className="shrink-0" />
               <input
                 type="url"
                 value={storeLink}
                 onChange={(e) => setStoreLink(e.target.value)}
                 disabled={uploading}
                 placeholder="https://www.beatstars.com/beat/..."
-                className="flex-1 bg-transparent text-[13.5px] outline-none placeholder:text-[var(--text-subtle)] disabled:opacity-50"
+                className="flex-1 bg-transparent text-[13.5px] outline-none disabled:opacity-50"
                 style={{ color: 'var(--text-primary)' }}
               />
             </div>
-            <p className="ml-1 text-[11.5px]" style={{ color: 'var(--text-subtle)' }}>
+            <p className="ml-1 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>
               Esse link vai aparecer na descrição do vídeo no YouTube.
             </p>
           </div>
@@ -410,8 +421,8 @@ export function UploadForm() {
 
       {/* Audio */}
       <div>
-        <label className="mb-2 block text-sm font-medium text-zinc-300">
-          Arquivo de áudio <span className="text-red-400">*</span>
+        <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+          Arquivo de áudio <span style={{ color: 'var(--led-error)' }}>*</span>
         </label>
         <button
           type="button"
@@ -426,24 +437,22 @@ export function UploadForm() {
           className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-8 text-center transition-all disabled:cursor-not-allowed disabled:opacity-50"
           style={{
             borderColor: audioDragOver
-              ? 'var(--accent)'
+              ? '#FFFFFF'
               : audioFile
-                ? 'rgba(255, 90, 31, 0.4)'
-                : 'var(--border-strong)',
+                ? 'var(--border-strong)'
+                : 'var(--border-medium)',
             background: audioDragOver
-              ? 'var(--accent-muted)'
+              ? 'rgba(255,255,255,0.04)'
               : audioFile
-                ? 'var(--bg-elevated)'
-                : 'var(--bg-surface)',
-            boxShadow: audioDragOver ? 'var(--shadow-glow-accent)' : 'none',
-            transform: audioDragOver ? 'scale(1.005)' : 'scale(1)',
+                ? 'var(--bg-surface)'
+                : 'var(--bg-base)',
           }}
         >
           {audioDragOver ? (
             <>
               <span
                 className="led led-pulse"
-                style={{ color: 'var(--accent)', width: 10, height: 10 }}
+                style={{ color: '#FFFFFF', width: 9, height: 9 }}
               />
               <div className="flex flex-col gap-1">
                 <p
@@ -451,8 +460,8 @@ export function UploadForm() {
                   style={{
                     fontSize: 13,
                     fontWeight: 600,
-                    letterSpacing: '0.16em',
-                    color: 'var(--accent)',
+                    letterSpacing: '0.18em',
+                    color: 'var(--text-primary)',
                   }}
                 >
                   Solte o áudio aqui
@@ -464,22 +473,22 @@ export function UploadForm() {
             </>
           ) : audioFile ? (
             <>
-              <Music className="h-8 w-8 text-orange-400" />
+              <Music className="h-8 w-8" style={{ color: 'var(--text-primary)' }} />
               <div>
-                <p className="text-sm font-medium text-white">{audioFile.name}</p>
-                <p className="text-xs text-zinc-400">
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{audioFile.name}</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   {(audioFile.size / 1024 / 1024).toFixed(1)} MB
                 </p>
               </div>
             </>
           ) : (
             <>
-              <UploadCloud className="h-8 w-8 text-zinc-500" />
+              <UploadCloud className="h-8 w-8" style={{ color: 'var(--text-muted)' }} />
               <div className="flex flex-col gap-1">
-                <p className="text-sm text-zinc-300">
-                  Arraste o MP3 aqui ou <span style={{ color: 'var(--accent)' }}>clique para escolher</span>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  Arraste o MP3 aqui ou <span style={{ color: 'var(--text-primary)', textDecoration: 'underline', textUnderlineOffset: 2 }}>clique para escolher</span>
                 </p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   Somente MP3 — com sua tag de produtor no áudio
                 </p>
               </div>
@@ -498,23 +507,27 @@ export function UploadForm() {
       {/* Progress bar */}
       {uploading && (
         <div>
-          <div className="mb-1 flex justify-between text-xs text-zinc-400">
-            <span>Enviando...</span>
-            <span>{audioProgress}%</span>
+          <div className="mb-1.5 flex justify-between font-mono text-[10.5px] uppercase" style={{ color: 'var(--text-muted)', letterSpacing: '0.16em' }}>
+            <span>Enviando</span>
+            <span className="tabular" style={{ color: 'var(--text-primary)' }}>{audioProgress}%</span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+          <div className="h-1 w-full overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
             <div
-              className="h-full rounded-full bg-orange-600 transition-all duration-300"
-              style={{ width: `${audioProgress}%` }}
+              className="h-full rounded-full transition-all duration-300"
+              style={{
+                width: `${audioProgress}%`,
+                background: 'var(--gradient-primary)',
+                boxShadow: '0 0 12px rgba(65,0,255,0.45)',
+              }}
             />
           </div>
         </div>
       )}
 
-      {/* Cover — obrigatória */}
+      {/* Cover */}
       <div>
-        <label className="mb-2 block text-sm font-medium text-zinc-300">
-          Capa do beat <span className="text-red-400">*</span>
+        <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+          Capa do beat <span style={{ color: 'var(--led-error)' }}>*</span>
         </label>
         <button
           type="button"
@@ -529,32 +542,30 @@ export function UploadForm() {
           className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-5 text-center transition-all disabled:cursor-not-allowed disabled:opacity-50"
           style={{
             borderColor: coverDragOver
-              ? 'var(--accent)'
+              ? '#FFFFFF'
               : coverFile
-                ? 'rgba(255, 90, 31, 0.4)'
-                : 'var(--border-strong)',
+                ? 'var(--border-strong)'
+                : 'var(--border-medium)',
             background: coverDragOver
-              ? 'var(--accent-muted)'
+              ? 'rgba(255,255,255,0.04)'
               : coverFile
-                ? 'var(--bg-elevated)'
-                : 'var(--bg-surface)',
-            boxShadow: coverDragOver ? 'var(--shadow-glow-accent)' : 'none',
-            transform: coverDragOver ? 'scale(1.005)' : 'scale(1)',
+                ? 'var(--bg-surface)'
+                : 'var(--bg-base)',
           }}
         >
           {coverDragOver ? (
             <>
               <span
                 className="led led-pulse"
-                style={{ color: 'var(--accent)', width: 9, height: 9 }}
+                style={{ color: '#FFFFFF', width: 8, height: 8 }}
               />
               <p
                 className="font-mono uppercase"
                 style={{
                   fontSize: 12,
                   fontWeight: 600,
-                  letterSpacing: '0.16em',
-                  color: 'var(--accent)',
+                  letterSpacing: '0.18em',
+                  color: 'var(--text-primary)',
                 }}
               >
                 Solte a capa aqui
@@ -563,15 +574,15 @@ export function UploadForm() {
           ) : coverFile ? (
             <>
               {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <Image className="h-6 w-6 text-orange-400" />
-              <p className="text-sm font-medium text-white">{coverFile.name}</p>
+              <Image className="h-6 w-6" style={{ color: 'var(--text-primary)' }} />
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{coverFile.name}</p>
             </>
           ) : (
             <>
               {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <Image className="h-6 w-6 text-zinc-500" />
-              <p className="text-sm text-zinc-500">
-                Arraste ou <span style={{ color: 'var(--accent)' }}>clique para adicionar</span> (JPG ou PNG)
+              <Image className="h-6 w-6" style={{ color: 'var(--text-muted)' }} />
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                Arraste ou <span style={{ color: 'var(--text-primary)', textDecoration: 'underline', textUnderlineOffset: 2 }}>clique para adicionar</span> (JPG ou PNG)
               </p>
             </>
           )}
@@ -585,14 +596,14 @@ export function UploadForm() {
         />
       </div>
 
-      {/* Aviso transitorio do drag-and-drop */}
+      {/* Aviso transitório */}
       {dropAviso && (
         <div
           className="rise flex items-center gap-2 rounded-lg px-4 py-3 text-sm"
           style={{
-            background: 'rgba(245, 158, 11, 0.1)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            color: '#fcd34d',
+            background: 'rgba(245, 158, 11, 0.08)',
+            border: '1px solid rgba(245, 158, 11, 0.25)',
+            color: '#FCD34D',
           }}
         >
           <AlertCircle className="h-4 w-4 shrink-0" />
@@ -602,19 +613,37 @@ export function UploadForm() {
 
       {/* Error */}
       {status === 'error' && error && (
-        <div className="flex items-center gap-2 rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-400">
+        <div className="flex items-center gap-2 rounded-lg px-4 py-3 text-sm"
+          style={{
+            background: 'rgba(248, 113, 113, 0.08)',
+            border: '1px solid rgba(248, 113, 113, 0.25)',
+            color: '#FCA5A5',
+          }}
+        >
           <AlertCircle className="h-4 w-4 shrink-0" />
           {error}
         </div>
       )}
 
-      {/* Submit */}
+      {/* Submit — momento mágico: gradient + Sparkles */}
       <button
         type="submit"
         disabled={!canSubmit || uploading}
-        className="rounded-lg bg-orange-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+        className="btn-primary group justify-center disabled:cursor-not-allowed disabled:opacity-50"
+        style={{
+          padding: '12px 20px',
+          fontSize: 14,
+        }}
       >
-        {uploading ? 'Enviando...' : 'Fazer upload'}
+        <Sparkles size={15} strokeWidth={2} />
+        {uploading ? 'Enviando…' : 'Gerar com IA'}
+        {!uploading && (
+          <ArrowRight
+            size={14}
+            strokeWidth={2.4}
+            className="transition group-hover:translate-x-0.5"
+          />
+        )}
       </button>
     </form>
   )

@@ -224,8 +224,8 @@ export default function BeatsPage() {
           className="pointer-events-none absolute inset-x-0 -top-20 mx-auto h-40 w-[60%]"
           style={{ background: 'radial-gradient(ellipse at center, var(--accent-muted), transparent 70%)' }}
         />
-        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: 'var(--accent-muted)', border: '1px solid rgba(255,90,31,0.25)' }}>
-          <Upload className="h-6 w-6" style={{ color: 'var(--accent)' }} />
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+          <Upload className="h-6 w-6" style={{ color: 'var(--text-secondary)' }} />
         </div>
         <h2 className="relative mt-5 font-display text-[24px] font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
           Sua biblioteca está vazia

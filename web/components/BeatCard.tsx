@@ -16,26 +16,26 @@ interface Props {
 
 export type EstadoVisual = {
   label: string
-  cor: string          /* token CSS pro LED (color) */
+  cor: string
+  pillClass: string
   isLoading?: boolean
 }
 
 export function estadoVisual(beat: BeatListItem): EstadoVisual {
-  // Vídeo deletado do YouTube tem precedência: já foi publicado mas o produtor removeu de lá
   if (beat.youtube_deleted_at)
-    return { label: 'REMOVIDO', cor: 'var(--text-subtle)' }
+    return { label: 'REMOVIDO', cor: 'var(--text-muted)', pillClass: 'status-pill--removed' }
   if (beat.status === 'failed')
-    return { label: 'FALHOU', cor: 'var(--led-error)' }
+    return { label: 'FALHOU', cor: 'var(--led-error)', pillClass: 'status-pill--failed' }
   if (beat.post_status === 'published')
-    return { label: 'POSTADO', cor: 'var(--led-success)' }
+    return { label: 'POSTADO', cor: 'var(--led-success)', pillClass: 'status-pill--posted' }
   if (beat.post_status === 'scheduled') {
     if (beat.scheduled_at && new Date(beat.scheduled_at) <= new Date())
-      return { label: 'POSTADO', cor: 'var(--led-success)' }
-    return { label: 'AGENDADO', cor: 'var(--led-info)' }
+      return { label: 'POSTADO', cor: 'var(--led-success)', pillClass: 'status-pill--posted' }
+    return { label: 'AGENDADO', cor: 'var(--led-info)', pillClass: 'status-pill--scheduled' }
   }
   if (beat.status === 'ready_for_review')
-    return { label: 'RASCUNHO', cor: 'var(--led-draft)' }
-  return { label: 'PROCESSANDO', cor: 'var(--led-warning)', isLoading: true }
+    return { label: 'RASCUNHO', cor: 'var(--led-draft)', pillClass: 'status-pill--draft' }
+  return { label: 'PROCESSANDO', cor: 'var(--led-warning)', pillClass: 'status-pill--processing', isLoading: true }
 }
 
 export function destino(beat: BeatListItem): string {
@@ -73,6 +73,10 @@ export function useCoverUrl(coverPath: string | null | undefined) {
   return url
 }
 
+function tituloCurto(label: string) {
+  return label.charAt(0) + label.slice(1).toLowerCase()
+}
+
 export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, onPedirDelete }: Props) {
   const router = useRouter()
   const coverUrl = useCoverUrl(beat.cover_path)
@@ -96,10 +100,8 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
   return (
     <div
       onClick={handleCardClick}
-      className="group relative flex cursor-pointer flex-col gap-3 transition-transform"
-      style={{
-        transition: 'transform 0.2s ease',
-      }}
+      className="group relative flex cursor-pointer flex-col gap-3"
+      style={{ transition: 'transform 0.2s ease' }}
       onMouseEnter={(e) => {
         if (!selecionado) e.currentTarget.style.transform = 'translateY(-3px)'
       }}
@@ -107,14 +109,19 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
         if (!selecionado) e.currentTarget.style.transform = 'translateY(0)'
       }}
     >
-      {/* COVER — herói */}
+      {/* COVER */}
       <div
         className="relative aspect-square w-full overflow-hidden"
         style={{
           background: 'var(--bg-elevated)',
-          borderRadius: 12,
-          border: selecionado ? '2px solid var(--accent)' : '1px solid var(--border)',
-          boxShadow: selecionado ? '0 0 0 3px var(--accent-muted)' : 'var(--shadow-card)',
+          borderRadius: 14,
+          border: selecionado
+            ? '1.5px solid #FFFFFF'
+            : '1px solid var(--border-subtle)',
+          boxShadow: selecionado
+            ? '0 0 0 3px rgba(255,255,255,0.10)'
+            : 'var(--shadow-card)',
+          transition: 'border-color 0.2s, box-shadow 0.2s',
         }}
       >
         {coverUrl ? (
@@ -122,8 +129,8 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
           <img
             src={coverUrl}
             alt={titulo}
-            className="h-full w-full object-cover"
-            style={beat.youtube_deleted_at ? { filter: 'grayscale(0.8) opacity(0.55)' } : undefined}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            style={beat.youtube_deleted_at ? { filter: 'grayscale(0.85) opacity(0.50)' } : undefined}
           />
         ) : (
           <div
@@ -131,7 +138,7 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
             style={{ background: 'linear-gradient(135deg, var(--bg-elevated), var(--bg-overlay))' }}
           >
             <span
-              className="font-display text-5xl font-semibold"
+              className="font-display text-6xl font-semibold"
               style={{ color: 'var(--text-subtle)', letterSpacing: '-0.04em' }}
             >
               {inicial}
@@ -144,26 +151,20 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0"
-            style={{ background: 'rgba(255,90,31,0.18)' }}
+            style={{ background: 'rgba(255,255,255,0.10)' }}
           />
         )}
 
-        {/* Overlay hover sutil */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-          style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.35) 100%)' }}
-        />
-
-        {/* Checkbox seleção */}
+        {/* Checkbox */}
         {modoSelecao && (
           <div
             className="absolute left-3 top-3 flex h-6 w-6 items-center justify-center rounded-md transition"
             style={{
-              background: selecionado ? 'var(--accent)' : 'rgba(0,0,0,0.55)',
-              border: selecionado ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.35)',
-              color: '#fff',
+              background: selecionado ? '#FFFFFF' : 'rgba(0,0,0,0.55)',
+              border: selecionado ? '1px solid #FFFFFF' : '1px solid rgba(255,255,255,0.30)',
+              color: selecionado ? '#000' : '#fff',
               backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
             }}
           >
             {selecionado && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
@@ -178,18 +179,19 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
             title="Deletar beat"
             className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg opacity-0 transition group-hover:opacity-100"
             style={{
-              background: 'rgba(0,0,0,0.55)',
+              background: 'rgba(0,0,0,0.60)',
               border: '1px solid rgba(255,255,255,0.12)',
               color: 'rgba(255,255,255,0.85)',
               backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(239,68,68,0.25)'
-              e.currentTarget.style.color = '#fca5a5'
-              e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'
+              e.currentTarget.style.background = 'rgba(239,68,68,0.20)'
+              e.currentTarget.style.color = '#FCA5A5'
+              e.currentTarget.style.borderColor = 'rgba(239,68,68,0.45)'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(0,0,0,0.55)'
+              e.currentTarget.style.background = 'rgba(0,0,0,0.60)'
               e.currentTarget.style.color = 'rgba(255,255,255,0.85)'
               e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'
             }}
@@ -202,8 +204,8 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
       {/* INFO — clean abaixo da cover (estilo Splice) */}
       <div className="flex flex-col gap-1 px-0.5">
         <h3
-          className="line-clamp-1 text-[14.5px] font-medium leading-tight"
-          style={{ color: 'var(--text-primary)' }}
+          className="line-clamp-1 text-[14.5px] font-semibold leading-tight"
+          style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}
           title={titulo}
         >
           {titulo}
@@ -214,8 +216,9 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
         >
           {beat.artista_nome ?? 'Sem artista'}
         </p>
-        <div className="mt-1.5 flex items-center justify-between gap-2">
-          {/* Status discreto */}
+
+        <div className="mt-2 flex items-center justify-between gap-2">
+          {/* Status discreto: dot + texto na cor semântica */}
           <div className="flex min-w-0 items-center gap-1.5">
             {estado.isLoading ? (
               <Loader2 className="h-3 w-3 shrink-0 animate-spin" style={{ color: estado.cor }} />
@@ -224,22 +227,22 @@ export function BeatCard({ beat, modoSelecao, selecionado, onToggleSelecionado, 
             ) : (
               <span
                 className="h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ background: estado.cor }}
+                style={{ background: estado.cor, boxShadow: `0 0 6px ${estado.cor}` }}
               />
             )}
             <span
               className="truncate text-[11.5px] font-medium"
               style={{ color: estado.cor }}
             >
-              {estado.label.charAt(0) + estado.label.slice(1).toLowerCase()}
+              {tituloCurto(estado.label)}
             </span>
           </div>
 
-          {/* BPM / Key sutis */}
+          {/* BPM / Key */}
           {(beat.bpm || beat.music_key) && (
             <span
-              className="shrink-0 text-[11px] tabular"
-              style={{ color: 'var(--text-subtle)' }}
+              className="shrink-0 font-mono text-[10.5px] tabular"
+              style={{ color: 'var(--text-muted)', letterSpacing: '0.04em' }}
             >
               {beat.bpm ? `${beat.bpm} BPM` : ''}
               {beat.bpm && beat.music_key ? ' · ' : ''}

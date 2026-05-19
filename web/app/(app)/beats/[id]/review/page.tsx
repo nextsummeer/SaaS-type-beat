@@ -322,20 +322,20 @@ export default function ReviewPage() {
 
       {/* Título */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-zinc-300">Título do vídeo</label>
+        <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Título do vídeo</label>
         <input
           type="text"
           value={titulo}
           onChange={(e) => setTitulo(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white outline-none transition focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+          className="field-input"
         />
       </div>
 
       {/* Link de venda */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-zinc-300">
+        <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
           Link de venda / download{' '}
-          <span className="text-xs text-zinc-500">(cole o link do BeatStars ou similar)</span>
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>(cole o link do BeatStars ou similar)</span>
         </label>
         <div className="flex gap-2">
           <input
@@ -343,59 +343,58 @@ export default function ReviewPage() {
             value={purchaseLink}
             onChange={(e) => setPurchaseLink(e.target.value)}
             placeholder="https://www.beatstars.com/beat/..."
-            className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+            className="field-input flex-1"
           />
           <button
             type="button"
             onClick={abrirLinkVenda}
             disabled={!purchaseLink.trim()}
             title="Abrir link em nova aba"
-            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-4 text-sm font-medium text-zinc-300 transition hover:border-orange-500/50 hover:bg-orange-500/10 hover:text-orange-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-zinc-700 disabled:hover:bg-zinc-900 disabled:hover:text-zinc-300"
+            className="btn-ghost shrink-0 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ExternalLink className="h-4 w-4" />
             Abrir
           </button>
         </div>
         {linkVaiAtualizar && (
-          <p className="text-xs text-orange-400">
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
             ↳ Ao salvar, esse link será aplicado também na descrição do vídeo automaticamente.
           </p>
         )}
         {!purchaseLink && placeholderNaDescricao && (
-          <p className="text-xs text-amber-400">
-            ⚠ A descrição ainda tem o placeholder <code className="rounded bg-zinc-800 px-1">[insira seu link de venda]</code>. Cole o link aqui pra ser substituído.
+          <p className="text-xs" style={{ color: '#FCD34D' }}>
+            ⚠ A descrição ainda tem o placeholder <code className="rounded px-1" style={{ background: 'rgba(255,255,255,0.06)' }}>[insira seu link de venda]</code>. Cole o link aqui pra ser substituído.
           </p>
         )}
         {linkEhBeatstarsLongo && (
-          <p className="text-xs text-amber-400">
+          <p className="text-xs" style={{ color: '#FCD34D' }}>
             ⚠ Link longo do BeatStars vai aparecer cortado na prévia do YouTube e não fica clicável.
-            Use o link curto: vá na página do beat no BeatStars → <b>Share</b> → copie o link <code className="rounded bg-zinc-800 px-1">bsta.rs/XXXXX</code>.
+            Use o link curto: vá na página do beat no BeatStars → <b>Share</b> → copie o link <code className="rounded px-1" style={{ background: 'rgba(255,255,255,0.06)' }}>bsta.rs/XXXXX</code>.
           </p>
         )}
       </div>
 
       {/* Descrição */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-zinc-300">Descrição do vídeo</label>
+        <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Descrição do vídeo</label>
         <textarea
           value={descricao}
           onChange={(e) => setDescricao(e.target.value)}
           rows={16}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 font-mono text-xs text-zinc-200 outline-none transition focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+          className="field-input font-mono text-xs"
         />
       </div>
 
       {/* Tags */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Tag className="h-4 w-4 text-zinc-400" />
-          <label className="text-sm font-medium text-zinc-300">
+          <Tag className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+          <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
             Tags do vídeo{' '}
-            <span className="text-xs text-zinc-500">({tags.length} tags)</span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>({tags.length} tags)</span>
           </label>
         </div>
 
-        {/* Input para nova tag */}
         <div className="flex gap-2">
           <input
             type="text"
@@ -403,29 +402,35 @@ export default function ReviewPage() {
             onChange={(e) => setNewTag(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
             placeholder="Adicionar tag..."
-            className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-orange-500"
+            className="field-input flex-1"
           />
           <button
             type="button"
             onClick={addTag}
-            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-700"
+            className="btn-ghost"
           >
             Adicionar
           </button>
         </div>
 
-        {/* Lista de chips */}
-        <div className="flex max-h-48 flex-wrap gap-1.5 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+        <div
+          className="flex max-h-48 flex-wrap gap-1.5 overflow-y-auto rounded-lg p-3"
+          style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}
+        >
           {tags.map((tag) => (
             <span
               key={tag}
-              className="flex items-center gap-1 rounded-full bg-zinc-800 px-2.5 py-1 text-xs text-zinc-300"
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs"
+              style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)' }}
             >
               {tag}
               <button
                 type="button"
                 onClick={() => removeTag(tag)}
-                className="text-zinc-500 transition hover:text-red-400"
+                className="transition"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--led-error)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -439,17 +444,17 @@ export default function ReviewPage() {
         type="button"
         onClick={handleSave}
         disabled={saving}
-        className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800 px-5 py-2.5 text-sm font-medium text-zinc-200 transition hover:bg-zinc-700 disabled:opacity-50"
+        className="btn-ghost disabled:opacity-50"
       >
         {savedOk ? (
           <>
-            <CheckCircle2 className="h-4 w-4 text-green-400" />
+            <CheckCircle2 className="h-4 w-4" style={{ color: 'var(--led-success)' }} />
             Salvo!
           </>
         ) : saving ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Salvando...
+            Salvando…
           </>
         ) : (
           <>
@@ -461,16 +466,22 @@ export default function ReviewPage() {
 
       {/* Agendamento (oculto se beat já está no YouTube) */}
       {post?.youtube_video_id ? (
-        <div className="space-y-4 rounded-xl border border-green-500/30 bg-green-500/5 p-6">
+        <div
+          className="space-y-4 rounded-2xl p-6"
+          style={{
+            background: 'rgba(52, 211, 153, 0.04)',
+            border: '1px solid rgba(52, 211, 153, 0.25)',
+          }}
+        >
           <div className="flex items-center gap-2">
-            <Tv2 className="h-5 w-5 text-green-400" />
-            <h2 className="text-base font-semibold text-white">Publicado no YouTube</h2>
+            <Tv2 className="h-5 w-5" style={{ color: 'var(--led-success)' }} />
+            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Publicado no YouTube</h2>
           </div>
-          <p className="text-xs text-zinc-400">
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
             Este beat já foi enviado pro seu canal. Não dá pra agendar de novo — geraria vídeo duplicado.
           </p>
           {post.published_at && (
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               Publicado em {new Date(post.published_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </p>
           )}
@@ -479,29 +490,45 @@ export default function ReviewPage() {
               href={post.youtube_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-500"
+              className="btn-primary"
             >
               <ExternalLink className="h-4 w-4" />
               Ver no YouTube
             </a>
           )}
-          <div className="flex items-start gap-2 rounded-lg border border-zinc-800 bg-zinc-950/50 px-3 py-2 text-xs text-zinc-500">
-            <Info className="h-4 w-4 shrink-0 text-zinc-600" />
+          <div
+            className="flex items-start gap-2 rounded-lg px-3 py-2 text-xs"
+            style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}
+          >
+            <Info className="h-4 w-4 shrink-0" style={{ color: 'var(--text-subtle)' }} />
             <span>
-              Pra mudar título, descrição, tags ou capa do vídeo, edite direto no <a href="https://studio.youtube.com/" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:underline">YouTube Studio</a>. Edições feitas aqui não sincronizam com o vídeo.
+              Pra mudar título, descrição, tags ou capa do vídeo, edite direto no{' '}
+              <a
+                href="https://studio.youtube.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                YouTube Studio
+              </a>
+              . Edições feitas aqui não sincronizam com o vídeo.
             </span>
           </div>
         </div>
       ) : (
-      <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+      <div
+        className="space-y-4 rounded-2xl p-6"
+        style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+      >
         <div className="flex items-center gap-2">
-          <CalendarClock className="h-5 w-5 text-orange-400" />
-          <h2 className="text-base font-semibold text-white">Agendar publicação</h2>
+          <CalendarClock className="h-5 w-5" style={{ color: 'var(--text-primary)' }} />
+          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Agendar publicação</h2>
         </div>
 
         {/* Presets rápidos */}
         <div className="space-y-2">
-          <label className="block text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+          <label className="block font-mono uppercase" style={{ fontSize: 10, letterSpacing: '0.18em', color: 'var(--text-muted)' }}>
             Escolha rápida
           </label>
           <div className="flex flex-wrap gap-2">
@@ -513,11 +540,24 @@ export default function ReviewPage() {
                   key={preset.label}
                   type="button"
                   onClick={() => setScheduledAt(preset.build())}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                    ativo
-                      ? 'border-orange-500 bg-orange-500/15 text-white'
-                      : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800'
-                  }`}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
+                  style={{
+                    background: ativo ? '#FFFFFF' : 'rgba(255,255,255,0.03)',
+                    border: ativo ? '1px solid #FFFFFF' : '1px solid var(--border-subtle)',
+                    color: ativo ? '#000' : 'var(--text-secondary)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!ativo) {
+                      e.currentTarget.style.borderColor = 'var(--border-medium)'
+                      e.currentTarget.style.color = 'var(--text-primary)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!ativo) {
+                      e.currentTarget.style.borderColor = 'var(--border-subtle)'
+                      e.currentTarget.style.color = 'var(--text-secondary)'
+                    }
+                  }}
                 >
                   {preset.label === 'Agora' && <Zap className="h-3 w-3" />}
                   {preset.label}
@@ -529,7 +569,7 @@ export default function ReviewPage() {
 
         {/* Picker custom */}
         <div className="space-y-2">
-          <label className="block text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+          <label className="block font-mono uppercase" style={{ fontSize: 10, letterSpacing: '0.18em', color: 'var(--text-muted)' }}>
             Ou data específica
           </label>
           <DateTimePicker value={scheduledAt} onChange={setScheduledAt} />
@@ -537,52 +577,61 @@ export default function ReviewPage() {
 
         {/* Texto humano de confirmação */}
         {scheduledAt ? (
-          <div className="flex items-center gap-2 rounded-lg border border-green-500/20 bg-green-500/5 px-3 py-2 text-xs text-green-400">
+          <div
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs"
+            style={{
+              background: 'rgba(52, 211, 153, 0.06)',
+              border: '1px solid rgba(52, 211, 153, 0.20)',
+              color: 'var(--led-success)',
+            }}
+          >
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             <span>{descreveTempoRelativo(scheduledAt)}</span>
           </div>
         ) : (
-          <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-500">
+          <div
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs"
+            style={{
+              background: 'var(--bg-base)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-muted)',
+            }}
+          >
             <CalendarClock className="h-4 w-4 shrink-0" />
             <span>Escolha uma data acima pra publicar.</span>
           </div>
         )}
 
         <div className="space-y-2 pt-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <label className="font-mono uppercase" style={{ fontSize: 10, letterSpacing: '0.18em', color: 'var(--text-muted)' }}>
             Visibilidade quando publicar
           </label>
           <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setPrivacyStatus('public')}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition ${
-                privacyStatus === 'public'
-                  ? 'border-orange-500 bg-orange-500/10 text-white'
-                  : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
-              }`}
-            >
-              <Globe className="h-4 w-4" />
-              <span>
-                <span className="block font-medium">Público</span>
-                <span className="block text-[10px] text-zinc-500">aparece em busca</span>
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPrivacyStatus('unlisted')}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition ${
-                privacyStatus === 'unlisted'
-                  ? 'border-orange-500 bg-orange-500/10 text-white'
-                  : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
-              }`}
-            >
-              <EyeOff className="h-4 w-4" />
-              <span>
-                <span className="block font-medium">Não listado</span>
-                <span className="block text-[10px] text-zinc-500">só com o link</span>
-              </span>
-            </button>
+            {(['public', 'unlisted'] as const).map((p) => {
+              const ativo = privacyStatus === p
+              const Icon = p === 'public' ? Globe : EyeOff
+              const label = p === 'public' ? 'Público' : 'Não listado'
+              const hint = p === 'public' ? 'aparece em busca' : 'só com o link'
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPrivacyStatus(p)}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition"
+                  style={{
+                    background: ativo ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.025)',
+                    border: ativo ? '1px solid var(--border-strong)' : '1px solid var(--border-subtle)',
+                    color: ativo ? 'var(--text-primary)' : 'var(--text-muted)',
+                  }}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>
+                    <span className="block font-medium">{label}</span>
+                    <span className="block" style={{ fontSize: 10, color: 'var(--text-muted)' }}>{hint}</span>
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
 
@@ -590,12 +639,12 @@ export default function ReviewPage() {
           type="button"
           onClick={handleSchedule}
           disabled={scheduling || !scheduledAt}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-orange-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="btn-primary w-full justify-center disabled:cursor-not-allowed disabled:opacity-50"
         >
           {scheduling ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Agendando...
+              Agendando…
             </>
           ) : (
             'Confirmar agendamento →'

@@ -69,11 +69,11 @@ export function AnalyticsViewsTimeline({
   if (pontos.length === 0) {
     return (
       <div
-        className="flex h-[200px] items-center justify-center rounded-xl text-sm"
+        className="flex h-[200px] items-center justify-center rounded-2xl text-sm"
         style={{
           background: 'var(--bg-surface)',
-          border: '1px dashed var(--border)',
-          color: 'var(--text-subtle)',
+          border: '1px dashed var(--border-subtle)',
+          color: 'var(--text-muted)',
         }}
       >
         Sem dados no período
@@ -148,14 +148,14 @@ export function AnalyticsViewsTimeline({
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden rounded-xl p-5"
-      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+      className="relative overflow-hidden rounded-2xl p-5"
+      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         {/* Toggle de métrica */}
         <div
           className="inline-flex items-center rounded-md p-0.5"
-          style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-muted)' }}
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)' }}
         >
           {(['views', 'subscribersGained'] as const).map((m) => {
             const ativo = metric === m
@@ -164,10 +164,10 @@ export function AnalyticsViewsTimeline({
                 key={m}
                 type="button"
                 onClick={() => onMetricChange(m)}
-                className="rounded-md px-3 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.15em] transition-colors"
+                className="rounded-md px-3 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.16em] transition-colors"
                 style={{
-                  background: ativo ? 'var(--accent-muted)' : 'transparent',
-                  color: ativo ? 'var(--accent)' : 'var(--text-muted)',
+                  background: ativo ? 'rgba(255,255,255,0.07)' : 'transparent',
+                  color: ativo ? 'var(--text-primary)' : 'var(--text-muted)',
                 }}
               >
                 {METRICS_LABEL[m].label}
@@ -177,11 +177,11 @@ export function AnalyticsViewsTimeline({
         </div>
 
         <p
-          className="font-mono text-[10px] uppercase tracking-wider"
-          style={{ color: 'var(--text-subtle)' }}
+          className="font-mono uppercase tracking-[0.16em]"
+          style={{ fontSize: 10, color: 'var(--text-muted)' }}
         >
           pico:{' '}
-          <span style={{ color: 'var(--text-secondary)' }}>
+          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
             {data.max_views.toLocaleString('pt-BR')}
           </span>
         </p>
@@ -199,8 +199,8 @@ export function AnalyticsViewsTimeline({
         >
           <defs>
             <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.32" />
-              <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.16" />
+              <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
             </linearGradient>
           </defs>
 
@@ -212,7 +212,7 @@ export function AnalyticsViewsTimeline({
               x2={W - PAD_X}
               y1={PAD_TOP + innerH * frac}
               y2={PAD_TOP + innerH * frac}
-              stroke="var(--border-muted)"
+              stroke="rgba(255,255,255,0.05)"
               strokeWidth="1"
               strokeDasharray="2 4"
             />
@@ -225,10 +225,9 @@ export function AnalyticsViewsTimeline({
               x2={pontoHover.x}
               y1={PAD_TOP}
               y2={PAD_TOP + innerH}
-              stroke="var(--accent)"
+              stroke="rgba(255,255,255,0.35)"
               strokeWidth="1"
               strokeDasharray="3 3"
-              opacity="0.6"
             />
           )}
 
@@ -239,8 +238,8 @@ export function AnalyticsViewsTimeline({
           <path
             d={pathLine}
             fill="none"
-            stroke="var(--accent)"
-            strokeWidth="2"
+            stroke="#FFFFFF"
+            strokeWidth="1.5"
             strokeLinejoin="round"
             strokeLinecap="round"
           />
@@ -255,8 +254,8 @@ export function AnalyticsViewsTimeline({
                   cy={c.y}
                   r={hover?.idx === i ? 5 : 3}
                   fill="var(--bg-surface)"
-                  stroke="var(--accent)"
-                  strokeWidth={hover?.idx === i ? 2.5 : 1.5}
+                  stroke="#FFFFFF"
+                  strokeWidth={hover?.idx === i ? 2 : 1.25}
                   style={{ transition: 'r 0.12s, stroke-width 0.12s' }}
                   pointerEvents="none"
                 />
@@ -267,8 +266,8 @@ export function AnalyticsViewsTimeline({
                   cy={pontoHover.y}
                   r={5}
                   fill="var(--bg-surface)"
-                  stroke="var(--accent)"
-                  strokeWidth={2.5}
+                  stroke="#FFFFFF"
+                  strokeWidth={2}
                   pointerEvents="none"
                 />
               )}
@@ -284,7 +283,7 @@ export function AnalyticsViewsTimeline({
                 y={H - 10}
                 textAnchor={idx === 0 ? 'start' : idx === coords.length - 1 ? 'end' : 'middle'}
                 fontSize="10"
-                fill="var(--text-subtle)"
+                fill="var(--text-muted)"
                 fontFamily="var(--font-mono)"
               >
                 {formataData(c.date, data.granularity)}
@@ -301,17 +300,17 @@ export function AnalyticsViewsTimeline({
                 width={TT_W}
                 height={TT_H}
                 rx={8}
-                fill="var(--bg-overlay)"
-                stroke="var(--border-strong)"
+                fill="#0A0A0C"
+                stroke="rgba(255,255,255,0.18)"
                 strokeWidth="1"
               />
               <text
                 x={ttX + 10}
                 y={ttY + 16}
                 fontSize="9"
-                fill="var(--text-subtle)"
+                fill="var(--text-muted)"
                 fontFamily="var(--font-mono)"
-                style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                style={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}
               >
                 {formataDataLonga(pontoHover.date, data.granularity)}
               </text>
@@ -320,7 +319,7 @@ export function AnalyticsViewsTimeline({
                 y={ttY + 36}
                 fontSize="16"
                 fontWeight="600"
-                fill="var(--accent)"
+                fill="#FFFFFF"
                 fontFamily="var(--font-display)"
               >
                 {pontoHover.views.toLocaleString('pt-BR')}

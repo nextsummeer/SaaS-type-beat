@@ -35,7 +35,7 @@ function mesmaData(a: Date, b: Date): boolean {
 }
 
 function gerarGridMes(year: number, month: number): (Date | null)[] {
-  const primeiroDia = new Date(year, month, 1).getDay() // 0=dom
+  const primeiroDia = new Date(year, month, 1).getDay()
   const ultimoDia = new Date(year, month + 1, 0).getDate()
   const grid: (Date | null)[] = []
   for (let i = 0; i < primeiroDia; i++) grid.push(null)
@@ -48,7 +48,6 @@ export function DateTimePicker({ value, onChange, minDate, placeholder = 'Seleci
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Fallback quando value=null: usa "hoje 18h" como ponto de partida visual no picker (sem commitar)
   function fallbackInicial(): Date {
     const d = new Date()
     d.setHours(18, 0, 0, 0)
@@ -56,13 +55,11 @@ export function DateTimePicker({ value, onChange, minDate, placeholder = 'Seleci
   }
   const valorRef = value ?? fallbackInicial()
 
-  // Estado local enquanto o picker está aberto (só commit no Confirmar)
   const [mesExibido, setMesExibido] = useState(new Date(valorRef.getFullYear(), valorRef.getMonth(), 1))
   const [dataSelecionada, setDataSelecionada] = useState<Date>(valorRef)
   const [hora, setHora] = useState(valorRef.getHours())
   const [minuto, setMinuto] = useState(valorRef.getMinutes())
 
-  // Reseta estado interno toda vez que abre
   useEffect(() => {
     if (open) {
       const base = value ?? fallbackInicial()
@@ -73,7 +70,6 @@ export function DateTimePicker({ value, onChange, minDate, placeholder = 'Seleci
     }
   }, [open, value])
 
-  // Click fora fecha
   useEffect(() => {
     if (!open) return
     function handleClickFora(e: MouseEvent) {
@@ -127,36 +123,71 @@ export function DateTimePicker({ value, onChange, minDate, placeholder = 'Seleci
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-3 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm transition hover:border-zinc-600 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+        className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm transition"
+        style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid var(--border-subtle)',
+          color: 'var(--text-primary)',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-medium)' }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)' }}
       >
         <span className="flex items-center gap-2">
-          <Calendar className={`h-4 w-4 ${value ? 'text-orange-400' : 'text-zinc-500'}`} />
-          <span className={value ? 'capitalize text-white' : 'text-zinc-500'}>
+          <Calendar className="h-4 w-4" style={{ color: value ? 'var(--text-primary)' : 'var(--text-subtle)' }} />
+          <span className={value ? 'capitalize' : ''} style={{ color: value ? 'var(--text-primary)' : 'var(--text-subtle)' }}>
             {value ? formataLabel(value) : placeholder}
           </span>
         </span>
-        <ChevronRight className={`h-4 w-4 text-zinc-500 transition ${open ? 'rotate-90' : ''}`} />
+        <ChevronRight
+          className={`h-4 w-4 transition ${open ? 'rotate-90' : ''}`}
+          style={{ color: 'var(--text-subtle)' }}
+        />
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 z-50 mt-2 origin-top rounded-xl border border-zinc-800 bg-zinc-950 p-4 shadow-2xl shadow-black/50">
+        <div
+          className="absolute left-0 right-0 z-50 mt-2 origin-top rounded-xl p-4"
+          style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-medium)',
+            boxShadow: 'var(--shadow-lg)',
+          }}
+        >
           {/* Navegação do mês */}
           <div className="mb-3 flex items-center justify-between">
             <button
               type="button"
               onClick={() => setMesExibido(new Date(mesExibido.getFullYear(), mesExibido.getMonth() - 1, 1))}
-              className="rounded-md p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
+              className="rounded-md p-1.5 transition"
+              style={{ color: 'var(--text-muted)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                e.currentTarget.style.color = 'var(--text-primary)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = 'var(--text-muted)'
+              }}
               aria-label="Mês anterior"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="text-sm font-medium text-white">
+            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
               {MESES[mesExibido.getMonth()]} {mesExibido.getFullYear()}
             </span>
             <button
               type="button"
               onClick={() => setMesExibido(new Date(mesExibido.getFullYear(), mesExibido.getMonth() + 1, 1))}
-              className="rounded-md p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
+              className="rounded-md p-1.5 transition"
+              style={{ color: 'var(--text-muted)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                e.currentTarget.style.color = 'var(--text-primary)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = 'var(--text-muted)'
+              }}
               aria-label="Próximo mês"
             >
               <ChevronRight className="h-4 w-4" />
@@ -166,7 +197,11 @@ export function DateTimePicker({ value, onChange, minDate, placeholder = 'Seleci
           {/* Dias da semana */}
           <div className="mb-2 grid grid-cols-7 gap-1">
             {DIAS_SEMANA.map((d, i) => (
-              <div key={i} className="text-center text-[10px] font-medium uppercase text-zinc-500">
+              <div
+                key={i}
+                className="text-center font-mono uppercase"
+                style={{ fontSize: 9.5, letterSpacing: '0.12em', color: 'var(--text-subtle)' }}
+              >
                 {d}
               </div>
             ))}
@@ -185,17 +220,33 @@ export function DateTimePicker({ value, onChange, minDate, placeholder = 'Seleci
                   type="button"
                   disabled={desabilitado}
                   onClick={() => selecionarDia(d)}
-                  className={`relative aspect-square rounded-md text-xs transition ${
-                    ehSelecionado
-                      ? 'bg-orange-600 font-semibold text-white'
+                  className="relative aspect-square rounded-md text-xs transition tabular"
+                  style={{
+                    background: ehSelecionado ? '#FFFFFF' : 'transparent',
+                    color: ehSelecionado
+                      ? '#000'
                       : desabilitado
-                      ? 'text-zinc-700'
-                      : 'text-zinc-300 hover:bg-zinc-800'
-                  }`}
+                        ? 'var(--text-subtle)'
+                        : 'var(--text-secondary)',
+                    fontWeight: ehSelecionado ? 600 : 400,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!ehSelecionado && !desabilitado) {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!ehSelecionado && !desabilitado) {
+                      e.currentTarget.style.background = 'transparent'
+                    }
+                  }}
                 >
                   {d.getDate()}
                   {ehHoje && !ehSelecionado && (
-                    <span className="absolute bottom-1 left-1/2 h-0.5 w-1 -translate-x-1/2 rounded-full bg-orange-400" />
+                    <span
+                      className="absolute bottom-1 left-1/2 h-0.5 w-1 -translate-x-1/2 rounded-full"
+                      style={{ background: '#FFFFFF' }}
+                    />
                   )}
                 </button>
               )
@@ -203,8 +254,11 @@ export function DateTimePicker({ value, onChange, minDate, placeholder = 'Seleci
           </div>
 
           {/* Time picker */}
-          <div className="mt-4 border-t border-zinc-800 pt-4">
-            <div className="mb-2 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+          <div className="mt-4 border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
+            <div
+              className="mb-2 font-mono uppercase"
+              style={{ fontSize: 9.5, letterSpacing: '0.18em', color: 'var(--text-muted)' }}
+            >
               Horário
             </div>
             <div className="flex items-center justify-center gap-3">
@@ -215,7 +269,7 @@ export function DateTimePicker({ value, onChange, minDate, placeholder = 'Seleci
                 onChange={(v) => setHora(Math.max(0, Math.min(23, v)))}
                 max={23}
               />
-              <span className="text-2xl font-bold text-zinc-600">:</span>
+              <span className="text-2xl font-bold" style={{ color: 'var(--text-subtle)' }}>:</span>
               <TimeField
                 value={minuto}
                 onIncrement={() => ajustarMinuto(5)}
@@ -223,7 +277,7 @@ export function DateTimePicker({ value, onChange, minDate, placeholder = 'Seleci
                 onChange={(v) => setMinuto(Math.max(0, Math.min(59, v)))}
                 max={59}
               />
-              <span className="ml-2 text-xs text-zinc-500">24h</span>
+              <span className="ml-2 font-mono uppercase" style={{ fontSize: 10, letterSpacing: '0.14em', color: 'var(--text-muted)' }}>24h</span>
             </div>
           </div>
 
@@ -231,7 +285,7 @@ export function DateTimePicker({ value, onChange, minDate, placeholder = 'Seleci
           <button
             type="button"
             onClick={confirmar}
-            className="mt-4 w-full rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-500"
+            className="btn-primary mt-4 w-full justify-center"
           >
             Confirmar
           </button>
@@ -255,7 +309,16 @@ function TimeField({ value, onIncrement, onDecrement, onChange, max }: TimeField
       <button
         type="button"
         onClick={onIncrement}
-        className="rounded-md p-1 text-zinc-500 transition hover:bg-zinc-800 hover:text-white"
+        className="rounded-md p-1 transition"
+        style={{ color: 'var(--text-muted)' }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+          e.currentTarget.style.color = 'var(--text-primary)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'transparent'
+          e.currentTarget.style.color = 'var(--text-muted)'
+        }}
         aria-label="Aumentar"
       >
         <ChevronLeft className="h-3 w-3 rotate-90" />
@@ -268,12 +331,28 @@ function TimeField({ value, onIncrement, onDecrement, onChange, max }: TimeField
           const num = parseInt(e.target.value.replace(/\D/g, '') || '0', 10)
           onChange(Math.min(num, max))
         }}
-        className="w-12 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-center text-lg font-semibold tabular-nums text-white outline-none transition focus:border-orange-500"
+        className="w-12 rounded-md px-2 py-1.5 text-center text-lg font-semibold tabular outline-none transition"
+        style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid var(--border-subtle)',
+          color: 'var(--text-primary)',
+        }}
+        onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--border-strong)' }}
+        onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)' }}
       />
       <button
         type="button"
         onClick={onDecrement}
-        className="rounded-md p-1 text-zinc-500 transition hover:bg-zinc-800 hover:text-white"
+        className="rounded-md p-1 transition"
+        style={{ color: 'var(--text-muted)' }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+          e.currentTarget.style.color = 'var(--text-primary)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'transparent'
+          e.currentTarget.style.color = 'var(--text-muted)'
+        }}
         aria-label="Diminuir"
       >
         <ChevronLeft className="h-3 w-3 -rotate-90" />

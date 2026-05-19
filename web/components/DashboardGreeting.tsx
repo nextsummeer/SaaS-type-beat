@@ -49,20 +49,32 @@ export function DashboardGreeting() {
     : ''
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
-        <span className="led led-pulse" style={{ color: 'var(--accent)' }} />
-        <span className="font-mono text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-muted)' }}>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2.5">
+        <span className="led led-pulse" style={{ color: 'var(--led-success)' }} />
+        <span
+          className="font-mono uppercase"
+          style={{
+            fontSize: 10.5,
+            fontWeight: 500,
+            letterSpacing: '0.22em',
+            color: 'var(--text-secondary)',
+          }}
+        >
           studio aberto · {hora}
         </span>
       </div>
       <h1
-        className="font-display text-[44px] font-semibold leading-[1.05] tracking-tight"
-        style={{ color: 'var(--text-primary)' }}
+        className="font-display text-[44px] font-semibold leading-[1.02] tracking-tight"
+        style={{ color: 'var(--text-primary)', letterSpacing: '-0.028em' }}
       >
-        {olá}, <span style={{ color: 'var(--accent)' }}>{nome || 'producer'}</span>.
+        {olá},{' '}
+        <span style={{ color: 'var(--text-muted)' }}>
+          {nome || 'producer'}
+        </span>
+        .
       </h1>
-      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+      <p className="text-[14px]" style={{ color: 'var(--text-muted)' }}>
         {data ? data.charAt(0).toUpperCase() + data.slice(1) + ' — ' : ''}
         Suba um beat e a IA monta título, descrição, tags e capa em menos de 2 minutos.
       </p>

@@ -141,7 +141,7 @@ function DayCell({
   const bgCelula = isOver
     ? 'var(--accent-muted)'
     : ehHoje
-      ? 'rgba(255, 90, 31, 0.04)'
+      ? 'rgba(255, 255, 255, 0.035)'
       : 'transparent'
 
   return (
@@ -169,7 +169,7 @@ function DayCell({
       onMouseEnter={(e) => {
         if (!podeAgendar || isOver) return
         e.currentTarget.style.background = ehHoje
-          ? 'rgba(255, 90, 31, 0.08)'
+          ? 'rgba(255, 255, 255, 0.065)'
           : 'rgba(255,255,255,0.025)'
       }}
       onMouseLeave={(e) => {

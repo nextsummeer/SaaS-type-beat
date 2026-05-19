@@ -350,10 +350,10 @@ export default function AnalyticsBeatsPage() {
             className="flex h-12 w-12 items-center justify-center rounded-xl"
             style={{
               background: 'var(--accent-muted)',
-              border: '1px solid rgba(255,90,31,0.25)',
+              border: '1px solid var(--border-subtle)',
             }}
           >
-            <BarChart3 className="h-5 w-5" style={{ color: 'var(--accent)' }} />
+            <BarChart3 className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
           </div>
           <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
             Sem beats publicados ainda

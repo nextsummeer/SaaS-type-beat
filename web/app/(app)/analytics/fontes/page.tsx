@@ -71,16 +71,16 @@ export default function AnalyticsFontesPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-1.5 rise rise-1">
           <span
-            className="font-mono text-[10px] uppercase tracking-[0.22em]"
-            style={{ color: 'var(--text-subtle)' }}
+            className="font-mono uppercase"
+            style={{ fontSize: 10.5, letterSpacing: '0.22em', color: 'var(--text-muted)' }}
           >
             studio · analytics · tráfego
           </span>
           <h1
             className="font-display text-[40px] font-semibold leading-none tracking-tight"
-            style={{ color: 'var(--text-primary)' }}
+            style={{ color: 'var(--text-primary)', letterSpacing: '-0.028em' }}
           >
-            De onde vêm as views<span style={{ color: 'var(--accent)' }}>.</span>
+            De onde vêm as views.
           </h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
             Pesquisa, sugestões, externo. Sabe pra onde otimizar.
@@ -128,17 +128,17 @@ export default function AnalyticsFontesPage() {
       {/* Empty state */}
       {!loading && fontes.length === 0 && (
         <div
-          className="flex flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-16 text-center rise rise-4"
-          style={{ borderColor: 'var(--border)' }}
+          className="flex flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-16 text-center rise rise-4"
+          style={{ borderColor: 'var(--border-subtle)' }}
         >
           <div
             className="flex h-12 w-12 items-center justify-center rounded-xl"
             style={{
-              background: 'var(--accent-muted)',
-              border: '1px solid rgba(255,90,31,0.25)',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-subtle)',
             }}
           >
-            <TrendingUp className="h-5 w-5" style={{ color: 'var(--accent)' }} />
+            <TrendingUp className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
           </div>
           <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
             Sem dados de tráfego no período
@@ -155,19 +155,19 @@ export default function AnalyticsFontesPage() {
         <>
           {/* Total */}
           <div
-            className="flex items-baseline justify-between gap-3 rounded-xl px-5 py-4 rise rise-3"
-            style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+            className="flex items-baseline justify-between gap-3 rounded-2xl px-6 py-5 rise rise-3"
+            style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
           >
             <div>
               <p
-                className="font-mono text-[10px] uppercase tracking-[0.18em]"
-                style={{ color: 'var(--text-subtle)' }}
+                className="font-mono uppercase"
+                style={{ fontSize: 10.5, letterSpacing: '0.22em', color: 'var(--text-muted)' }}
               >
                 Total de views no período
               </p>
               <p
-                className="mt-1 font-display text-[28px] font-semibold leading-none tabular"
-                style={{ color: 'var(--text-primary)' }}
+                className="mt-2 font-display text-[32px] font-semibold leading-none tabular"
+                style={{ color: 'var(--text-primary)', letterSpacing: '-0.03em' }}
               >
                 {totalViews.toLocaleString('pt-BR')}
               </p>
@@ -175,14 +175,14 @@ export default function AnalyticsFontesPage() {
             {fontes[0] && (
               <div className="text-right">
                 <p
-                  className="font-mono text-[10px] uppercase tracking-[0.18em]"
-                  style={{ color: 'var(--text-subtle)' }}
+                  className="font-mono uppercase"
+                  style={{ fontSize: 10.5, letterSpacing: '0.22em', color: 'var(--text-muted)' }}
                 >
                   Principal fonte
                 </p>
                 <p
-                  className="mt-1 text-[14px] font-medium"
-                  style={{ color: 'var(--accent)' }}
+                  className="mt-2 text-[14px] font-semibold"
+                  style={{ color: 'var(--text-primary)' }}
                 >
                   {fontes[0].label}
                 </p>
@@ -215,19 +215,19 @@ function FonteRow({
 
   return (
     <div
-      className="group relative overflow-hidden rounded-xl p-4 transition-colors"
+      className="group relative overflow-hidden rounded-2xl p-4 transition-colors"
       style={{
         background: 'var(--bg-surface)',
-        border: '1px solid var(--border)',
+        border: '1px solid var(--border-subtle)',
       }}
     >
-      {/* Barra de fundo proporcional */}
+      {/* Barra de fundo proporcional — sutil em branco */}
       <div
         aria-hidden
         className="absolute inset-y-0 left-0 transition-all"
         style={{
           width: `${widthPct}%`,
-          background: 'linear-gradient(90deg, rgba(255,90,31,0.10), rgba(255,90,31,0.02))',
+          background: 'linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01))',
         }}
       />
 
@@ -236,7 +236,7 @@ function FonteRow({
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
           style={{
             background: 'var(--bg-elevated)',
-            border: '1px solid var(--border-muted)',
+            border: '1px solid var(--border-subtle)',
           }}
         >
           <Icon size={15} style={{ color: 'var(--text-muted)' }} />
@@ -250,8 +250,8 @@ function FonteRow({
             {fonte.label}
           </p>
           <p
-            className="font-mono text-[10px] uppercase tracking-wider"
-            style={{ color: 'var(--text-subtle)' }}
+            className="font-mono uppercase"
+            style={{ fontSize: 9.5, letterSpacing: '0.14em', color: 'var(--text-muted)' }}
           >
             {fonte.key}
           </p>
@@ -266,16 +266,16 @@ function FonteRow({
               {fonte.views.toLocaleString('pt-BR')}
             </p>
             <p
-              className="mt-1 font-mono text-[9px] uppercase tracking-wider"
-              style={{ color: 'var(--text-subtle)' }}
+              className="mt-1 font-mono uppercase"
+              style={{ fontSize: 9, letterSpacing: '0.16em', color: 'var(--text-muted)' }}
             >
               views
             </p>
           </div>
-          <div className="w-14 text-right">
+          <div className="w-16 text-right">
             <p
               className="text-[16px] font-semibold tabular"
-              style={{ color: 'var(--accent)' }}
+              style={{ color: 'var(--text-primary)' }}
             >
               {fonte.pct}%
             </p>

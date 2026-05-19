@@ -20,15 +20,15 @@ type StatItem = {
 function Sparkline({ data }: { data: number[] }) {
   const max = Math.max(...data, 1)
   const w = 80
-  const h = 24
+  const h = 22
   const step = w / (data.length - 1)
   const points = data.map((v, i) => `${i * step},${h - (v / max) * h}`).join(' ')
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="opacity-70">
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
       <polyline
         fill="none"
-        stroke="var(--accent)"
-        strokeWidth="1.4"
+        stroke="rgba(255,255,255,0.55)"
+        strokeWidth="1.3"
         strokeLinecap="round"
         strokeLinejoin="round"
         points={points}
@@ -113,10 +113,8 @@ export function DashboardStats() {
         const { data: { session } } = await supabase.auth.getSession()
         if (!session) return
 
-        // Carrega beats sempre. Analytics pode falhar (sem canal/scope) — não bloqueia.
         const beats = await fetchBeats(session.access_token)
 
-        // Views = agregado do canal (consistente com cards do topo de /analytics)
         let totalViews = 0
         try {
           const overview = await fetchAnalyticsOverview(session.access_token, '90d')
@@ -132,7 +130,6 @@ export function DashboardStats() {
     }
 
     carrega()
-    // Atualiza a cada 30s pra refletir mudanças de status
     const id = setInterval(carrega, 30_000)
     return () => {
       cancelado = true
@@ -152,59 +149,81 @@ export function DashboardStats() {
 
   return (
     <section className="grid grid-cols-1 gap-3 rise rise-2 sm:grid-cols-2 lg:grid-cols-4">
-      {dados.map((s) => {
+      {dados.map((s, idx) => {
         const Icon = s.icon
         return (
           <div
             key={s.label}
-            className="group relative overflow-hidden rounded-xl p-5 transition"
+            className="group relative overflow-hidden rounded-2xl p-5 transition-colors"
             style={{
               background: 'var(--bg-surface)',
-              border: '1px solid var(--border)',
-              boxShadow: 'var(--shadow-card)',
+              border: '1px solid var(--border-subtle)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--border-medium)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--border-subtle)'
             }}
           >
+            {/* Header: eyebrow num + ícone */}
             <div className="flex items-start justify-between">
-              <p
-                className="font-mono text-[10px] font-medium uppercase tracking-[0.18em]"
-                style={{ color: 'var(--text-subtle)' }}
-              >
-                {s.label}
-              </p>
-              <div
-                className="flex h-7 w-7 items-center justify-center rounded-md transition group-hover:scale-110"
-                style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-muted)' }}
-              >
-                <Icon size={13} style={{ color: 'var(--text-muted)' }} />
+              <div className="flex flex-col gap-1">
+                <span
+                  className="font-mono"
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--text-subtle)',
+                    letterSpacing: '0.18em',
+                  }}
+                >
+                  0{idx + 1}
+                </span>
+                <p
+                  className="font-mono uppercase"
+                  style={{
+                    fontSize: 10.5,
+                    fontWeight: 500,
+                    letterSpacing: '0.16em',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  {s.label}
+                </p>
               </div>
+              <Icon
+                size={14}
+                strokeWidth={1.6}
+                style={{ color: 'var(--text-muted)' }}
+              />
             </div>
 
+            {/* Número grande */}
             <p
-              className="num-hero mt-4 text-[36px]"
+              className="num-hero mt-6 text-[44px] leading-none"
               style={{
                 color: 'var(--text-primary)',
-                opacity: carregando ? 0.3 : 1,
+                opacity: carregando ? 0.25 : 1,
                 transition: 'opacity 0.4s ease',
               }}
             >
               {s.value}
             </p>
 
-            <div className="mt-3 flex items-center justify-between">
+            {/* Footer: hint legível + sparkline neutra */}
+            <div className="mt-4 flex items-end justify-between gap-3">
               <span
-                className="font-mono text-[10px] uppercase tracking-wider"
-                style={{ color: 'var(--text-subtle)' }}
+                className="font-mono"
+                style={{
+                  fontSize: 10.5,
+                  color: 'var(--text-muted)',
+                  letterSpacing: '0.06em',
+                }}
               >
                 {s.hint}
               </span>
               <Sparkline data={s.spark} />
             </div>
-
-            <span
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 bottom-0 h-px opacity-0 transition group-hover:opacity-100"
-              style={{ background: 'linear-gradient(90deg, transparent, var(--accent), transparent)' }}
-            />
           </div>
         )
       })}

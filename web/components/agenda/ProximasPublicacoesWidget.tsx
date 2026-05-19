@@ -22,7 +22,6 @@ function formatarTempoAteData(d: Date): string {
   if (diffMin < 60) return `em ${diffMin} min`
   const diffHoras = Math.round(diffMin / 60)
   if (diffHoras < 24) return diffHoras === 1 ? 'em 1 hora' : `em ${diffHoras} horas`
-  // Calcula dias considerando meia-noite local (não 24h cravados)
   const hoje0h = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate())
   const alvo0h = new Date(d.getFullYear(), d.getMonth(), d.getDate())
   const diffDias = Math.round((alvo0h.getTime() - hoje0h.getTime()) / 86400000)
@@ -90,27 +89,25 @@ export function ProximasPublicacoesWidget() {
       className="rise rise-2 overflow-hidden rounded-2xl"
       style={{
         background: 'var(--bg-surface)',
-        border: '1px solid var(--border)',
-        boxShadow: 'var(--shadow-card)',
+        border: '1px solid var(--border-subtle)',
       }}
     >
       {/* Header */}
       <div
         className="flex items-center justify-between"
         style={{
-          padding: '14px 20px',
-          borderBottom: '1px solid var(--border-muted)',
-          background: 'var(--bg-base)',
+          padding: '14px 22px',
+          borderBottom: '1px solid var(--border-subtle)',
         }}
       >
         <div className="flex items-center gap-2.5">
-          <CalendarClock size={14} style={{ color: 'var(--accent)' }} />
+          <CalendarClock size={13} strokeWidth={1.75} style={{ color: 'var(--text-muted)' }} />
           <p
             className="font-mono uppercase"
             style={{
-              fontSize: 11,
+              fontSize: 10.5,
               fontWeight: 500,
-              letterSpacing: '0.2em',
+              letterSpacing: '0.22em',
               color: 'var(--text-secondary)',
             }}
           >
@@ -119,15 +116,17 @@ export function ProximasPublicacoesWidget() {
         </div>
         <Link
           href="/agenda"
-          className="flex items-center gap-1 font-mono uppercase transition"
+          className="group flex items-center gap-1 font-mono uppercase transition-colors"
           style={{
             fontSize: 10,
-            letterSpacing: '0.14em',
+            letterSpacing: '0.16em',
             color: 'var(--text-muted)',
           }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
         >
           Ver agenda
-          <ChevronRight size={12} />
+          <ChevronRight size={12} className="transition group-hover:translate-x-0.5" />
         </Link>
       </div>
 
@@ -167,27 +166,22 @@ function ItemPublicacao({ beat }: { beat: BeatListItem }) {
       <Link
         href={`/beats/${beat.id}/review`}
         className="group flex items-center gap-3 transition-colors"
-        style={{
-          padding: '12px 20px',
-          borderTop: '1px solid transparent',
-          borderBottom: '1px solid transparent',
-        }}
+        style={{ padding: '12px 22px' }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(255,255,255,0.02)'
+          e.currentTarget.style.background = 'rgba(255,255,255,0.025)'
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = 'transparent'
         }}
       >
-        {/* Thumb */}
         <span
           className="relative shrink-0 overflow-hidden"
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 6,
+            width: 38,
+            height: 38,
+            borderRadius: 8,
             background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
+            border: '1px solid var(--border-subtle)',
           }}
         >
           {coverUrl ? (
@@ -196,7 +190,6 @@ function ItemPublicacao({ beat }: { beat: BeatListItem }) {
           ) : null}
         </span>
 
-        {/* Titulo + artista */}
         <div className="min-w-0 flex-1">
           <p
             className="line-clamp-1 text-[13.5px] font-medium leading-tight"
@@ -205,22 +198,21 @@ function ItemPublicacao({ beat }: { beat: BeatListItem }) {
             {beat.titulo ?? 'Aguardando IA'}
           </p>
           <p
-            className="line-clamp-1 text-[11.5px] leading-tight"
-            style={{ color: 'var(--text-muted)', marginTop: 2 }}
+            className="line-clamp-1 text-[12px] leading-tight"
+            style={{ color: 'var(--text-muted)', marginTop: 3 }}
           >
             {beat.artista_nome ?? '—'}
           </p>
         </div>
 
-        {/* Tempo relativo + data */}
-        <div className="flex shrink-0 flex-col items-end gap-0.5">
+        <div className="flex shrink-0 flex-col items-end gap-1">
           <span
             className="font-mono uppercase"
             style={{
               fontSize: 10,
               fontWeight: 600,
-              letterSpacing: '0.12em',
-              color: 'var(--accent)',
+              letterSpacing: '0.14em',
+              color: 'var(--text-primary)',
             }}
           >
             {tempoRelativo}
@@ -233,7 +225,6 @@ function ItemPublicacao({ beat }: { beat: BeatListItem }) {
           </span>
         </div>
 
-        {/* Chevron */}
         <ChevronRight
           size={14}
           className="shrink-0 transition group-hover:translate-x-0.5"
@@ -248,34 +239,36 @@ function EmptyState() {
   return (
     <div
       className="flex flex-col items-center gap-3 text-center"
-      style={{ padding: '32px 20px' }}
+      style={{ padding: '36px 20px' }}
     >
       <div
         className="flex h-10 w-10 items-center justify-center rounded-full"
         style={{
           background: 'var(--bg-elevated)',
-          border: '1px solid var(--border)',
+          border: '1px solid var(--border-subtle)',
           color: 'var(--text-muted)',
         }}
       >
-        <CalendarClock size={16} strokeWidth={1.75} />
+        <CalendarClock size={16} strokeWidth={1.6} />
       </div>
-      <div className="flex flex-col gap-0.5">
-        <p style={{ fontSize: 13, color: 'var(--text-primary)' }}>
+      <div className="flex flex-col gap-1">
+        <p style={{ fontSize: 13.5, color: 'var(--text-primary)', fontWeight: 500 }}>
           Nenhuma publicação agendada.
         </p>
-        <p style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
           Programe seus beats na agenda pra manter o canal consistente.
         </p>
       </div>
       <Link
         href="/agenda"
-        className="font-mono uppercase transition"
+        className="font-mono uppercase transition-colors"
         style={{
           fontSize: 10,
-          letterSpacing: '0.14em',
-          color: 'var(--accent)',
-          marginTop: 4,
+          letterSpacing: '0.18em',
+          color: 'var(--text-secondary)',
+          marginTop: 6,
+          borderBottom: '1px solid var(--border-medium)',
+          paddingBottom: 2,
         }}
       >
         Ir pra agenda →

@@ -25,30 +25,55 @@ export function Topbar() {
   return (
     <header
       className="flex h-14 shrink-0 items-center gap-4 px-6"
-      style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-base)' }}
+      style={{
+        borderBottom: '1px solid var(--border-subtle)',
+        background: 'var(--bg-deepest)',
+      }}
     >
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-[13px]">
-        <span style={{ color: 'var(--text-muted)' }}>{secao}</span>
+      <div className="flex items-center gap-2.5">
+        <span
+          className="font-mono uppercase"
+          style={{
+            fontSize: 10.5,
+            letterSpacing: '0.18em',
+            color: 'var(--text-muted)',
+          }}
+        >
+          {secao}
+        </span>
         <span style={{ color: 'var(--text-subtle)' }}>/</span>
-        <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{pagina}</span>
+        <span
+          className="text-[13px] font-medium"
+          style={{ color: 'var(--text-primary)', letterSpacing: '-0.005em' }}
+        >
+          {pagina}
+        </span>
       </div>
 
-      {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Search (decorativo, ainda sem ação) */}
+      {/* Search */}
       <div
         className="hidden items-center gap-2 rounded-lg px-3 py-1.5 md:flex"
-        style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', minWidth: 280 }}
+        style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-subtle)',
+          minWidth: 300,
+        }}
       >
         <Search size={14} style={{ color: 'var(--text-subtle)' }} />
-        <span className="flex-1 text-[12px]" style={{ color: 'var(--text-subtle)' }}>
+        <span className="flex-1 text-[12.5px]" style={{ color: 'var(--text-subtle)' }}>
           Buscar beats, comandos…
         </span>
         <kbd
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px]"
-          style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)', border: '1px solid var(--border-muted)' }}
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono"
+          style={{
+            fontSize: 10,
+            background: 'rgba(255,255,255,0.04)',
+            color: 'var(--text-muted)',
+            border: '1px solid var(--border-subtle)',
+          }}
         >
           <Command size={9} />K
         </kbd>
@@ -61,8 +86,14 @@ export function Topbar() {
           title="Ajuda"
           className="flex h-9 w-9 items-center justify-center rounded-lg transition"
           style={{ color: 'var(--text-muted)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface)'; e.currentTarget.style.color = 'var(--text-primary)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--bg-surface)'
+            e.currentTarget.style.color = 'var(--text-primary)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.color = 'var(--text-muted)'
+          }}
         >
           <HelpCircle size={16} />
         </button>
@@ -71,13 +102,23 @@ export function Topbar() {
           title="Notificações"
           className="relative flex h-9 w-9 items-center justify-center rounded-lg transition"
           style={{ color: 'var(--text-muted)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface)'; e.currentTarget.style.color = 'var(--text-primary)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--bg-surface)'
+            e.currentTarget.style.color = 'var(--text-primary)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.color = 'var(--text-muted)'
+          }}
         >
           <Bell size={16} />
+          {/* Notif dot — magenta como acento cirúrgico semântico */}
           <span
             className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full"
-            style={{ background: 'var(--accent)', boxShadow: '0 0 6px var(--accent-glow)' }}
+            style={{
+              background: 'var(--magenta-bright)',
+              boxShadow: '0 0 6px var(--magenta-bright)',
+            }}
           />
         </button>
       </div>
