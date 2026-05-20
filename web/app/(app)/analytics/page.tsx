@@ -6,15 +6,16 @@ import Link from 'next/link'
 import {
   AlertCircle,
   Eye,
-  Clock,
-  Music2,
+  Users,
+  Video,
   ChevronRight,
+  RefreshCw,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
-  fetchAnalyticsOverview,
+  fetchChannelOverview,
   fetchAnalyticsViewsTimeline,
-  type AnalyticsOverview,
+  type ChannelOverview,
   type AnalyticsViewsTimeline as TimelineData,
   type AnalyticsTimelineMetric,
 } from '@/lib/api'
@@ -23,56 +24,62 @@ import { AnalyticsDelayBanner } from '@/components/AnalyticsDelayBanner'
 import { AnalyticsViewsTimeline } from '@/components/AnalyticsViewsTimeline'
 import { AnalyticsScopeNote } from '@/components/AnalyticsScopeNote'
 
+function formataNumero(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 10_000) return `${(n / 1_000).toFixed(1)}k`
+  return n.toLocaleString('pt-BR')
+}
+
 export default function AnalyticsOverviewPage() {
   const router = useRouter()
   const supabase = createClient()
 
   const [periodo, setPeriodo] = useState<Periodo>('7d')
   const [metricaTimeline, setMetricaTimeline] = useState<AnalyticsTimelineMetric>('views')
-  const [overview, setOverview] = useState<AnalyticsOverview | null>(null)
-  // Cache local das duas métricas — troca entre elas vira instantânea
+  const [channelOverview, setChannelOverview] = useState<ChannelOverview | null>(null)
   const [timelines, setTimelines] = useState<{
     views: TimelineData | null
     subscribersGained: TimelineData | null
   }>({ views: null, subscribersGained: null })
   const [loading, setLoading] = useState(true)
+  const [reloading, setReloading] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
-  // Carga inicial + mudança de período: pré-busca AMBAS as métricas em paralelo.
-  // Backend tem cache de 24h, então o custo extra é só na primeira vez do dia.
-  useEffect(() => {
-    let cancelado = false
-    async function carrega() {
-      setLoading(true)
-      setErro(null)
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) {
-          router.push('/login')
-          return
-        }
-        const [ov, tlViews, tlSubs] = await Promise.all([
-          fetchAnalyticsOverview(session.access_token, periodo).catch(() => null),
-          fetchAnalyticsViewsTimeline(session.access_token, periodo, 'views').catch(() => null),
-          fetchAnalyticsViewsTimeline(session.access_token, periodo, 'subscribersGained').catch(() => null),
-        ])
-        if (!cancelado) {
-          setOverview(ov)
-          setTimelines({ views: tlViews, subscribersGained: tlSubs })
-        }
-      } catch (e) {
-        if (!cancelado) setErro(e instanceof Error ? e.message : 'Erro desconhecido')
-      } finally {
-        if (!cancelado) setLoading(false)
+  async function carrega(forceRefresh = false) {
+    if (forceRefresh) setReloading(true)
+    else setLoading(true)
+    setErro(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+        return
       }
+      const [ov, tlViews, tlSubs] = await Promise.all([
+        fetchChannelOverview(session.access_token, { forceRefresh }).catch((e) => {
+          // Canal nao conectado retorna 404 — nao bloqueia timeline
+          if (e instanceof Error && /conect/i.test(e.message)) return null
+          throw e
+        }),
+        fetchAnalyticsViewsTimeline(session.access_token, periodo, 'views').catch(() => null),
+        fetchAnalyticsViewsTimeline(session.access_token, periodo, 'subscribersGained').catch(() => null),
+      ])
+      setChannelOverview(ov)
+      setTimelines({ views: tlViews, subscribersGained: tlSubs })
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro desconhecido')
+    } finally {
+      setLoading(false)
+      setReloading(false)
     }
-    carrega()
-    return () => {
-      cancelado = true
-    }
+  }
+
+  // Carga inicial + reload quando muda periodo (so a timeline depende dele)
+  useEffect(() => {
+    carrega(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodo])
 
-  // Trocar métrica é só mudar o state local — dados já estão carregados.
   function trocarMetricaTimeline(m: AnalyticsTimelineMetric) {
     setMetricaTimeline(m)
   }
@@ -85,24 +92,45 @@ export default function AnalyticsOverviewPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-1.5 rise rise-1">
           <span
-            className="font-mono text-[10px] uppercase tracking-[0.22em]"
-            style={{ color: 'var(--text-subtle)' }}
+            className="font-mono uppercase"
+            style={{ fontSize: 10.5, letterSpacing: '0.22em', color: 'var(--text-muted)' }}
           >
             studio · analytics · visão geral
           </span>
           <h1
             className="font-display text-[40px] font-semibold leading-none tracking-tight"
-            style={{ color: 'var(--text-primary)' }}
+            style={{ color: 'var(--text-primary)', letterSpacing: '-0.028em' }}
           >
-            Como seus beats estão indo<span style={{ color: 'var(--accent)' }}>.</span>
+            Como seus beats estão indo.
           </h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Métricas agregadas do seu canal no YouTube nos últimos{' '}
-            {periodo === '7d' ? '7 dias' : periodo === '30d' ? '30 dias' : '90 dias'}.
+            Métricas em tempo real do seu canal + tendência por janela.
+            {channelOverview?.channel_title && (
+              <>
+                {' '}Canal:{' '}
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  {channelOverview.channel_title}
+                </span>
+              </>
+            )}
           </p>
         </div>
 
-        <div className="rise rise-2">
+        <div className="flex items-center gap-3 rise rise-2">
+          <button
+            type="button"
+            onClick={() => carrega(true)}
+            disabled={reloading || loading}
+            className="btn-ghost"
+            title="Buscar dados mais recentes do YouTube"
+          >
+            <RefreshCw
+              size={13}
+              strokeWidth={2}
+              className={reloading ? 'animate-spin' : ''}
+            />
+            {reloading ? 'Atualizando…' : 'Atualizar'}
+          </button>
           <AnalyticsPeriodSelector value={periodo} onChange={setPeriodo} />
         </div>
       </div>
@@ -115,9 +143,9 @@ export default function AnalyticsOverviewPage() {
         <div
           className="flex items-start gap-3 rounded-xl px-4 py-3"
           style={{
-            background: 'rgba(239,68,68,0.06)',
-            border: '1px solid rgba(239,68,68,0.2)',
-            color: '#fca5a5',
+            background: 'rgba(248,113,113,0.06)',
+            border: '1px solid rgba(248,113,113,0.20)',
+            color: '#FCA5A5',
           }}
         >
           <AlertCircle className="h-4 w-4 shrink-0" />
@@ -125,76 +153,135 @@ export default function AnalyticsOverviewPage() {
         </div>
       )}
 
-      {/* Nota de escopo */}
-      {!loading && overview && (
-        <div className="rise rise-3">
-          <AnalyticsScopeNote variant="channel" />
-        </div>
-      )}
-
-      {/* KPI Cards */}
-      {!loading && overview && (
+      {/* KPI Cards — lifetime em tempo real (via channels.list) */}
+      {loading ? (
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-[160px] rounded-2xl"
+              style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+            >
+              <div className="shimmer h-full w-full rounded-2xl" />
+            </div>
+          ))}
+        </section>
+      ) : channelOverview ? (
         <section className="grid grid-cols-1 gap-3 rise rise-3 sm:grid-cols-3">
           {[
-            { label: 'Views totais', value: overview.views.value, delta: overview.views.delta_pct, icon: Eye },
-            { label: 'Inscritos ganhos', value: overview.subscribers_gained.value, delta: overview.subscribers_gained.delta_pct, icon: Music2 },
-            { label: 'Retenção média', value: overview.retention.value, suffix: '%', delta: overview.retention.delta_pct, icon: Clock },
-          ].map((kpi) => {
+            { label: 'Inscritos', value: channelOverview.subscribers, icon: Users, hint: 'no canal agora' },
+            { label: 'Views totais', value: channelOverview.total_views, icon: Eye, hint: 'lifetime do canal' },
+            { label: 'Vídeos', value: channelOverview.videos, icon: Video, hint: 'publicados no canal' },
+          ].map((kpi, idx) => {
             const Icon = kpi.icon
-            const subiu = kpi.delta >= 0
             return (
               <div
                 key={kpi.label}
-                className="group relative overflow-hidden rounded-xl p-5"
+                className="group relative overflow-hidden rounded-2xl p-5 transition-colors"
                 style={{
                   background: 'var(--bg-surface)',
-                  border: '1px solid var(--border)',
-                  boxShadow: 'var(--shadow-card)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-hover)'
+                  e.currentTarget.style.boxShadow = 'var(--glow-hover)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-subtle)'
+                  e.currentTarget.style.boxShadow = 'none'
                 }}
               >
                 <div className="flex items-start justify-between">
-                  <p
-                    className="font-mono text-[10px] font-medium uppercase tracking-[0.18em]"
-                    style={{ color: 'var(--text-subtle)' }}
-                  >
-                    {kpi.label}
-                  </p>
-                  <div
-                    className="flex h-7 w-7 items-center justify-center rounded-md"
-                    style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-muted)' }}
-                  >
-                    <Icon size={13} style={{ color: 'var(--text-muted)' }} />
+                  <div className="flex flex-col gap-1">
+                    <span
+                      className="font-mono"
+                      style={{
+                        fontSize: 10,
+                        color: 'var(--text-subtle)',
+                        letterSpacing: '0.18em',
+                      }}
+                    >
+                      0{idx + 1}
+                    </span>
+                    <p
+                      className="font-mono uppercase"
+                      style={{
+                        fontSize: 10.5,
+                        fontWeight: 500,
+                        letterSpacing: '0.16em',
+                        color: 'var(--text-secondary)',
+                      }}
+                    >
+                      {kpi.label}
+                    </p>
                   </div>
+                  <Icon size={14} strokeWidth={1.6} style={{ color: 'var(--text-muted)' }} />
                 </div>
-                <p className="num-hero mt-4 text-[36px]" style={{ color: 'var(--text-primary)' }}>
-                  {kpi.value.toLocaleString('pt-BR')}
-                  {kpi.suffix ?? ''}
+                <p
+                  className="num-hero mt-6 text-[44px] leading-none"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  {formataNumero(kpi.value)}
                 </p>
-                <div className="mt-2 flex items-center gap-1.5 text-[12px]">
-                  <span style={{ color: subiu ? '#4ade80' : '#f87171' }}>
-                    {subiu ? '↑' : '↓'} {Math.abs(kpi.delta)}%
+                <div className="mt-4 flex items-end justify-between">
+                  <span
+                    className="font-mono"
+                    style={{
+                      fontSize: 10.5,
+                      color: 'var(--text-muted)',
+                      letterSpacing: '0.06em',
+                    }}
+                  >
+                    {kpi.hint}
                   </span>
-                  <span style={{ color: 'var(--text-subtle)' }}>vs período anterior</span>
+                  {channelOverview.fresh && (
+                    <span
+                      className="font-mono uppercase"
+                      style={{
+                        fontSize: 9,
+                        letterSpacing: '0.18em',
+                        color: 'var(--led-success)',
+                      }}
+                    >
+                      ● live
+                    </span>
+                  )}
                 </div>
               </div>
             )
           })}
         </section>
+      ) : (
+        // Sem canal conectado — mensagem amigavel
+        <section className="rise rise-3">
+          <div
+            className="rounded-2xl p-5"
+            style={{
+              background: 'var(--bg-surface)',
+              border: '1px dashed var(--border-medium)',
+              color: 'var(--text-muted)',
+            }}
+          >
+            <p className="text-sm">
+              Conecte seu canal do YouTube em{' '}
+              <Link
+                href="/configuracoes"
+                className="underline"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                Configurações
+              </Link>{' '}
+              pra ver os KPIs em tempo real.
+            </p>
+          </div>
+        </section>
       )}
 
-      {/* Loading skeleton dos KPIs */}
-      {loading && (
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-[160px] rounded-xl"
-              style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-muted)' }}
-            >
-              <div className="shimmer h-full w-full rounded-xl" />
-            </div>
-          ))}
-        </section>
+      {/* Nota de escopo */}
+      {!loading && channelOverview && (
+        <div className="rise rise-3">
+          <AnalyticsScopeNote variant="channel" />
+        </div>
       )}
 
       {/* Timeline */}
@@ -208,26 +295,28 @@ export default function AnalyticsOverviewPage() {
         </section>
       )}
 
-      {/* Links pras sub-páginas */}
+      {/* Links pras sub-paginas */}
       <section className="grid grid-cols-1 gap-3 rise rise-5 sm:grid-cols-2">
         <Link
           href="/analytics/beats"
-          className="group flex items-center justify-between rounded-xl p-5 transition-colors"
+          className="group flex items-center justify-between rounded-2xl p-5 transition-colors"
           style={{
             background: 'var(--bg-surface)',
-            border: '1px solid var(--border)',
+            border: '1px solid var(--border-subtle)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--border-strong)'
+            e.currentTarget.style.borderColor = 'var(--border-hover)'
+            e.currentTarget.style.boxShadow = 'var(--glow-hover)'
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'var(--border)'
+            e.currentTarget.style.borderColor = 'var(--border-subtle)'
+            e.currentTarget.style.boxShadow = 'none'
           }}
         >
           <div>
             <p
-              className="font-mono text-[10px] uppercase tracking-[0.18em]"
-              style={{ color: 'var(--text-subtle)' }}
+              className="font-mono uppercase"
+              style={{ fontSize: 10.5, letterSpacing: '0.22em', color: 'var(--text-muted)' }}
             >
               Detalhes por beat
             </p>
@@ -250,22 +339,24 @@ export default function AnalyticsOverviewPage() {
 
         <Link
           href="/analytics/fontes"
-          className="group flex items-center justify-between rounded-xl p-5 transition-colors"
+          className="group flex items-center justify-between rounded-2xl p-5 transition-colors"
           style={{
             background: 'var(--bg-surface)',
-            border: '1px solid var(--border)',
+            border: '1px solid var(--border-subtle)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--border-strong)'
+            e.currentTarget.style.borderColor = 'var(--border-hover)'
+            e.currentTarget.style.boxShadow = 'var(--glow-hover)'
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'var(--border)'
+            e.currentTarget.style.borderColor = 'var(--border-subtle)'
+            e.currentTarget.style.boxShadow = 'none'
           }}
         >
           <div>
             <p
-              className="font-mono text-[10px] uppercase tracking-[0.18em]"
-              style={{ color: 'var(--text-subtle)' }}
+              className="font-mono uppercase"
+              style={{ fontSize: 10.5, letterSpacing: '0.22em', color: 'var(--text-muted)' }}
             >
               Quebra por origem
             </p>

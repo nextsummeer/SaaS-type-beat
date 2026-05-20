@@ -42,6 +42,46 @@ def _valida_periodo(periodo: str) -> str:
     return periodo
 
 
+@router.get("/channel-overview")
+def channel_overview(
+    force_refresh: bool = Query(False, description="Bypassa cache de 5min (botao RELOAD da UI)"),
+    authorization: str = Header(...),
+):
+    """Stats lifetime do canal — subs, views totais, video count — quase em tempo real.
+
+    Usa YouTube Data API (`channels.list?part=statistics,snippet`) com cache de 5min,
+    custo de 1 unit por chamada. Diferente da Analytics API (`/analytics/overview`)
+    que tem delay 24-48h pra agregados por janela.
+
+    `force_refresh=true` ignora cache (botao RELOAD).
+
+    Retorna:
+        {
+          "subscribers": 8,
+          "total_views": 231,
+          "videos": 5,
+          "channel_title": "Next Summer Musik",
+          "channel_id": "UC...",
+          "fresh": true
+        }
+    """
+    from app.services import youtube_service
+
+    user_id = _autentica(authorization)
+    try:
+        overview, was_fresh_call = youtube_service.get_channel_overview_realtime(
+            user_id, force_refresh=force_refresh
+        )
+    except RuntimeError as exc:
+        # Canal nao conectado
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        logger.error("channel-overview: falha user=%s: %s", user_id, exc)
+        raise HTTPException(status_code=502, detail=f"Erro ao buscar canal: {exc}")
+
+    return {**overview, "fresh": was_fresh_call}
+
+
 @router.get("/my-beats")
 def my_beats(
     period: str = Query("7d", description="Mantido por compat — stats agora sao lifetime via Data API"),

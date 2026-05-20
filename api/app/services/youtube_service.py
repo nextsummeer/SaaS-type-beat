@@ -21,11 +21,14 @@ YOUTUBE_UPLOAD_QUOTA_UNITS = 1600
 YOUTUBE_THUMBNAIL_QUOTA_UNITS = 50
 # videos.list = 1 unit por chunk de ate 50 IDs (usado em realtime stats)
 YOUTUBE_LIST_QUOTA_UNITS = 1
+# channels.list = 1 unit (lifetime stats do canal: subs/views/videos)
+YOUTUBE_CHANNELS_LIST_QUOTA_UNITS = 1
 # videos.update = 50 units por chamada (usado pra reagendar publishAt)
 YOUTUBE_UPDATE_QUOTA_UNITS = 50
 # Cache curto pra realtime stats: balance entre frescor e custo de quota
 CACHE_TTL_REALTIME_MINUTES = 5
 REALTIME_CACHE_KEY = "realtime:my-beats"
+CHANNEL_OVERVIEW_CACHE_KEY = "realtime:channel-overview"
 
 # Regex pra parsear duration ISO 8601 (PT2M36S, PT1H5M30S, PT45S etc.)
 _DURATION_REGEX = re.compile(r"^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$")
@@ -335,6 +338,117 @@ def get_realtime_stats(
     # Salva no cache (5min TTL)
     _realtime_cache_set(user_id, resultado)
     return resultado, True
+
+
+def _channel_overview_cache_get(user_id: str) -> Optional[dict]:
+    """Retorna stats do canal cacheadas se ainda validas, senao None."""
+    client = get_admin_client()
+    result = (
+        client.table("analytics_cache")
+        .select("payload, expires_at")
+        .eq("user_id", user_id)
+        .eq("cache_key", CHANNEL_OVERVIEW_CACHE_KEY)
+        .limit(1)
+        .execute()
+    )
+    if not result.data:
+        return None
+    row = result.data[0]
+    expires_at = datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00"))
+    if expires_at <= datetime.now(timezone.utc):
+        return None
+    return row["payload"]
+
+
+def _channel_overview_cache_set(user_id: str, payload: dict) -> None:
+    """Upsert do cache do channel overview com TTL 5min."""
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=CACHE_TTL_REALTIME_MINUTES)
+    client = get_admin_client()
+    client.table("analytics_cache").upsert(
+        {
+            "user_id": user_id,
+            "cache_key": CHANNEL_OVERVIEW_CACHE_KEY,
+            "payload": payload,
+            "expires_at": expires_at.isoformat(),
+        },
+        on_conflict="user_id,cache_key",
+    ).execute()
+
+
+def get_channel_overview_realtime(
+    user_id: str,
+    force_refresh: bool = False,
+) -> tuple[dict, bool]:
+    """Stats lifetime do canal (subs, views totais, video count) quase em tempo real.
+
+    Usa `channels.list?part=statistics,snippet` (1 unit) que retorna metricas
+    com latencia de minutos. Diferente da Analytics API que tem delay 24-48h.
+
+    Args:
+        user_id: dono do canal (pra credenciais OAuth + cache + tracking)
+        force_refresh: bypass do cache (botao RELOAD da UI)
+
+    Returns:
+        Tupla (overview, was_fresh_call):
+            overview: dict {subscribers, total_views, videos, channel_title, channel_id}
+            was_fresh_call: True se chamou a API agora, False se veio do cache
+    """
+    if not force_refresh:
+        cached = _channel_overview_cache_get(user_id)
+        if cached is not None:
+            return cached, False
+
+    account = _load_account(user_id)
+    credentials = _build_credentials(account)
+    if not credentials.valid:
+        credentials.refresh(GoogleRequest())
+        _persist_refreshed_token(account["account_id"], credentials)
+
+    youtube = build("youtube", "v3", credentials=credentials, cache_discovery=False)
+
+    t_start = time.time()
+    try:
+        resp = youtube.channels().list(
+            part="statistics,snippet",
+            id=account["channel_id"],
+        ).execute()
+    except HttpError as exc:
+        logger.error("[YT_CHANNEL_OVERVIEW] erro ao listar canal: %s", exc)
+        raise
+    duration_ms = int((time.time() - t_start) * 1000)
+
+    items = resp.get("items", []) or []
+    if not items:
+        # Canal nao encontrado — devolve zerado (raro: canal deletado/suspenso)
+        overview = {
+            "subscribers": 0,
+            "total_views": 0,
+            "videos": 0,
+            "channel_title": None,
+            "channel_id": account["channel_id"],
+        }
+    else:
+        item = items[0]
+        stats = item.get("statistics", {})
+        snippet = item.get("snippet", {})
+        overview = {
+            "subscribers": int(stats.get("subscriberCount") or 0),
+            "total_views": int(stats.get("viewCount") or 0),
+            "videos": int(stats.get("videoCount") or 0),
+            "channel_title": snippet.get("title"),
+            "channel_id": account["channel_id"],
+        }
+
+    # Registra consumo: 1 unit por channels.list
+    usage_tracker.track(
+        user_id=user_id,
+        feature="youtube_data_api",
+        duration_ms=duration_ms,
+        metadata={"endpoint": "channels.list", "quota_units": YOUTUBE_CHANNELS_LIST_QUOTA_UNITS},
+    )
+
+    _channel_overview_cache_set(user_id, overview)
+    return overview, True
 
 
 def upload_video(

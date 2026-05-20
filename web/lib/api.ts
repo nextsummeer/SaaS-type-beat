@@ -131,6 +131,35 @@ export async function fetchAnalyticsTopBeats(
   return res.json()
 }
 
+export interface ChannelOverview {
+  subscribers: number
+  total_views: number
+  videos: number
+  channel_title: string | null
+  channel_id: string
+  /** true se o backend chamou a YT API agora; false se veio do cache de 5min */
+  fresh: boolean
+}
+
+/** Stats lifetime do canal (subs, views totais, videos) quase em tempo real via Data API.
+ *  Cache backend de 5min. forceRefresh bypass (botao RELOAD da UI). */
+export async function fetchChannelOverview(
+  token: string,
+  options: { forceRefresh?: boolean } = {},
+): Promise<ChannelOverview> {
+  const { forceRefresh = false } = options
+  const url = `${API_URL}/analytics/channel-overview${forceRefresh ? '?force_refresh=true' : ''}`
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao buscar channel-overview`)
+  }
+  return res.json()
+}
+
 export type YoutubePrivacyStatus = 'public' | 'private' | 'unlisted'
 
 export interface AnalyticsMyBeatItem {
