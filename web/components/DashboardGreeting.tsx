@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -13,18 +14,38 @@ function saudacao(h: number): string {
 export function DashboardGreeting() {
   const supabase = createClient()
   const [nome, setNome] = useState<string>('')
+  const [temNomeReal, setTemNomeReal] = useState(false)
   const [agora, setAgora] = useState<Date | null>(null)
 
   useEffect(() => {
     let cancelado = false
     let intervalId: ReturnType<typeof setInterval> | undefined
 
-    supabase.auth.getUser().then(({ data }) => {
+    async function carregaNome() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (cancelado || !user) return
+
+      // Prioriza nome de produtor cadastrado em /configuracoes; fallback no handle do email
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('nome')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
       if (cancelado) return
-      const e = data.user?.email ?? ''
-      const handle = e.split('@')[0] ?? ''
-      setNome(handle)
-    })
+
+      const nomeReal = profile?.nome?.trim()
+      if (nomeReal) {
+        setNome(nomeReal)
+        setTemNomeReal(true)
+      } else {
+        const handle = (user.email ?? '').split('@')[0] ?? ''
+        setNome(handle)
+        setTemNomeReal(false)
+      }
+    }
+
+    carregaNome()
 
     const tid = setTimeout(() => {
       if (cancelado) return
@@ -78,6 +99,22 @@ export function DashboardGreeting() {
         {data ? data.charAt(0).toUpperCase() + data.slice(1) + ' — ' : ''}
         Suba um beat e a IA monta título, descrição, tags e capa em menos de 2 minutos.
       </p>
+      {!temNomeReal && nome && (
+        <Link
+          href="/configuracoes"
+          className="mt-1 inline-flex items-center gap-1.5 font-mono uppercase transition-colors"
+          style={{
+            fontSize: 10,
+            letterSpacing: '0.18em',
+            color: 'var(--text-subtle)',
+            width: 'fit-content',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-subtle)' }}
+        >
+          + adicionar nome de produtor
+        </Link>
+      )}
     </div>
   )
 }
