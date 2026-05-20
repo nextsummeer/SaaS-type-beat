@@ -5,7 +5,7 @@ import { Music2, Eye, Activity, CalendarClock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
   fetchBeats,
-  fetchAnalyticsOverview,
+  fetchChannelOverview,
   type BeatListItem,
 } from '@/lib/api'
 
@@ -81,7 +81,7 @@ function calculaStats(beats: BeatListItem[], totalViews: number): StatItem[] {
       label: 'Views totais',
       value: formataNumero(totalViews),
       icon: Eye,
-      hint: 'canal · últimos 90d',
+      hint: 'lifetime do canal',
       spark: [6, 10, 8, 14, 12, 16, Math.max(20, Math.min(40, totalViews / 5))],
     },
     {
@@ -116,10 +116,12 @@ export function DashboardStats() {
 
         const beats = await fetchBeats(session.access_token)
 
+        // Views totais = channels.list viewCount (lifetime do canal, mesmo dado da
+        // Visao Geral). Cache backend de 5min absorve o polling de 30s desse componente.
         let totalViews = 0
         try {
-          const overview = await fetchAnalyticsOverview(session.access_token, '90d')
-          totalViews = overview.views.value
+          const channelOv = await fetchChannelOverview(session.access_token)
+          totalViews = channelOv.total_views
         } catch {
           // Sem canal conectado ou erro temporário do YT — mostra 0 e segue
         }
@@ -140,7 +142,7 @@ export function DashboardStats() {
 
   const placeholders: StatItem[] = [
     { label: 'Beats publicados', value: '—', icon: Music2, hint: 'no YouTube', spark: [4, 8, 6, 12, 10, 14, 18] },
-    { label: 'Views totais', value: '—', icon: Eye, hint: 'últimos 90 dias', spark: [6, 10, 8, 14, 12, 16, 20] },
+    { label: 'Views totais', value: '—', icon: Eye, hint: 'lifetime do canal', spark: [6, 10, 8, 14, 12, 16, 20] },
     { label: 'Em fila', value: '—', icon: Activity, hint: 'processando ou rascunho', spark: [2, 4, 3, 6, 5, 7, 4] },
     { label: 'Agendados', value: '—', icon: CalendarClock, hint: 'aguardando publicação', spark: [1, 2, 3, 2, 4, 3, 5] },
   ]
