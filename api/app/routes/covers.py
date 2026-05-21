@@ -16,7 +16,12 @@ logger = logging.getLogger(__name__)
 
 
 class BriefModel(BaseModel):
-    artista_id: str
+    """Brief estruturado do produtor. Artista e texto livre (NAO e FK pra
+    artistas_referencia) — produtor digita qualquer nome. ADR 2026-05-21:
+    'sao milhares de artistas, todo dia nasce um novo' — curadoria manual
+    inviavel. A tabela artistas_referencia continua existindo mas e opcional
+    pra autocomplete/sugestoes futuras."""
+    artista_nome: str
     sujeito: str | None = None
     ambiente: str | None = None
     iluminacao: str | None = None
@@ -97,27 +102,16 @@ def generate(body: GenerateCoverRequest, authorization: str = Header(...)):
     if body.lote not in (1, 3):
         raise HTTPException(status_code=422, detail="lote deve ser 1 ou 3")
 
+    # Artista e texto livre — sem lookup em tabela. Apenas validar nao-vazio.
+    artista_nome = (body.brief.artista_nome or "").strip()
+    if not artista_nome:
+        raise HTTPException(status_code=422, detail="artista_nome obrigatorio")
+
     client = get_admin_client()
 
-    # Resolve artista_id → nome canonico
-    artist_resp = (
-        client.table("artistas_referencia")
-        .select("id, nome_canonico, ativo")
-        .eq("id", body.brief.artista_id)
-        .maybe_single()
-        .execute()
-    )
-    artist = artist_resp.data if artist_resp else None
-    if not artist:
-        raise HTTPException(status_code=422, detail="artista_id nao encontrado")
-    if not artist.get("ativo", True):
-        raise HTTPException(status_code=422, detail="artista inativo")
-
-    artista_nome = artist["nome_canonico"]
-
-    # Brief dict a passar pro worker (sem artista_id — ele recebe nome separado)
+    # Brief dict a passar pro worker (artista_nome incluido pro audit em cover_library.brief_used)
     brief_dict = {
-        "artista_id": body.brief.artista_id,  # mantemos pro audit em cover_library.brief_used
+        "artista_nome": artista_nome,
         "sujeito": body.brief.sujeito,
         "ambiente": body.brief.ambiente,
         "iluminacao": body.brief.iluminacao,

@@ -12,6 +12,9 @@ import {
 } from '@/lib/api'
 import { CapasHeader } from '@/components/CapasHeader'
 import { CapasGrid } from '@/components/CapasGrid'
+import { CapasWizard } from '@/components/CapasWizard'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
 
 type PageState =
   | { kind: 'loading' }
@@ -35,7 +38,9 @@ export default function CapasPage() {
   const [covers, setCovers] = useState<CoverLibraryItem[]>([])
   const [credits, setCredits] = useState<CoverCreditsState | null>(null)
   const [defaultBrief, setDefaultBrief] = useState<CoverBrief | null>(null)
-  const [artistaNome, setArtistaNome] = useState<string | null>(null)
+  const [hasGeneratedFirstCover, setHasGeneratedFirstCover] = useState<boolean>(false)
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const [generatingCount, setGeneratingCount] = useState(0)
 
   const loadData = useCallback(async () => {
     try {
@@ -46,28 +51,19 @@ export default function CapasPage() {
         return
       }
 
-      // 1. Profile (default_brief) — vem do Supabase direto, sem endpoint dedicado
+      // 1. Profile (default_brief + has_generated_first_cover) — vem do Supabase direto.
+      //    Artista vem como texto livre dentro do brief (artista_nome),
+      //    nao precisa resolver de tabela.
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('default_brief')
+        .select('default_brief, has_generated_first_cover')
         .single()
 
       const brief = (profile?.default_brief as CoverBrief | null) ?? null
       setDefaultBrief(brief)
+      setHasGeneratedFirstCover(Boolean(profile?.has_generated_first_cover))
 
-      // 2. Se tem brief com artista_id, resolve o nome do artista
-      if (brief?.artista_id) {
-        const { data: artist } = await supabase
-          .from('artistas_referencia')
-          .select('nome_canonico')
-          .eq('id', brief.artista_id)
-          .single()
-        setArtistaNome(artist?.nome_canonico ?? null)
-      } else {
-        setArtistaNome(null)
-      }
-
-      // 3. Em paralelo: créditos + biblioteca
+      // 2. Em paralelo: créditos + biblioteca
       const [creditsRes, coversRes] = await Promise.all([
         fetchCoverCredits(token),
         fetchCovers(token),
@@ -85,21 +81,76 @@ export default function CapasPage() {
     loadData()
   }, [loadData])
 
-  // ── HANDLERS (todos placeholder por enquanto — implementação real em T4.13+) ──
-  const handleEditStyle = () => {
-    console.log('TODO T4.13: abrir wizard de edição de estilo')
-  }
-  const handleConfigureStyle = () => {
-    console.log('TODO T4.13: abrir wizard de configuração inicial')
-  }
+  // ── HANDLERS ──
+  const handleEditStyle = () => setWizardOpen(true)
+  const handleConfigureStyle = () => setWizardOpen(true)
+
+  /**
+   * Chamado pelo wizard quando produtor salva o brief.
+   * - Persiste default_brief em user_profiles
+   * - Se action='save_and_generate', dispara POST /covers/generate (lote 1).
+   *   Primeira capa pode ser gratis (logica no backend via has_generated_first_cover).
+   * - Recarrega dados ao final.
+   */
+  const handleWizardSave = useCallback(
+    async (brief: CoverBrief, action: 'save_only' | 'save_and_generate') => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) throw new Error('Sessão expirada')
+
+      // 1. Persiste o brief
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update({ default_brief: brief })
+        .eq('user_id', session.user.id)
+
+      if (updateError) {
+        console.error('Falha ao salvar default_brief:', updateError)
+        throw new Error('Falha ao salvar estilo padrão')
+      }
+
+      setDefaultBrief(brief)
+
+      // 2. Se pediu geração, dispara o endpoint
+      if (action === 'save_and_generate') {
+        setGeneratingCount(1)
+        try {
+          const res = await fetch(`${API_URL}/covers/generate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ brief, lote: 1, save_as_default: false }),
+          })
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}))
+            console.error('Falha ao gerar capa:', body)
+            // Nao throw — o brief ja foi salvo, geracao e bonus
+          }
+        } catch (err) {
+          console.error('Erro no fetch /covers/generate:', err)
+        } finally {
+          setGeneratingCount(0)
+        }
+      }
+
+      // 3. Fecha o wizard + recarrega dados (créditos, biblioteca, has_generated_first_cover)
+      setWizardOpen(false)
+      await loadData()
+    },
+    [supabase, loadData],
+  )
+
   const handleGenerate = (lote: 1 | 3) => {
+    // T4.18 vai implementar modal de confirmação + chamada real.
     console.log(`TODO T4.18: confirmar geração de ${lote} capa(s)`)
   }
   const handleGenerateDifferent = () => {
-    console.log('TODO T4.13: abrir modal de brief pontual')
+    // V1.5 — por enquanto também leva pro wizard (vai poder editar antes de gerar pontual)
+    console.log('TODO T4.18: abrir modal de brief pontual sem salvar como default')
   }
   const handleDownload = (cover: CoverLibraryItem) => {
-    // Implementação simples agora — abre URL direto pra download
     const link = document.createElement('a')
     link.href = cover.image_url
     link.download = `capa-${cover.id.slice(0, 8)}.jpg`
@@ -117,47 +168,61 @@ export default function CapasPage() {
 
   // ── RENDER ──
 
-  if (state.kind === 'error') {
-    return <PageError message={state.message} onRetry={loadData} />
-  }
-
-  // EMPTY + SEM BRIEF — hero centralizado pedindo configuração
-  // Mostra após loading terminar, se não tem default_brief configurado
-  if (state.kind === 'ready' && !defaultBrief) {
-    return <EmptyNoBrief onConfigure={handleConfigureStyle} />
-  }
-
   const isLoading = state.kind === 'loading'
+  const showEmptyNoBrief = state.kind === 'ready' && !defaultBrief
+  const isFirstTime = !defaultBrief
+  const isOnboardingFree = !hasGeneratedFirstCover
+
+  let pageContent: React.ReactNode
+
+  if (state.kind === 'error') {
+    pageContent = <PageError message={state.message} onRetry={loadData} />
+  } else if (showEmptyNoBrief) {
+    pageContent = <EmptyNoBrief onConfigure={handleConfigureStyle} />
+  } else {
+    pageContent = (
+      <div className="space-y-10">
+        {/* HEADER editorial */}
+        <header className="rise rise-1">
+          <SectionLabel num="01" label="Sua biblioteca de capas" />
+          <CapasHeader
+            defaultBrief={defaultBrief}
+            credits={credits}
+            loading={isLoading}
+            onEditStyle={handleEditStyle}
+            onGenerate={handleGenerate}
+            onGenerateWithDifferentBrief={handleGenerateDifferent}
+          />
+        </header>
+
+        {/* GRID */}
+        <section className="rise rise-2">
+          <SectionLabel num="02" label="Capas geradas" />
+          <CapasGrid
+            covers={covers}
+            loading={isLoading}
+            generatingCount={generatingCount}
+            onDownload={handleDownload}
+            onUseInBeat={handleUseInBeat}
+            onDiscard={handleDiscard}
+          />
+        </section>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-10">
-      {/* HEADER editorial */}
-      <header className="rise rise-1">
-        <SectionLabel num="01" label="Sua biblioteca de capas" />
-        <CapasHeader
-          defaultBrief={defaultBrief}
-          artistaNome={artistaNome}
-          credits={credits}
-          loading={isLoading}
-          onEditStyle={handleEditStyle}
-          onGenerate={handleGenerate}
-          onGenerateWithDifferentBrief={handleGenerateDifferent}
-        />
-      </header>
-
-      {/* GRID */}
-      <section className="rise rise-2">
-        <SectionLabel num="02" label="Capas geradas" />
-        <CapasGrid
-          covers={covers}
-          loading={isLoading}
-          generatingCount={0}
-          onDownload={handleDownload}
-          onUseInBeat={handleUseInBeat}
-          onDiscard={handleDiscard}
-        />
-      </section>
-    </div>
+    <>
+      {pageContent}
+      <CapasWizard
+        open={wizardOpen}
+        initialBrief={defaultBrief}
+        isFirstTime={isFirstTime}
+        isOnboardingFree={isOnboardingFree}
+        onClose={() => setWizardOpen(false)}
+        onSave={handleWizardSave}
+      />
+    </>
   )
 }
 

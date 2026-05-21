@@ -40,7 +40,7 @@ Salva em Supabase Storage + linha em cover_library
 
 ### 2. Brief estruturado (5 campos, MVP inicial)
 
-1. **Artista de referencia** — autocomplete da tabela `artistas_referencia` ja existente (T2.7)
+1. **Artista de referencia** — **TEXTO LIVRE digitado pelo produtor** (correcao em 2026-05-21 pos-implementacao). Inicialmente eu havia mantido FK pra `artistas_referencia` no schema, mas Gustavo lembrou que sao milhares de artistas (todo dia nasce um novo) — curadoria manual e inviavel. A tabela `artistas_referencia` continua existindo mas e OPCIONAL pra autocomplete futuro. T2.7 (curadoria 80-100 artistas) vira backlog como "banco de aprendizado dos artistas mais usados".
 2. **Sujeito** — cards: 🧑 jovem | 👩 mulher | 👥 grupo | 🚫 sem pessoa | 🎵 so objeto
 3. **Ambiente/Setting** — cards: 🏙️ rua/hood | 🏨 interior luxo | 🌃 noturno | 🌅 natureza | ⚡ neon | 🏛️ minimalista
 4. **Iluminacao/Paleta** — cards: 🌞 sol duro | 🌆 golden hour | 🔴 vermelho | 💙 azul/neon | 🖤 noturno | 🎞️ vintage
@@ -78,9 +78,11 @@ Tiers (limite mensal de geracoes):
 
 | Tier | Capas/mes | Custo BeatPost | Posicionamento |
 |------|-----------|----------------|----------------|
-| Free | 3-5 (a definir) | $0.04-0.07 | Teste real, gancho |
+| Free | 3 | $0.04 | Teste real, gancho |
 | Intermediario | 15 | $0.20 | Produtor casual |
 | Premium | 40 | $0.52 | Produtor profissional |
+
+**Primeira capa do wizard e GRATIS** (nao consome credito do tier). Flag `has_generated_first_cover` em user_profiles (default false). Worker pula `consume()` na primeira execucao por user. Padrao de SaaS sério (Canva, Loomly). Resolve dilema do tier free com 3 creditos nao poder gastar 1/3 so pra ver resultado do setup.
 
 Toda geracao registra em `api_usage` com `feature='cover_generation'` e `cost_usd=0.013` (Claude + fal.ai juntos).
 

@@ -433,7 +433,8 @@ export async function fetchAchievements(token: string): Promise<AchievementsResp
 // ──────────────────────────────────────────────────────────────────────
 
 export interface CoverBrief {
-  artista_id: string
+  /** Texto livre — produtor digita qualquer nome de artista. NAO e FK. */
+  artista_nome: string
   sujeito: string | null
   ambiente: string | null
   iluminacao: string | null

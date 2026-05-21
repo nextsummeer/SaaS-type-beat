@@ -5,7 +5,6 @@ import type { CoverBrief, CoverCreditsState } from '@/lib/api'
 
 type Props = {
   defaultBrief: CoverBrief | null
-  artistaNome: string | null  // resolvido pelo caller — null se brief sem artista_id válido
   credits: CoverCreditsState | null
   loading: boolean
   onEditStyle: () => void
@@ -54,9 +53,9 @@ const ENERGIA_DISPLAY: Record<string, string> = {
   festa: 'festa',
 }
 
-function briefSummary(brief: CoverBrief, artistaNome: string | null): string[] {
+function briefSummary(brief: CoverBrief): string[] {
   const out: string[] = []
-  if (artistaNome) out.push(artistaNome)
+  if (brief.artista_nome) out.push(brief.artista_nome)
   if (brief.sujeito && SUJEITO_DISPLAY[brief.sujeito]) out.push(SUJEITO_DISPLAY[brief.sujeito])
   if (brief.ambiente && AMBIENTE_DISPLAY[brief.ambiente]) out.push(AMBIENTE_DISPLAY[brief.ambiente])
   if (brief.iluminacao && ILUMINACAO_DISPLAY[brief.iluminacao]) out.push(ILUMINACAO_DISPLAY[brief.iluminacao])
@@ -81,7 +80,6 @@ function daysUntilReset(resetAt: string | null): number | null {
  */
 export function CapasHeader({
   defaultBrief,
-  artistaNome,
   credits,
   loading,
   onEditStyle,
@@ -91,7 +89,7 @@ export function CapasHeader({
   const hasCredits = (credits?.remaining ?? 0) > 0
   const canGenerateOne = (credits?.remaining ?? 0) >= 1
   const canGenerateThree = (credits?.remaining ?? 0) >= 3
-  const summary = defaultBrief ? briefSummary(defaultBrief, artistaNome) : []
+  const summary = defaultBrief ? briefSummary(defaultBrief) : []
   const daysLeft = daysUntilReset(credits?.reset_at ?? null)
 
   return (
