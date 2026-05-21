@@ -7,12 +7,9 @@ import { BriefSelector } from './BriefSelector'
 type Props = {
   presets: BriefPreset[]
   activeBriefId: string | null
-  presetLimit: number
   credits: CoverCreditsState | null
   loading: boolean
-  onSelectBrief: (id: string) => void
-  onCreateBrief: () => void
-  onManageBriefs: () => void
+  onOpenBriefManager: () => void
   onGenerate: (lote: 1 | 3) => void
 }
 
@@ -46,12 +43,9 @@ function daysUntilReset(resetAt: string | null): number | null {
 export function CapasHeader({
   presets,
   activeBriefId,
-  presetLimit,
   credits,
   loading,
-  onSelectBrief,
-  onCreateBrief,
-  onManageBriefs,
+  onOpenBriefManager,
   onGenerate,
 }: Props) {
   const hasActive = !!activeBriefId && presets.some((p) => p.id === activeBriefId)
@@ -82,11 +76,8 @@ export function CapasHeader({
           <BriefSelector
             presets={presets}
             activeId={activeBriefId}
-            limit={presetLimit}
             loading={loading}
-            onSelect={onSelectBrief}
-            onCreate={onCreateBrief}
-            onManage={onManageBriefs}
+            onOpenManager={onOpenBriefManager}
           />
         </div>
 

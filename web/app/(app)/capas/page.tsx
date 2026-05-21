@@ -315,12 +315,9 @@ export default function CapasPage() {
           <CapasHeader
             presets={presets}
             activeBriefId={activeBrief?.id ?? null}
-            presetLimit={presetLimit}
             credits={credits}
             loading={isLoading}
-            onSelectBrief={handleSelectBrief}
-            onCreateBrief={handleOpenWizardNew}
-            onManageBriefs={() => setManageOpen(true)}
+            onOpenBriefManager={() => setManageOpen(true)}
             onGenerate={handleGenerate}
           />
         </header>
