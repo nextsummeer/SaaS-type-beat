@@ -13,6 +13,7 @@ import {
 import { CapasHeader } from '@/components/CapasHeader'
 import { CapasGrid } from '@/components/CapasGrid'
 import { CapasWizard } from '@/components/CapasWizard'
+import { ConfirmGenerateModal } from '@/components/ConfirmGenerateModal'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
 
@@ -40,7 +41,10 @@ export default function CapasPage() {
   const [defaultBrief, setDefaultBrief] = useState<CoverBrief | null>(null)
   const [hasGeneratedFirstCover, setHasGeneratedFirstCover] = useState<boolean>(false)
   const [wizardOpen, setWizardOpen] = useState(false)
+  const [wizardMode, setWizardMode] = useState<'configure' | 'pontual'>('configure')
   const [generatingCount, setGeneratingCount] = useState(0)
+  const [confirmLote, setConfirmLote] = useState<1 | 3 | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   const loadData = useCallback(async () => {
     try {
@@ -82,8 +86,19 @@ export default function CapasPage() {
   }, [loadData])
 
   // ── HANDLERS ──
-  const handleEditStyle = () => setWizardOpen(true)
-  const handleConfigureStyle = () => setWizardOpen(true)
+  const handleEditStyle = () => {
+    setWizardMode('configure')
+    setWizardOpen(true)
+  }
+  const handleConfigureStyle = () => {
+    setWizardMode('configure')
+    setWizardOpen(true)
+  }
+  const handleGenerateDifferent = () => {
+    if (!defaultBrief) return
+    setWizardMode('pontual')
+    setWizardOpen(true)
+  }
 
   /**
    * Chamado pelo wizard quando produtor salva o brief.
@@ -93,13 +108,59 @@ export default function CapasPage() {
    *   Aba mostra skeleton via generatingCount enquanto roda.
    *   Primeira capa pode ser gratis (logica no backend via has_generated_first_cover).
    */
-  const handleWizardSave = useCallback(
-    async (brief: CoverBrief, action: 'save_only' | 'save_and_generate') => {
+  /**
+   * Dispara POST /covers/generate. Helper compartilhado entre os fluxos:
+   * - Botões "Gerar 1/3" no header (após confirmação do modal)
+   * - Wizard em modo 'pontual' (brief diferente do default)
+   * - Wizard em modo 'configure' com action='save_and_generate'
+   */
+  const triggerGenerate = useCallback(
+    async (brief: CoverBrief, lote: 1 | 3) => {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
       if (!token) throw new Error('Sessão expirada')
 
-      // 1. Persiste o brief (rápido, ~200ms)
+      setGeneratingCount(lote)
+      try {
+        const res = await fetch(`${API_URL}/covers/generate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ brief, lote, save_as_default: false }),
+        })
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          console.error('Falha ao gerar capa:', body)
+        }
+      } catch (err) {
+        console.error('Erro no fetch /covers/generate:', err)
+      } finally {
+        setGeneratingCount(0)
+        await loadData()
+      }
+    },
+    [supabase, loadData],
+  )
+
+  const handleWizardSave = useCallback(
+    async (
+      brief: CoverBrief,
+      action: 'save_only' | 'save_and_generate' | 'generate_pontual',
+    ) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) throw new Error('Sessão expirada')
+
+      // Modo pontual: NAO salva o brief como default — apenas gera com ele
+      if (action === 'generate_pontual') {
+        setWizardOpen(false)
+        await triggerGenerate(brief, 1)
+        return
+      }
+
+      // 1. Persiste o brief como default (rápido, ~200ms)
       const { error: updateError } = await supabase
         .from('user_profiles')
         .update({ default_brief: brief })
@@ -116,43 +177,32 @@ export default function CapasPage() {
       setWizardOpen(false)
       setDefaultBrief(brief)
 
-      // 3. Geração em background (não bloqueia o fechamento do modal)
+      // 3. Se pediu geração junto, dispara em background
       if (action === 'save_and_generate') {
-        setGeneratingCount(1)
-        try {
-          const res = await fetch(`${API_URL}/covers/generate`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ brief, lote: 1, save_as_default: false }),
-          })
-          if (!res.ok) {
-            const body = await res.json().catch(() => ({}))
-            console.error('Falha ao gerar capa:', body)
-          }
-        } catch (err) {
-          console.error('Erro no fetch /covers/generate:', err)
-        } finally {
-          setGeneratingCount(0)
-        }
+        await triggerGenerate(brief, 1)
+      } else {
+        // Apenas salvou — recarrega dados (créditos não mudou mas brief sim)
+        await loadData()
       }
-
-      // 4. Recarrega tudo (créditos, biblioteca, has_generated_first_cover)
-      await loadData()
     },
-    [supabase, loadData],
+    [supabase, loadData, triggerGenerate],
   )
 
   const handleGenerate = (lote: 1 | 3) => {
-    // T4.18 vai implementar modal de confirmação + chamada real.
-    console.log(`TODO T4.18: confirmar geração de ${lote} capa(s)`)
+    if (!defaultBrief) return
+    setConfirmLote(lote)
   }
-  const handleGenerateDifferent = () => {
-    // V1.5 — por enquanto também leva pro wizard (vai poder editar antes de gerar pontual)
-    console.log('TODO T4.18: abrir modal de brief pontual sem salvar como default')
-  }
+
+  const confirmGenerateAction = useCallback(async () => {
+    if (!confirmLote || !defaultBrief) return
+    setConfirmLoading(true)
+    try {
+      await triggerGenerate(defaultBrief, confirmLote)
+    } finally {
+      setConfirmLoading(false)
+      setConfirmLote(null)
+    }
+  }, [confirmLote, defaultBrief, triggerGenerate])
   const handleDownload = (cover: CoverLibraryItem) => {
     const link = document.createElement('a')
     link.href = cover.image_url
@@ -222,8 +272,18 @@ export default function CapasPage() {
         initialBrief={defaultBrief}
         isFirstTime={isFirstTime}
         isOnboardingFree={isOnboardingFree}
+        mode={wizardMode}
         onClose={() => setWizardOpen(false)}
         onSave={handleWizardSave}
+      />
+      <ConfirmGenerateModal
+        open={confirmLote !== null}
+        lote={confirmLote ?? 1}
+        remaining={credits?.remaining ?? 0}
+        isOnboardingFree={isOnboardingFree}
+        loading={confirmLoading}
+        onCancel={() => setConfirmLote(null)}
+        onConfirm={confirmGenerateAction}
       />
     </>
   )

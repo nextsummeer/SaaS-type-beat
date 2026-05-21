@@ -71,13 +71,22 @@ const ENERGIA_OPTIONS: Option[] = [
 ]
 
 type Step = 1 | 2 | 3
-type SaveAction = 'save_and_generate' | 'save_only'
+type SaveAction = 'save_and_generate' | 'save_only' | 'generate_pontual'
+type WizardMode = 'configure' | 'pontual'
 
 type Props = {
   open: boolean
   initialBrief: CoverBrief | null
   isFirstTime: boolean
   isOnboardingFree: boolean
+  /**
+   * 'configure' (default): wizard salva como default_brief do user.
+   *   Step 3 tem 2 CTAs: 'Apenas salvar' e 'Salvar + gerar 1 capa'.
+   * 'pontual': brief é usado apenas pra UMA geração específica.
+   *   Default_brief do user NÃO é modificado.
+   *   Step 3 tem 1 CTA único: 'Gerar 1 capa'.
+   */
+  mode?: WizardMode
   onClose: () => void
   onSave: (brief: CoverBrief, action: SaveAction) => Promise<void>
 }
@@ -96,6 +105,7 @@ export function CapasWizard({
   initialBrief,
   isFirstTime,
   isOnboardingFree,
+  mode = 'configure',
   onClose,
   onSave,
 }: Props) {
@@ -211,7 +221,11 @@ export function CapasWizard({
                 color: 'var(--text-subtle)',
               }}
             >
-              {isFirstTime ? 'Configuração inicial' : 'Editar estilo padrão'}
+              {mode === 'pontual'
+                ? 'Brief pontual · não salva como padrão'
+                : isFirstTime
+                ? 'Configuração inicial'
+                : 'Editar estilo padrão'}
             </span>
             <span aria-hidden style={{ width: 24, height: 1, background: 'var(--border-subtle)' }} />
             <StepIndicator current={step} />
@@ -302,7 +316,43 @@ export function CapasWizard({
                 Próximo
                 <ArrowRight size={13} strokeWidth={2.2} />
               </button>
+            ) : mode === 'pontual' ? (
+              // Modo pontual: apenas 1 CTA — gera SEM salvar como default
+              <button
+                type="button"
+                onClick={() => handleSubmit('generate_pontual')}
+                disabled={!!saving}
+                className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving === 'generate_pontual' ? (
+                  <>
+                    <Loader2 size={13} strokeWidth={2.2} className="animate-spin" />
+                    Enviando…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={13} strokeWidth={2.2} />
+                    Gerar 1 capa com este brief
+                    {!isOnboardingFree && (
+                      <span
+                        className="font-mono tabular"
+                        style={{
+                          fontSize: 10.5,
+                          letterSpacing: '0.08em',
+                          color: 'rgba(255,255,255,0.78)',
+                          marginLeft: 2,
+                          paddingLeft: 8,
+                          borderLeft: '1px solid rgba(255,255,255,0.22)',
+                        }}
+                      >
+                        1 CRÉDITO
+                      </span>
+                    )}
+                  </>
+                )}
+              </button>
             ) : (
+              // Modo configure: 2 CTAs (apenas salvar ou salvar+gerar)
               <>
                 <button
                   type="button"
