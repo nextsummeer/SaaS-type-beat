@@ -1,8 +1,10 @@
 # Geracao de capa por IA no MVP (estilo do perfil + mood do beat)
 
 **Data:** 2026-05-07
-**Status:** aceita (substitui parcialmente `2026-04-25-capa-manual.md`)
-**Tags:** decisao, produto, mvp, ia, capa, fal-ai, ux, retencao
+**Status:** SUPERSEDED em 2026-05-21 por `2026-05-21-geracao-de-capa-prompt-base-claude.md`
+**Tags:** decisao, produto, mvp, ia, capa, fal-ai, ux, retencao, superseded
+
+> **Nota (2026-05-21):** Esta ADR foi substituida apos descoberta de que prompt base mestre + brief curto do produtor via Claude runtime cobre infinitos artistas/estilos com qualidade superior aos clusters fixos. Ver nova ADR para detalhes. A decisao de capa manual sempre disponivel (regra 6) permanece valida.
 
 ## Contexto
 
