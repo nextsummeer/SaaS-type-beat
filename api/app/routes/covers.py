@@ -1,4 +1,4 @@
-"""Endpoint HTTP da aba /capas — gera capa via IA.
+"""Endpoints HTTP da aba /capas — gera capa via IA, lista biblioteca, le creditos.
 
 ADR 2026-05-21-geracao-de-capa-prompt-base-claude.md
 """
@@ -7,6 +7,7 @@ import logging
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
+from app.services import credits_service
 from app.services.supabase_service import get_admin_client, validate_token
 from app.workers.cover import generate_covers
 
@@ -29,6 +30,53 @@ class GenerateCoverRequest(BaseModel):
     save_as_default: bool = False
 
 
+def _authenticate(authorization: str):
+    """Helper compartilhado pra auth via JWT Bearer. Retorna user."""
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token invalido")
+    token = authorization.removeprefix("Bearer ")
+    try:
+        return validate_token(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token invalido ou expirado")
+
+
+@router.get("")
+def list_library(authorization: str = Header(...)):
+    """Lista a biblioteca de capas do user autenticado.
+
+    Returns:
+        list de capas ordenadas por created_at desc, com fields:
+            id, image_url, brief_used, source, used_in_beats_count, created_at
+    """
+    user = _authenticate(authorization)
+    client = get_admin_client()
+
+    result = (
+        client.table("cover_library")
+        .select(
+            "id, image_url, storage_path, brief_used, source, "
+            "used_in_beats_count, created_at"
+        )
+        .eq("user_id", str(user.id))
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    return result.data or []
+
+
+@router.get("/credits")
+def get_credits(authorization: str = Header(...)):
+    """Estado dos creditos do user autenticado.
+
+    Returns:
+        {tier, limit, used, remaining, reset_at}
+    """
+    user = _authenticate(authorization)
+    return credits_service.get_remaining(str(user.id))
+
+
 @router.post("/generate")
 def generate(body: GenerateCoverRequest, authorization: str = Header(...)):
     """Gera 1 ou 3 capas via IA pra biblioteca do user.
@@ -43,15 +91,7 @@ def generate(body: GenerateCoverRequest, authorization: str = Header(...)):
             ok, generated_ids, credits_consumed, credits_remaining, errors
         }
     """
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Token invalido")
-    token = authorization.removeprefix("Bearer ")
-
-    try:
-        user = validate_token(token)
-    except Exception:
-        raise HTTPException(status_code=401, detail="Token invalido ou expirado")
-
+    user = _authenticate(authorization)
     user_id = str(user.id)
 
     if body.lote not in (1, 3):

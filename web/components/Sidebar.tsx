@@ -12,6 +12,7 @@ import {
   BarChart3,
   Trophy,
   Settings,
+  Sparkles,
   ChevronRight,
 } from 'lucide-react'
 
@@ -31,6 +32,7 @@ type NavItem = {
 const navPrincipal: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/upload', label: 'Novo beat', icon: Upload },
+  { href: '/capas', label: 'Capas', icon: Sparkles, exact: true },
   { href: '/beats', label: 'Meus beats', icon: Music, exact: true },
   { href: '/agenda', label: 'Agenda', icon: CalendarRange, exact: true },
   {

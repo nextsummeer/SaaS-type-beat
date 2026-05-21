@@ -427,3 +427,62 @@ export async function fetchAchievements(token: string): Promise<AchievementsResp
   }
   return res.json()
 }
+
+// ──────────────────────────────────────────────────────────────────────
+// Capas (geração via IA)
+// ──────────────────────────────────────────────────────────────────────
+
+export interface CoverBrief {
+  artista_id: string
+  sujeito: string | null
+  ambiente: string | null
+  iluminacao: string | null
+  energia: string | null
+  nota_livre: string | null
+}
+
+export interface CoverLibraryItem {
+  id: string
+  image_url: string
+  storage_path: string
+  brief_used: CoverBrief | null
+  source: 'ai_generated' | 'manual_upload'
+  used_in_beats_count: number
+  created_at: string
+}
+
+export type UserTier = 'free' | 'intermediate' | 'premium'
+
+export interface CoverCreditsState {
+  tier: UserTier
+  limit: number
+  used: number
+  remaining: number
+  reset_at: string | null
+}
+
+/** Lista a biblioteca de capas do user (ordenada por created_at desc). */
+export async function fetchCovers(token: string): Promise<CoverLibraryItem[]> {
+  const res = await fetch(`${API_URL}/covers`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao buscar capas`)
+  }
+  return res.json()
+}
+
+/** Estado dos créditos do user (tier + restantes + data de reset). */
+export async function fetchCoverCredits(token: string): Promise<CoverCreditsState> {
+  const res = await fetch(`${API_URL}/covers/credits`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao buscar créditos`)
+  }
+  return res.json()
+}
