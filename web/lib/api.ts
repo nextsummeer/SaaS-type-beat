@@ -442,14 +442,18 @@ export interface CoverBrief {
   nota_livre: string | null
 }
 
+export type CoverStatus = 'pending' | 'ready' | 'failed'
+
 export interface CoverLibraryItem {
   id: string
-  image_url: string
-  storage_path: string
+  /** Nullable: rows com status='pending' nao tem URL ainda */
+  image_url: string | null
+  storage_path: string | null
   brief_used: CoverBrief | null
   source: 'ai_generated' | 'manual_upload'
   used_in_beats_count: number
   created_at: string
+  status: CoverStatus
 }
 
 export type UserTier = 'free' | 'intermediate' | 'premium'
@@ -484,6 +488,109 @@ export async function fetchCoverCredits(token: string): Promise<CoverCreditsStat
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.detail ?? `Erro ${res.status} ao buscar créditos`)
+  }
+  return res.json()
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Brief Presets (configurações de estilo nomeadas)
+// ──────────────────────────────────────────────────────────────────────
+
+export interface BriefPreset {
+  id: string
+  name: string
+  brief: CoverBrief
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface BriefPresetList {
+  items: BriefPreset[]
+  tier: UserTier
+  /** -1 = ilimitado (premium) */
+  limit: number
+  count: number
+}
+
+export async function fetchBriefs(token: string): Promise<BriefPresetList> {
+  const res = await fetch(`${API_URL}/covers/briefs`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao buscar briefs`)
+  }
+  return res.json()
+}
+
+export async function createBrief(
+  token: string,
+  payload: { name: string; brief: CoverBrief; activate?: boolean },
+): Promise<BriefPreset> {
+  const res = await fetch(`${API_URL}/covers/briefs`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      name: payload.name,
+      brief: payload.brief,
+      activate: payload.activate ?? true,
+    }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(
+      typeof body.detail === 'string'
+        ? body.detail
+        : body.detail?.message ?? `Erro ${res.status} ao criar brief`,
+    )
+  }
+  return res.json()
+}
+
+export async function updateBrief(
+  token: string,
+  id: string,
+  payload: { name?: string; brief?: CoverBrief },
+): Promise<BriefPreset> {
+  const res = await fetch(`${API_URL}/covers/briefs/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao atualizar brief`)
+  }
+  return res.json()
+}
+
+export async function deleteBrief(token: string, id: string): Promise<void> {
+  const res = await fetch(`${API_URL}/covers/briefs/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok && res.status !== 204) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao deletar brief`)
+  }
+}
+
+export async function activateBrief(token: string, id: string): Promise<BriefPreset> {
+  const res = await fetch(`${API_URL}/covers/briefs/${id}/activate`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao ativar brief`)
   }
   return res.json()
 }

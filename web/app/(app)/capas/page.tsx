@@ -6,14 +6,21 @@ import { createClient } from '@/lib/supabase/client'
 import {
   fetchCovers,
   fetchCoverCredits,
+  fetchBriefs,
+  createBrief,
+  updateBrief,
+  deleteBrief as apiDeleteBrief,
+  activateBrief,
   type CoverLibraryItem,
   type CoverCreditsState,
   type CoverBrief,
+  type BriefPreset,
 } from '@/lib/api'
 import { CapasHeader } from '@/components/CapasHeader'
 import { CapasGrid } from '@/components/CapasGrid'
 import { CapasWizard } from '@/components/CapasWizard'
 import { ConfirmGenerateModal } from '@/components/ConfirmGenerateModal'
+import { ManageBriefsModal } from '@/components/ManageBriefsModal'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
 
@@ -25,12 +32,11 @@ type PageState =
 /**
  * Aba /capas — biblioteca + geração de capas via IA.
  *
- * Estados visuais cobertos:
- *  - LOADING: skeleton no header + skeleton grid
- *  - EMPTY + SEM BRIEF: hero centralizado pedindo configuração
- *  - EMPTY + COM BRIEF: header completo + grid vazio com CTA
- *  - CONTEÚDO: header + grid de capas
- *  - SEM CRÉDITOS: header + grid + botões disabled
+ * Modelo de brief: presets nomeados (brief_presets). Um é "ativo".
+ * Botões "Gerar 1/3" usam o brief ativo.
+ *
+ * Status das capas vem do DB (cover_library.status): pending/ready/failed.
+ * Skeleton de "Gerando" sobrevive a refresh (não é mais state local).
  */
 export default function CapasPage() {
   const supabase = createClient()
@@ -38,14 +44,20 @@ export default function CapasPage() {
   const [state, setState] = useState<PageState>({ kind: 'loading' })
   const [covers, setCovers] = useState<CoverLibraryItem[]>([])
   const [credits, setCredits] = useState<CoverCreditsState | null>(null)
-  const [defaultBrief, setDefaultBrief] = useState<CoverBrief | null>(null)
+  const [presets, setPresets] = useState<BriefPreset[]>([])
+  const [presetLimit, setPresetLimit] = useState<number>(1)
   const [hasGeneratedFirstCover, setHasGeneratedFirstCover] = useState<boolean>(false)
-  const [wizardOpen, setWizardOpen] = useState(false)
-  const [wizardMode, setWizardMode] = useState<'configure' | 'pontual'>('configure')
-  const [generatingCount, setGeneratingCount] = useState(0)
-  const [confirmLote, setConfirmLote] = useState<1 | 3 | null>(null)
-  const [confirmLoading, setConfirmLoading] = useState(false)
 
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const [wizardEditingId, setWizardEditingId] = useState<string | null>(null)
+  const [manageOpen, setManageOpen] = useState(false)
+  const [confirmLote, setConfirmLote] = useState<1 | 3 | null>(null)
+
+  const activeBrief = presets.find((p) => p.is_active) ?? null
+
+  // ─────────────────────────────────────────────────────────────────
+  // CARREGAMENTO INICIAL
+  // ─────────────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -55,25 +67,23 @@ export default function CapasPage() {
         return
       }
 
-      // 1. Profile (default_brief + has_generated_first_cover) — vem do Supabase direto.
-      //    Artista vem como texto livre dentro do brief (artista_nome),
-      //    nao precisa resolver de tabela.
+      // Profile (has_generated_first_cover)
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('default_brief, has_generated_first_cover')
+        .select('has_generated_first_cover')
         .single()
-
-      const brief = (profile?.default_brief as CoverBrief | null) ?? null
-      setDefaultBrief(brief)
       setHasGeneratedFirstCover(Boolean(profile?.has_generated_first_cover))
 
-      // 2. Em paralelo: créditos + biblioteca
-      const [creditsRes, coversRes] = await Promise.all([
+      // Em paralelo: créditos + biblioteca + briefs
+      const [creditsRes, coversRes, briefsRes] = await Promise.all([
         fetchCoverCredits(token),
         fetchCovers(token),
+        fetchBriefs(token),
       ])
       setCredits(creditsRes)
       setCovers(coversRes)
+      setPresets(briefsRes.items)
+      setPresetLimit(briefsRes.limit)
       setState({ kind: 'ready' })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao carregar capas'
@@ -85,12 +95,9 @@ export default function CapasPage() {
     loadData()
   }, [loadData])
 
-  /**
-   * Realtime: subscribe a INSERT em cover_library do user atual.
-   * Quando uma capa nova chega (worker terminou), recarrega dados sem
-   * precisar de refresh manual. Substitui o skeleton "Gerando..." pela
-   * capa real no grid + atualiza créditos.
-   */
+  // ─────────────────────────────────────────────────────────────────
+  // REALTIME — cover_library INSERT e UPDATE
+  // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     let channelRef: ReturnType<typeof supabase.channel> | null = null
     let cancelled = false
@@ -104,13 +111,12 @@ export default function CapasPage() {
         .on(
           'postgres_changes',
           {
-            event: 'INSERT',
+            event: '*',  // INSERT (pending) e UPDATE (ready/failed)
             schema: 'public',
             table: 'cover_library',
             filter: `user_id=eq.${session.user.id}`,
           },
           () => {
-            // Recarrega dados completos (cobre nova capa + decrement créditos)
             loadData()
           },
         )
@@ -125,42 +131,15 @@ export default function CapasPage() {
     }
   }, [supabase, loadData])
 
-  // ── HANDLERS ──
-  const handleEditStyle = () => {
-    setWizardMode('configure')
-    setWizardOpen(true)
-  }
-  const handleConfigureStyle = () => {
-    setWizardMode('configure')
-    setWizardOpen(true)
-  }
-  const handleGenerateDifferent = () => {
-    if (!defaultBrief) return
-    setWizardMode('pontual')
-    setWizardOpen(true)
-  }
-
-  /**
-   * Chamado pelo wizard quando produtor salva o brief.
-   * - Persiste default_brief em user_profiles
-   * - Fecha o modal LOGO (UX: produtor não fica preso esperando 30s da geração)
-   * - Se action='save_and_generate', dispara POST /covers/generate em background.
-   *   Aba mostra skeleton via generatingCount enquanto roda.
-   *   Primeira capa pode ser gratis (logica no backend via has_generated_first_cover).
-   */
-  /**
-   * Dispara POST /covers/generate. Helper compartilhado entre os fluxos:
-   * - Botões "Gerar 1/3" no header (após confirmação do modal)
-   * - Wizard em modo 'pontual' (brief diferente do default)
-   * - Wizard em modo 'configure' com action='save_and_generate'
-   */
+  // ─────────────────────────────────────────────────────────────────
+  // GERAÇÃO
+  // ─────────────────────────────────────────────────────────────────
   const triggerGenerate = useCallback(
     async (brief: CoverBrief, lote: 1 | 3) => {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
-      if (!token) throw new Error('Sessão expirada')
+      if (!token) return
 
-      setGeneratingCount(lote)
       try {
         const res = await fetch(`${API_URL}/covers/generate`, {
           method: 'POST',
@@ -177,73 +156,118 @@ export default function CapasPage() {
       } catch (err) {
         console.error('Erro no fetch /covers/generate:', err)
       } finally {
-        setGeneratingCount(0)
-        await loadData()
+        // Realtime ja chama loadData quando INSERT pending aparece, mas
+        // chamamos aqui como defesa em profundidade
+        loadData()
       }
     },
     [supabase, loadData],
   )
 
+  const handleGenerate = (lote: 1 | 3) => {
+    if (!activeBrief) return
+    setConfirmLote(lote)
+  }
+
+  const confirmGenerateAction = useCallback(() => {
+    if (!confirmLote || !activeBrief) return
+    const lote = confirmLote
+    const briefSnapshot = activeBrief.brief
+    setConfirmLote(null)
+    void triggerGenerate(briefSnapshot, lote)
+  }, [confirmLote, activeBrief, triggerGenerate])
+
+  // ─────────────────────────────────────────────────────────────────
+  // BRIEFS (CRUD)
+  // ─────────────────────────────────────────────────────────────────
+  const handleOpenWizardNew = () => {
+    setWizardEditingId(null)
+    setWizardOpen(true)
+  }
+
+  const handleOpenWizardEdit = (id: string) => {
+    setWizardEditingId(id)
+    setWizardOpen(true)
+    setManageOpen(false)
+  }
+
   const handleWizardSave = useCallback(
     async (
-      brief: CoverBrief,
-      action: 'save_only' | 'save_and_generate' | 'generate_pontual',
+      data: { name: string; brief: CoverBrief },
+      action: 'save_only' | 'save_and_generate',
     ) => {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
       if (!token) throw new Error('Sessão expirada')
 
-      // Modo pontual: NAO salva o brief como default — apenas gera com ele
-      if (action === 'generate_pontual') {
-        setWizardOpen(false)
-        await triggerGenerate(brief, 1)
-        return
-      }
-
-      // 1. Persiste o brief como default (rápido, ~200ms)
-      const { error: updateError } = await supabase
-        .from('user_profiles')
-        .update({ default_brief: brief })
-        .eq('user_id', session.user.id)
-
-      if (updateError) {
-        console.error('Falha ao salvar default_brief:', updateError)
-        throw new Error('Falha ao salvar estilo padrão')
-      }
-
-      // 2. Fecha o wizard ANTES de atualizar defaultBrief no state.
-      //    Isso evita race condition que disparava reset do useEffect interno
-      //    do wizard (Step 1 bug de 2026-05-21).
-      setWizardOpen(false)
-      setDefaultBrief(brief)
-
-      // 3. Se pediu geração junto, dispara em background
-      if (action === 'save_and_generate') {
-        await triggerGenerate(brief, 1)
+      let savedPreset: BriefPreset
+      if (wizardEditingId) {
+        // Edit
+        savedPreset = await updateBrief(token, wizardEditingId, {
+          name: data.name,
+          brief: data.brief,
+        })
       } else {
-        // Apenas salvou — recarrega dados (créditos não mudou mas brief sim)
-        await loadData()
+        // Create — activate=true por padrao
+        savedPreset = await createBrief(token, {
+          name: data.name,
+          brief: data.brief,
+          activate: true,
+        })
+      }
+
+      setWizardOpen(false)
+      await loadData()
+
+      if (action === 'save_and_generate') {
+        await triggerGenerate(savedPreset.brief, 1)
       }
     },
-    [supabase, loadData, triggerGenerate],
+    [supabase, loadData, triggerGenerate, wizardEditingId],
   )
 
-  const handleGenerate = (lote: 1 | 3) => {
-    if (!defaultBrief) return
-    setConfirmLote(lote)
-  }
+  const handleSelectBrief = useCallback(
+    async (id: string) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+      try {
+        await activateBrief(token, id)
+        await loadData()
+      } catch (err) {
+        console.error('Falha ao ativar brief:', err)
+      }
+    },
+    [supabase, loadData],
+  )
 
-  const confirmGenerateAction = useCallback(() => {
-    if (!confirmLote || !defaultBrief) return
-    const lote = confirmLote
-    const briefSnapshot = defaultBrief
-    // Fecha modal IMEDIATAMENTE — geração roda em background (UX assíncrona).
-    // Antes esperava o triggerGenerate (~30s), modal travava com 'Enviando...'.
-    setConfirmLote(null)
-    setConfirmLoading(false)
-    void triggerGenerate(briefSnapshot, lote)
-  }, [confirmLote, defaultBrief, triggerGenerate])
+  const handleRenameBrief = useCallback(
+    async (id: string, newName: string) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) throw new Error('Sessão expirada')
+      await updateBrief(token, id, { name: newName })
+      await loadData()
+    },
+    [supabase, loadData],
+  )
+
+  const handleDeleteBrief = useCallback(
+    async (id: string) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) throw new Error('Sessão expirada')
+      await apiDeleteBrief(token, id)
+      await loadData()
+    },
+    [supabase, loadData],
+  )
+
+  // ─────────────────────────────────────────────────────────────────
+  // CAPA — handlers
+  // ─────────────────────────────────────────────────────────────────
   const handleDownload = (cover: CoverLibraryItem) => {
+    if (!cover.image_url) return
     const link = document.createElement('a')
     link.href = cover.image_url
     link.download = `capa-${cover.id.slice(0, 8)}.jpg`
@@ -253,48 +277,59 @@ export default function CapasPage() {
     document.body.removeChild(link)
   }
   const handleUseInBeat = (cover: CoverLibraryItem) => {
-    console.log('TODO T2.11: redirecionar pra /upload com cover_id pre-selecionado', cover.id)
+    console.log('TODO: redirecionar pra /upload com cover_id', cover.id)
   }
-  const handleDiscard = (cover: CoverLibraryItem) => {
-    console.log('TODO: confirmar e deletar capa', cover.id)
-  }
+  const handleDiscard = useCallback(
+    async (cover: CoverLibraryItem) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      try {
+        await supabase.from('cover_library').delete().eq('id', cover.id)
+        await loadData()
+      } catch (err) {
+        console.error('Falha ao deletar capa:', err)
+      }
+    },
+    [supabase, loadData],
+  )
 
-  // ── RENDER ──
-
+  // ─────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────
   const isLoading = state.kind === 'loading'
-  const showEmptyNoBrief = state.kind === 'ready' && !defaultBrief
-  const isFirstTime = !defaultBrief
+  const showEmptyNoBrief = state.kind === 'ready' && presets.length === 0
   const isOnboardingFree = !hasGeneratedFirstCover
 
-  let pageContent: React.ReactNode
+  const editingPreset = wizardEditingId ? presets.find((p) => p.id === wizardEditingId) ?? null : null
 
+  let pageContent: React.ReactNode
   if (state.kind === 'error') {
     pageContent = <PageError message={state.message} onRetry={loadData} />
   } else if (showEmptyNoBrief) {
-    pageContent = <EmptyNoBrief onConfigure={handleConfigureStyle} />
+    pageContent = <EmptyNoBrief onConfigure={handleOpenWizardNew} />
   } else {
     pageContent = (
       <div className="space-y-10">
-        {/* HEADER editorial */}
         <header className="rise rise-1">
           <SectionLabel num="01" label="Sua biblioteca de capas" />
           <CapasHeader
-            defaultBrief={defaultBrief}
+            presets={presets}
+            activeBriefId={activeBrief?.id ?? null}
+            presetLimit={presetLimit}
             credits={credits}
             loading={isLoading}
-            onEditStyle={handleEditStyle}
+            onSelectBrief={handleSelectBrief}
+            onCreateBrief={handleOpenWizardNew}
+            onManageBriefs={() => setManageOpen(true)}
             onGenerate={handleGenerate}
-            onGenerateWithDifferentBrief={handleGenerateDifferent}
           />
         </header>
 
-        {/* GRID */}
         <section className="rise rise-2">
           <SectionLabel num="02" label="Capas geradas" />
           <CapasGrid
             covers={covers}
             loading={isLoading}
-            generatingCount={generatingCount}
             onDownload={handleDownload}
             onUseInBeat={handleUseInBeat}
             onDiscard={handleDiscard}
@@ -307,21 +342,38 @@ export default function CapasPage() {
   return (
     <>
       {pageContent}
+
       <CapasWizard
         open={wizardOpen}
-        initialBrief={defaultBrief}
-        isFirstTime={isFirstTime}
+        editingPresetId={wizardEditingId}
+        initialName={editingPreset?.name}
+        initialBrief={editingPreset?.brief ?? null}
         isOnboardingFree={isOnboardingFree}
-        mode={wizardMode}
         onClose={() => setWizardOpen(false)}
         onSave={handleWizardSave}
       />
+
+      <ManageBriefsModal
+        open={manageOpen}
+        presets={presets}
+        limit={presetLimit}
+        onClose={() => setManageOpen(false)}
+        onRename={handleRenameBrief}
+        onDelete={handleDeleteBrief}
+        onActivate={handleSelectBrief}
+        onEditFull={handleOpenWizardEdit}
+        onCreate={() => {
+          setManageOpen(false)
+          handleOpenWizardNew()
+        }}
+      />
+
       <ConfirmGenerateModal
         open={confirmLote !== null}
         lote={confirmLote ?? 1}
         remaining={credits?.remaining ?? 0}
         isOnboardingFree={isOnboardingFree}
-        loading={confirmLoading}
+        loading={false}
         onCancel={() => setConfirmLote(null)}
         onConfirm={confirmGenerateAction}
       />
@@ -362,11 +414,6 @@ function SectionLabel({ num, label }: { num: string; label: string }) {
   )
 }
 
-/**
- * Estado inicial: produtor nunca configurou estilo.
- * Hero centralizado com decoração editorial — 3 retângulos quadrados
- * em sequência sugerindo "capas a nascer".
- */
 function EmptyNoBrief({ onConfigure }: { onConfigure: () => void }) {
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center px-6 py-12">
@@ -385,15 +432,16 @@ function EmptyNoBrief({ onConfigure }: { onConfigure: () => void }) {
           className="font-display text-[34px] font-semibold leading-[1.06]"
           style={{ color: 'var(--text-primary)', letterSpacing: '-0.028em' }}
         >
-          Vamos configurar seu<br />
-          <span className="text-gradient-brand">estilo visual</span>.
+          Crie seu primeiro<br />
+          <span className="text-gradient-brand">brief de estilo</span>.
         </h1>
         <p
           className="mx-auto mt-5 max-w-sm text-[14px] leading-relaxed"
           style={{ color: 'var(--text-secondary)' }}
         >
-          O BeatPost gera capas pra você com IA. Comece definindo o estilo
-          que combina com seus type beats — depois é só clicar pra criar.
+          Dê um nome ao estilo (ex: <em>"Drake noite"</em>), defina os elementos
+          visuais, e gere quantas capas quiser com IA. Você pode ter vários
+          briefs salvos e trocar entre eles.
         </p>
 
         <div className="mt-8 flex justify-center">
@@ -403,7 +451,7 @@ function EmptyNoBrief({ onConfigure }: { onConfigure: () => void }) {
             className="btn-primary group"
           >
             <Sparkles size={14} strokeWidth={2.2} />
-            Configurar agora
+            Criar meu primeiro brief
             <ArrowUpRight
               size={13}
               strokeWidth={2.4}
@@ -416,42 +464,23 @@ function EmptyNoBrief({ onConfigure }: { onConfigure: () => void }) {
   )
 }
 
-/**
- * Decoração SVG do estado vazio — 3 quadrados em sequência editorial.
- * O do meio é o "destaque": gradient roxo→magenta visível + sparkle pulsando.
- * Os laterais são placeholders tracejados marcantes.
- * Sugere "biblioteca a nascer com IA".
- */
 function BlankCoversArt() {
   return (
-    <svg
-      width="380"
-      height="180"
-      viewBox="0 0 380 180"
-      fill="none"
-      aria-hidden
-    >
+    <svg width="380" height="180" viewBox="0 0 380 180" fill="none" aria-hidden>
       <defs>
-        {/* Gradient interno das boxes laterais (sutil, sugere "ainda vazio") */}
         <linearGradient id="blank-side" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="rgba(255,255,255,0.06)" />
           <stop offset="100%" stopColor="rgba(255,255,255,0.02)" />
         </linearGradient>
-
-        {/* Gradient da box central — destaque MARCANTE roxo→magenta */}
         <linearGradient id="blank-hero" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="rgba(65,0,255,0.32)" />
           <stop offset="55%" stopColor="rgba(101,51,255,0.22)" />
           <stop offset="100%" stopColor="rgba(255,26,190,0.18)" />
         </linearGradient>
-
-        {/* Glow externo da box central */}
         <radialGradient id="blank-hero-glow" cx="50%" cy="50%" r="60%">
           <stop offset="0%" stopColor="rgba(199,181,255,0.30)" />
           <stop offset="100%" stopColor="transparent" />
         </radialGradient>
-
-        {/* Filtro de glow pro sparkle */}
         <filter id="sparkle-glow" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="2" result="blur" />
           <feMerge>
@@ -461,139 +490,38 @@ function BlankCoversArt() {
         </filter>
       </defs>
 
-      {/* ── Card 01 — placeholder lateral esquerdo ── */}
       <g>
-        <rect
-          x="20"
-          y="30"
-          width="110"
-          height="110"
-          rx="8"
-          fill="url(#blank-side)"
-          stroke="rgba(255,255,255,0.22)"
-          strokeWidth="1.2"
-          strokeDasharray="3 5"
-        />
-        <text
-          x="34"
-          y="128"
-          fill="rgba(255,255,255,0.55)"
-          fontSize="11"
-          fontWeight="500"
-          fontFamily="ui-monospace, monospace"
-          letterSpacing="0.20em"
-        >
-          [01]
-        </text>
+        <rect x="20" y="30" width="110" height="110" rx="8" fill="url(#blank-side)" stroke="rgba(255,255,255,0.22)" strokeWidth="1.2" strokeDasharray="3 5" />
+        <text x="34" y="128" fill="rgba(255,255,255,0.55)" fontSize="11" fontWeight="500" fontFamily="ui-monospace, monospace" letterSpacing="0.20em">[01]</text>
       </g>
 
-      {/* ── Card 02 — destaque MARCANTE central ── */}
       <g>
-        {/* Halo externo morfando */}
-        <rect
-          x="130"
-          y="20"
-          width="120"
-          height="120"
-          rx="14"
-          fill="url(#blank-hero-glow)"
-          opacity="0.85"
-        >
-          <animate
-            attributeName="opacity"
-            values="0.55;1;0.55"
-            dur="3.2s"
-            repeatCount="indefinite"
-          />
+        <rect x="130" y="20" width="120" height="120" rx="14" fill="url(#blank-hero-glow)" opacity="0.85">
+          <animate attributeName="opacity" values="0.55;1;0.55" dur="3.2s" repeatCount="indefinite" />
         </rect>
-
-        {/* Box principal */}
-        <rect
-          x="140"
-          y="30"
-          width="110"
-          height="110"
-          rx="8"
-          fill="url(#blank-hero)"
-          stroke="rgba(199,181,255,0.55)"
-          strokeWidth="1.2"
-        />
-
-        {/* Sparkle SVG central — 4 pontas, estilo Lucide */}
+        <rect x="140" y="30" width="110" height="110" rx="8" fill="url(#blank-hero)" stroke="rgba(199,181,255,0.55)" strokeWidth="1.2" />
         <g transform="translate(195, 78)" filter="url(#sparkle-glow)">
-          <path
-            d="M 0 -12 L 2 -2 L 12 0 L 2 2 L 0 12 L -2 2 L -12 0 L -2 -2 Z"
-            fill="#FFFFFF"
-          >
-            <animateTransform
-              attributeName="transform"
-              type="rotate"
-              from="0"
-              to="360"
-              dur="16s"
-              repeatCount="indefinite"
-            />
-            <animate
-              attributeName="opacity"
-              values="0.85;1;0.85"
-              dur="2.2s"
-              repeatCount="indefinite"
-            />
+          <path d="M 0 -12 L 2 -2 L 12 0 L 2 2 L 0 12 L -2 2 L -12 0 L -2 -2 Z" fill="#FFFFFF">
+            <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="16s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.85;1;0.85" dur="2.2s" repeatCount="indefinite" />
           </path>
-
-          {/* Anel pulsante secundário */}
           <circle r="20" fill="none" stroke="rgba(199,181,255,0.55)" strokeWidth="1">
             <animate attributeName="r" values="14;24;14" dur="2.4s" repeatCount="indefinite" />
             <animate attributeName="opacity" values="0.65;0;0.65" dur="2.4s" repeatCount="indefinite" />
           </circle>
-
-          {/* 2º anel pulsante (defasado) */}
           <circle r="20" fill="none" stroke="rgba(255,80,214,0.45)" strokeWidth="1">
             <animate attributeName="r" values="14;24;14" dur="2.4s" begin="1.2s" repeatCount="indefinite" />
             <animate attributeName="opacity" values="0.55;0;0.55" dur="2.4s" begin="1.2s" repeatCount="indefinite" />
           </circle>
         </g>
-
-        <text
-          x="154"
-          y="128"
-          fill="rgba(255,255,255,0.92)"
-          fontSize="11"
-          fontWeight="500"
-          fontFamily="ui-monospace, monospace"
-          letterSpacing="0.20em"
-        >
-          [02]
-        </text>
+        <text x="154" y="128" fill="rgba(255,255,255,0.92)" fontSize="11" fontWeight="500" fontFamily="ui-monospace, monospace" letterSpacing="0.20em">[02]</text>
       </g>
 
-      {/* ── Card 03 — placeholder lateral direito ── */}
       <g>
-        <rect
-          x="260"
-          y="30"
-          width="110"
-          height="110"
-          rx="8"
-          fill="url(#blank-side)"
-          stroke="rgba(255,255,255,0.22)"
-          strokeWidth="1.2"
-          strokeDasharray="3 5"
-        />
-        <text
-          x="274"
-          y="128"
-          fill="rgba(255,255,255,0.55)"
-          fontSize="11"
-          fontWeight="500"
-          fontFamily="ui-monospace, monospace"
-          letterSpacing="0.20em"
-        >
-          [03]
-        </text>
+        <rect x="260" y="30" width="110" height="110" rx="8" fill="url(#blank-side)" stroke="rgba(255,255,255,0.22)" strokeWidth="1.2" strokeDasharray="3 5" />
+        <text x="274" y="128" fill="rgba(255,255,255,0.55)" fontSize="11" fontWeight="500" fontFamily="ui-monospace, monospace" letterSpacing="0.20em">[03]</text>
       </g>
 
-      {/* Linhas guias finas conectando as boxes — editorial */}
       <line x1="130" y1="85" x2="140" y2="85" stroke="rgba(255,255,255,0.28)" strokeWidth="1" />
       <line x1="250" y1="85" x2="260" y2="85" stroke="rgba(255,255,255,0.28)" strokeWidth="1" />
     </svg>

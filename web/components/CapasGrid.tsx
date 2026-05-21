@@ -7,7 +7,6 @@ import { CapaCard } from './CapaCard'
 type Props = {
   covers: CoverLibraryItem[]
   loading: boolean
-  generatingCount?: number
   onDownload: (cover: CoverLibraryItem) => void
   onUseInBeat: (cover: CoverLibraryItem) => void
   onDiscard: (cover: CoverLibraryItem) => void
@@ -15,12 +14,13 @@ type Props = {
 
 /**
  * Grid responsivo da biblioteca de capas.
- * Mostra skeletons durante carregamento inicial OU placeholders durante geração ativa.
+ * O estado "Gerando" agora vem do DB (cover_library.status='pending'),
+ * NÃO de state local — sobrevive a refresh.
+ * CapaCard renderiza diferente por status (pending/ready/failed).
  */
 export function CapasGrid({
   covers,
   loading,
-  generatingCount = 0,
   onDownload,
   onUseInBeat,
   onDiscard,
@@ -36,25 +36,13 @@ export function CapasGrid({
     )
   }
 
-  // Sem capas e não está gerando
-  if (covers.length === 0 && generatingCount === 0) {
-    return (
-      <EmptyLibrary />
-    )
+  // Biblioteca vazia (nenhuma row em cover_library)
+  if (covers.length === 0) {
+    return <EmptyLibrary />
   }
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {/* Skeletons da GERAÇÃO em andamento — aparecem ANTES dos cards reais */}
-      {Array.from({ length: generatingCount }).map((_, i) => (
-        <CapaCardSkeleton
-          key={`gen-${i}`}
-          numLabel={String(i + 1).padStart(2, '0')}
-          generating
-        />
-      ))}
-
-      {/* Cards reais */}
       {covers.map((cover, index) => (
         <div
           key={cover.id}
@@ -109,26 +97,18 @@ function EmptyLibrary() {
   )
 }
 
-/** Skeleton de card individual (carregamento inicial ou geração em andamento). */
-function CapaCardSkeleton({
-  numLabel,
-  generating = false,
-}: {
-  numLabel: string
-  generating?: boolean
-}) {
+/** Skeleton de card individual (apenas pra loading inicial da biblioteca). */
+function CapaCardSkeleton({ numLabel }: { numLabel: string }) {
   return (
     <div
       className="relative overflow-hidden rounded-lg"
       style={{
         background: 'var(--bg-surface)',
-        border: `1px solid ${generating ? 'var(--border-purple)' : 'var(--border-subtle)'}`,
+        border: '1px solid var(--border-subtle)',
         aspectRatio: '1 / 1',
       }}
     >
       <div className="absolute inset-0 shimmer" style={{ background: 'var(--bg-elevated)' }} />
-
-      {/* Numeração editorial mantida */}
       <span
         className="pointer-events-none absolute bottom-2.5 left-3 font-mono tabular"
         style={{
@@ -140,37 +120,6 @@ function CapaCardSkeleton({
       >
         [{numLabel}]
       </span>
-
-      {generating && (
-        <>
-          {/* Pulse roxo sutil pra indicar "está gerando" */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background: 'radial-gradient(circle at 50% 50%, rgba(65,0,255,0.10), transparent 60%)',
-            }}
-          />
-          {/* Status label */}
-          <div className="absolute left-2.5 top-2.5 z-10 inline-flex items-center gap-1.5">
-            <span
-              className="led led-pulse"
-              style={{ color: 'var(--purple-light)' }}
-            />
-            <span
-              className="font-mono uppercase"
-              style={{
-                fontSize: 9.5,
-                fontWeight: 500,
-                letterSpacing: '0.18em',
-                color: 'var(--purple-soft)',
-              }}
-            >
-              Gerando
-            </span>
-          </div>
-        </>
-      )}
     </div>
   )
 }

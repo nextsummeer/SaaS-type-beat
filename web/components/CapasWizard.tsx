@@ -72,24 +72,19 @@ const ENERGIA_OPTIONS: Option[] = [
 ]
 
 type Step = 1 | 2 | 3
-type SaveAction = 'save_and_generate' | 'save_only' | 'generate_pontual'
-type WizardMode = 'configure' | 'pontual'
+type SaveAction = 'save_and_generate' | 'save_only'
 
 type Props = {
   open: boolean
+  /** Se preenchido, edita esse preset. Se null, cria novo. */
+  editingPresetId: string | null
+  /** Nome inicial do preset (no modo edicao) */
+  initialName?: string
+  /** Brief inicial (no modo edicao ou pre-fill) */
   initialBrief: CoverBrief | null
-  isFirstTime: boolean
   isOnboardingFree: boolean
-  /**
-   * 'configure' (default): wizard salva como default_brief do user.
-   *   Step 3 tem 2 CTAs: 'Apenas salvar' e 'Salvar + gerar 1 capa'.
-   * 'pontual': brief é usado apenas pra UMA geração específica.
-   *   Default_brief do user NÃO é modificado.
-   *   Step 3 tem 1 CTA único: 'Gerar 1 capa'.
-   */
-  mode?: WizardMode
   onClose: () => void
-  onSave: (brief: CoverBrief, action: SaveAction) => Promise<void>
+  onSave: (data: { name: string; brief: CoverBrief }, action: SaveAction) => Promise<void>
 }
 
 /**
@@ -103,14 +98,16 @@ type Props = {
  */
 export function CapasWizard({
   open,
+  editingPresetId,
+  initialName,
   initialBrief,
-  isFirstTime,
   isOnboardingFree,
-  mode = 'configure',
   onClose,
   onSave,
 }: Props) {
+  const isEditing = !!editingPresetId
   const [step, setStep] = useState<Step>(1)
+  const [presetName, setPresetName] = useState('')
   const [artistaNome, setArtistaNome] = useState('')
   const [sujeito, setSujeito] = useState<string | null>(null)
   const [ambiente, setAmbiente] = useState<string | null>(null)
@@ -124,13 +121,14 @@ export function CapasWizard({
 
   // Reset state SOMENTE na transicao fechado → aberto.
   // Sem esse guard, atualizar `initialBrief` no parent durante o save
-  // resetaria o wizard pro Step 1 indevidamente (bug observado em 2026-05-21).
+  // resetaria o wizard pro Step 1 indevidamente (bug 2026-05-21).
   useEffect(() => {
     const justOpened = open && !wasOpenRef.current
     wasOpenRef.current = open
     if (!justOpened) return
 
     setStep(1)
+    setPresetName(initialName ?? '')
     setArtistaNome(initialBrief?.artista_nome ?? '')
     setSujeito(initialBrief?.sujeito ?? null)
     setAmbiente(initialBrief?.ambiente ?? null)
@@ -138,7 +136,7 @@ export function CapasWizard({
     setEnergia(initialBrief?.energia ?? null)
     setNotaLivre(initialBrief?.nota_livre ?? '')
     setSaving(null)
-  }, [open, initialBrief])
+  }, [open, initialName, initialBrief])
 
   // Esc fecha o modal
   useEffect(() => {
@@ -164,19 +162,24 @@ export function CapasWizard({
 
   const canAdvanceFrom1 = artistaNome.trim().length > 0
   const trimmed = artistaNome.trim()
+  const trimmedName = presetName.trim()
+  const canSave = trimmed.length > 0 && trimmedName.length > 0
 
   async function handleSubmit(action: SaveAction) {
-    if (saving) return
+    if (saving || !canSave) return
     setSaving(action)
     try {
       await onSave(
         {
-          artista_nome: trimmed,
-          sujeito,
-          ambiente,
-          iluminacao,
-          energia,
-          nota_livre: notaLivre.trim() || null,
+          name: trimmedName,
+          brief: {
+            artista_nome: trimmed,
+            sujeito,
+            ambiente,
+            iluminacao,
+            energia,
+            nota_livre: notaLivre.trim() || null,
+          },
         },
         action,
       )
@@ -219,14 +222,10 @@ export function CapasWizard({
               style={{
                 fontSize: 10,
                 letterSpacing: '0.22em',
-                color: mode === 'pontual' ? '#FCD34D' : 'var(--text-subtle)',
+                color: 'var(--text-subtle)',
               }}
             >
-              {mode === 'pontual'
-                ? '⚠ BRIEF PONTUAL · NÃO ALTERA SEU PADRÃO'
-                : isFirstTime
-                ? 'Configuração inicial'
-                : 'Editar estilo padrão'}
+              {isEditing ? 'Editar brief' : 'Novo brief'}
             </span>
             <span aria-hidden style={{ width: 24, height: 1, background: 'var(--border-subtle)' }} />
             <StepIndicator current={step} />
@@ -276,7 +275,8 @@ export function CapasWizard({
           )}
           {step === 3 && (
             <Step3Confirmacao
-              mode={mode}
+              presetName={presetName}
+              onChangePresetName={setPresetName}
               artistaNome={trimmed}
               sujeito={sujeito}
               ambiente={ambiente}
@@ -318,49 +318,14 @@ export function CapasWizard({
                 Próximo
                 <ArrowRight size={13} strokeWidth={2.2} />
               </button>
-            ) : mode === 'pontual' ? (
-              // Modo pontual: apenas 1 CTA — gera SEM salvar como default
-              <button
-                type="button"
-                onClick={() => handleSubmit('generate_pontual')}
-                disabled={!!saving}
-                className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {saving === 'generate_pontual' ? (
-                  <>
-                    <Loader2 size={13} strokeWidth={2.2} className="animate-spin" />
-                    Enviando…
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={13} strokeWidth={2.2} />
-                    Gerar 1 capa com este brief
-                    {!isOnboardingFree && (
-                      <span
-                        className="font-mono tabular"
-                        style={{
-                          fontSize: 10.5,
-                          letterSpacing: '0.08em',
-                          color: 'rgba(255,255,255,0.78)',
-                          marginLeft: 2,
-                          paddingLeft: 8,
-                          borderLeft: '1px solid rgba(255,255,255,0.22)',
-                        }}
-                      >
-                        1 CRÉDITO
-                      </span>
-                    )}
-                  </>
-                )}
-              </button>
             ) : (
-              // Modo configure: 2 CTAs (apenas salvar ou salvar+gerar)
               <>
                 <button
                   type="button"
                   onClick={() => handleSubmit('save_only')}
-                  disabled={!!saving}
-                  className="btn-ghost disabled:opacity-40"
+                  disabled={!!saving || !canSave}
+                  className="btn-ghost disabled:cursor-not-allowed disabled:opacity-40"
+                  title={!canSave ? 'Preencha nome e artista' : undefined}
                 >
                   {saving === 'save_only' && (
                     <Loader2 size={13} strokeWidth={2} className="animate-spin" />
@@ -370,8 +335,9 @@ export function CapasWizard({
                 <button
                   type="button"
                   onClick={() => handleSubmit('save_and_generate')}
-                  disabled={!!saving}
+                  disabled={!!saving || !canSave}
                   className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  title={!canSave ? 'Preencha nome e artista' : undefined}
                 >
                   {saving === 'save_and_generate' ? (
                     <>
@@ -724,7 +690,8 @@ const ENERGIA_DISPLAY: Record<string, string> = {
 }
 
 function Step3Confirmacao({
-  mode,
+  presetName,
+  onChangePresetName,
   artistaNome,
   sujeito,
   ambiente,
@@ -733,7 +700,8 @@ function Step3Confirmacao({
   notaLivre,
   onChangeNota,
 }: {
-  mode: WizardMode
+  presetName: string
+  onChangePresetName: (v: string) => void
   artistaNome: string
   sujeito: string | null
   ambiente: string | null
@@ -748,6 +716,11 @@ function Step3Confirmacao({
   if (iluminacao && ILUMINACAO_DISPLAY[iluminacao]) tokens.push(ILUMINACAO_DISPLAY[iluminacao])
   if (energia && ENERGIA_DISPLAY[energia]) tokens.push(ENERGIA_DISPLAY[energia])
 
+  // Sugestao de nome baseada no artista (so quando user nao digitou nada)
+  const namePlaceholder = artistaNome
+    ? `Ex: ${artistaNome} ${energia ? ENERGIA_DISPLAY[energia] ?? '' : ''}`.trim()
+    : 'Ex: Drake noite, Lil Baby hood, Carti rage…'
+
   return (
     <div className="space-y-6">
       <div>
@@ -759,72 +732,84 @@ function Step3Confirmacao({
             color: 'var(--text-subtle)',
           }}
         >
-          Step 03 · Confirmação
+          Step 03 · Nome e confirmação
         </p>
         <h2
           className="font-display text-[24px] font-semibold leading-tight"
           style={{ color: 'var(--text-primary)', letterSpacing: '-0.022em' }}
         >
-          {mode === 'pontual' ? 'Brief pontual' : 'Seu estilo padrão'}
+          Como vai chamar esse brief?
         </h2>
+        <p
+          className="mt-2 max-w-md text-[13px] leading-relaxed"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          Dê um nome curto pra reconhecer depois. Você pode ter vários briefs
+          salvos e trocar entre eles pelo header.
+        </p>
       </div>
 
-      {/* Aviso destacado em modo pontual — reforça que NAO altera o padrao.
-          Sem isso, user confunde com "alterei o padrão" e fica frustrado quando
-          o botão "Gerar 1 capa" do header continua usando o brief antigo. */}
-      {mode === 'pontual' && (
-        <div
-          className="flex items-start gap-3 rounded-lg px-4 py-3"
+      {/* Campo nome (obrigatorio) */}
+      <div className="space-y-2">
+        <label
+          className="font-mono uppercase block"
           style={{
-            background: 'rgba(252,211,77,0.06)',
-            border: '1px solid rgba(252,211,77,0.30)',
+            fontSize: 10,
+            letterSpacing: '0.18em',
+            color: 'var(--text-muted)',
           }}
+          htmlFor="wizard-preset-name"
         >
-          <AlertCircle
-            size={15}
-            strokeWidth={2}
-            style={{ color: 'var(--led-warning)', marginTop: 1, flexShrink: 0 }}
-          />
-          <div>
-            <p
-              className="font-medium text-[13px]"
-              style={{ color: '#FCD34D' }}
-            >
-              Esse brief é apenas pra esta geração
-            </p>
-            <p
-              className="mt-0.5 text-[12px] leading-relaxed"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              Seu estilo padrão (botões "Gerar 1 capa" / "Gerar 3 variações" do
-              header) <strong>não será alterado</strong>. Pra mudar o padrão,
-              feche este modal e clique em <em>"editar"</em> no header.
-            </p>
-          </div>
-        </div>
-      )}
+          Nome do brief <span style={{ color: 'var(--led-error)' }}>*</span>
+        </label>
+        <input
+          id="wizard-preset-name"
+          type="text"
+          value={presetName}
+          onChange={(e) => onChangePresetName(e.target.value)}
+          placeholder={namePlaceholder}
+          className="field-input"
+          style={{ fontSize: 15 }}
+          maxLength={60}
+        />
+        <p className="text-[11.5px]" style={{ color: 'var(--text-subtle)' }}>
+          {presetName.length}/60 caracteres
+        </p>
+      </div>
 
       {/* Resumo do brief */}
-      <div
-        className="rounded-xl px-5 py-5"
-        style={{
-          background: 'rgba(255,255,255,0.025)',
-          border: '1px solid var(--border-subtle)',
-        }}
-      >
-        <p
-          className="font-display text-[22px] font-semibold leading-snug"
-          style={{ color: 'var(--text-primary)', letterSpacing: '-0.018em' }}
+      <div className="space-y-2">
+        <span
+          className="font-mono uppercase block"
+          style={{
+            fontSize: 10,
+            letterSpacing: '0.18em',
+            color: 'var(--text-muted)',
+          }}
         >
-          {tokens.map((t, i) => (
-            <span key={i}>
-              {t}
-              {i < tokens.length - 1 && (
-                <span style={{ color: 'var(--text-subtle)', margin: '0 0.4em' }}>·</span>
-              )}
-            </span>
-          ))}
-        </p>
+          Resumo do estilo
+        </span>
+        <div
+          className="rounded-xl px-5 py-4"
+          style={{
+            background: 'rgba(255,255,255,0.025)',
+            border: '1px solid var(--border-subtle)',
+          }}
+        >
+          <p
+            className="font-display text-[19px] font-semibold leading-snug"
+            style={{ color: 'var(--text-primary)', letterSpacing: '-0.018em' }}
+          >
+            {tokens.map((t, i) => (
+              <span key={i}>
+                {t}
+                {i < tokens.length - 1 && (
+                  <span style={{ color: 'var(--text-subtle)', margin: '0 0.4em' }}>·</span>
+                )}
+              </span>
+            ))}
+          </p>
+        </div>
       </div>
 
       {/* Nota livre */}

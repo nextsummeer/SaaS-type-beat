@@ -77,7 +77,8 @@ export function CoverPicker({
         }
         const items = await fetchCovers(token)
         if (!cancelled) {
-          setLibrary(items)
+          // Picker so mostra capas prontas — esconde pending/failed do upload
+          setLibrary(items.filter((it) => it.status === 'ready' && it.image_url))
           setLoadingLibrary(false)
         }
       } catch (err) {
@@ -410,7 +411,7 @@ function LibraryCoverThumb({
         }}
       >
         <Image
-          src={cover.image_url}
+          src={cover.image_url as string}
           alt="Capa da biblioteca"
           fill
           sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 20vw"

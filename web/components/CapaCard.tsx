@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
-import { Sparkles, MoreHorizontal, Download, Music, Trash2, Image as ImageIcon } from 'lucide-react'
+import { Sparkles, MoreHorizontal, Download, Music, Trash2, Image as ImageIcon, AlertCircle } from 'lucide-react'
 import type { CoverLibraryItem } from '@/lib/api'
 
 type Props = {
@@ -14,16 +14,145 @@ type Props = {
 }
 
 /**
- * Card individual de capa na biblioteca.
- * Aspect-ratio 1:1, badges informativos, hover revela menu de ações.
- * Numeração editorial [01] [02] no canto pra densidade visual.
+ * Card individual da biblioteca. Render diferente por status:
+ *  - 'ready':   capa normal com badges + menu
+ *  - 'pending': skeleton com pulse roxo (geração rodando — refresh-safe)
+ *  - 'failed':  card com indicador de erro + opção descartar
  */
-export function CapaCard({ cover, index, onDownload, onUseInBeat, onDiscard }: Props) {
+export function CapaCard(props: Props) {
+  const { cover } = props
+
+  if (cover.status === 'pending') return <PendingCard index={props.index} />
+  if (cover.status === 'failed') return <FailedCard cover={cover} onDiscard={props.onDiscard} index={props.index} />
+  return <ReadyCard {...props} />
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// PENDING — skeleton com pulse roxo
+// ─────────────────────────────────────────────────────────────────────
+function PendingCard({ index }: { index: number }) {
+  const numLabel = String(index + 1).padStart(2, '0')
+  return (
+    <div
+      className="relative overflow-hidden rounded-lg"
+      style={{
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-purple)',
+        aspectRatio: '1 / 1',
+      }}
+    >
+      <div className="absolute inset-0 shimmer" style={{ background: 'var(--bg-elevated)' }} />
+
+      {/* Pulse roxo radial */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: 'radial-gradient(circle at 50% 50%, rgba(65,0,255,0.12), transparent 60%)',
+        }}
+      />
+
+      {/* Status label */}
+      <div className="absolute left-2.5 top-2.5 z-10 inline-flex items-center gap-1.5">
+        <span className="led led-pulse" style={{ color: 'var(--purple-light)' }} />
+        <span
+          className="font-mono uppercase"
+          style={{
+            fontSize: 9.5,
+            fontWeight: 500,
+            letterSpacing: '0.18em',
+            color: 'var(--purple-soft)',
+          }}
+        >
+          Gerando
+        </span>
+      </div>
+
+      {/* Numeração editorial */}
+      <span
+        className="pointer-events-none absolute bottom-2.5 left-3 font-mono tabular"
+        style={{
+          fontSize: 10,
+          fontWeight: 500,
+          letterSpacing: '0.18em',
+          color: 'var(--text-subtle)',
+        }}
+      >
+        [{numLabel}]
+      </span>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// FAILED — card com erro
+// ─────────────────────────────────────────────────────────────────────
+function FailedCard({
+  cover,
+  onDiscard,
+  index,
+}: {
+  cover: CoverLibraryItem
+  onDiscard: (c: CoverLibraryItem) => void
+  index: number
+}) {
+  const numLabel = String(index + 1).padStart(2, '0')
+  return (
+    <article
+      className="relative flex flex-col items-center justify-center gap-3 overflow-hidden rounded-lg p-4 text-center"
+      style={{
+        background: 'rgba(248,113,113,0.04)',
+        border: '1px solid rgba(248,113,113,0.30)',
+        aspectRatio: '1 / 1',
+      }}
+    >
+      <div
+        className="flex h-10 w-10 items-center justify-center rounded-full"
+        style={{ background: 'rgba(248,113,113,0.10)' }}
+      >
+        <AlertCircle size={18} strokeWidth={1.8} style={{ color: 'var(--led-error)' }} />
+      </div>
+      <div>
+        <p className="text-[12.5px] font-medium" style={{ color: '#FCA5A5' }}>
+          Falha ao gerar
+        </p>
+        <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          Sem cobrança
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => onDiscard(cover)}
+        className="rounded-md px-2 py-1 text-[11px] transition-colors"
+        style={{ color: 'var(--text-muted)' }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+      >
+        Descartar
+      </button>
+      <span
+        className="pointer-events-none absolute bottom-2.5 left-3 font-mono tabular"
+        style={{
+          fontSize: 10,
+          fontWeight: 500,
+          letterSpacing: '0.18em',
+          color: 'var(--text-subtle)',
+        }}
+      >
+        [{numLabel}]
+      </span>
+    </article>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// READY — card normal (lógica original)
+// ─────────────────────────────────────────────────────────────────────
+function ReadyCard({ cover, index, onDownload, onUseInBeat, onDiscard }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Fecha menu ao clicar fora
   useEffect(() => {
     if (!menuOpen) return
     function handleClick(e: MouseEvent) {
@@ -48,27 +177,23 @@ export function CapaCard({ cover, index, onDownload, onUseInBeat, onDiscard }: P
         aspectRatio: '1 / 1',
       }}
     >
-      {/* Imagem da capa */}
-      <Image
-        src={cover.image_url}
-        alt={`Capa ${numLabel}`}
-        fill
-        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-        className="object-cover transition-opacity duration-500"
-        style={{ opacity: imageLoaded ? 1 : 0 }}
-        onLoadingComplete={() => setImageLoaded(true)}
-        unoptimized
-      />
-
-      {/* Placeholder enquanto carrega — shimmer dentro do quadro */}
-      {!imageLoaded && (
-        <div
-          className="absolute inset-0 shimmer"
-          style={{ background: 'var(--bg-elevated)' }}
+      {cover.image_url && (
+        <Image
+          src={cover.image_url}
+          alt={`Capa ${numLabel}`}
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+          className="object-cover transition-opacity duration-500"
+          style={{ opacity: imageLoaded ? 1 : 0 }}
+          onLoadingComplete={() => setImageLoaded(true)}
+          unoptimized
         />
       )}
 
-      {/* Numeração editorial no canto inferior esquerdo (sempre visível) */}
+      {!imageLoaded && (
+        <div className="absolute inset-0 shimmer" style={{ background: 'var(--bg-elevated)' }} />
+      )}
+
       <span
         className="pointer-events-none absolute bottom-2.5 left-3 font-mono tabular"
         style={{
@@ -82,7 +207,6 @@ export function CapaCard({ cover, index, onDownload, onUseInBeat, onDiscard }: P
         [{numLabel}]
       </span>
 
-      {/* Badge source — canto superior esquerdo */}
       <div className="absolute left-2.5 top-2.5 z-10">
         {isAI ? (
           <span
@@ -119,7 +243,6 @@ export function CapaCard({ cover, index, onDownload, onUseInBeat, onDiscard }: P
         )}
       </div>
 
-      {/* Badge "Usada" — canto superior direito (só se used_in_beats_count > 0) */}
       {wasUsed && (
         <div className="absolute right-2.5 top-2.5 z-10">
           <span
@@ -144,7 +267,6 @@ export function CapaCard({ cover, index, onDownload, onUseInBeat, onDiscard }: P
         </div>
       )}
 
-      {/* Hover overlay sutil — gradiente do fundo pra baixo */}
       <div
         className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
         style={{
@@ -152,7 +274,6 @@ export function CapaCard({ cover, index, onDownload, onUseInBeat, onDiscard }: P
         }}
       />
 
-      {/* Menu trigger — canto inferior direito (aparece no hover OU se menu aberto) */}
       <div
         ref={menuRef}
         className={`absolute bottom-2 right-2 z-20 transition-opacity duration-200 ${
@@ -175,7 +296,6 @@ export function CapaCard({ cover, index, onDownload, onUseInBeat, onDiscard }: P
           <MoreHorizontal size={14} strokeWidth={2.2} />
         </button>
 
-        {/* Menu dropdown */}
         {menuOpen && (
           <div
             role="menu"
@@ -216,7 +336,6 @@ export function CapaCard({ cover, index, onDownload, onUseInBeat, onDiscard }: P
         )}
       </div>
 
-      {/* Borda lavanda discreta no hover */}
       <div
         className="pointer-events-none absolute inset-0 rounded-lg opacity-0 transition-opacity duration-200 group-hover:opacity-100"
         style={{
