@@ -1,12 +1,12 @@
 # _tasks — [NOME] Fase 1 (MVP) @gustavo
 
 **Criado:** 2026-04-25
-**Atualizado:** 2026-05-21 (capa IA reformulada: prompt base + Claude runtime, aba dedicada `/capas`, biblioteca de capas)
-**Outcome:** Produtor convidado faz login, conecta canal YouTube, configura estilo visual padrao na aba `/capas` (brief estruturado de 5 campos), gera capas reusaveis com IA (prompt base + Claude + fal.ai), sobe um beat informando artista de referencia (lista controlada + Spotify) e mood (cards visuais), escolhe capa da biblioteca ou envia propria, recebe titulo+descricao+tags geradas pela IA, edita o que quiser, confirma agendamento, e ve video publicado/agendado no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Meta: beta fechado setembro 2026.
+**Atualizado:** 2026-05-21 (sessao 2: capa IA infra completa, brief presets, skeleton refresh-safe, tier internal)
+**Outcome:** Produtor convidado faz login, conecta canal YouTube, configura brief de estilo padrao na aba `/capas` (multi-presets nomeados, ate N por tier), gera capas reusaveis com IA (prompt base + Claude + fal.ai, ~30s, $0.013), sobe um beat informando artista de referencia + mood, escolhe capa da biblioteca ou envia propria, recebe titulo+descricao+tags geradas pela IA, edita o que quiser, confirma agendamento, e ve video publicado/agendado no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Meta: beta fechado setembro 2026.
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** Bloco capa IA DESPAUSADO (2026-05-21). Nova ADR `2026-05-21-geracao-de-capa-prompt-base-claude.md` substitui a de 2026-05-07. Mudancas principais: (1) descartado clusters fixos de artistas — prompt base mestre + brief estruturado + Claude runtime cobre qualquer artista; (2) aba dedicada `/capas` com biblioteca reusavel + sistema de creditos por tier (Free 3-5/Intermediario 15/Premium 40); (3) custo real validado: $0.013/capa (Claude + fal.ai quality=low); (4) UX assincrona (~30s por capa); (5) modelo hibrido default+override (produtor configura estilo padrao 1x, edita quando muda de fase). Tasks T1.7, T2.6, T2.10, T2.11, T2.12, T4.6-T4.11 reformuladas + tasks novas T4.12-T4.18. Bloqueador residual: prompt base mestre (Gustavo ainda nao finalizou — pode comecar infra com placeholder). Bloqueadores criticos paralelos seguem ativos: (1) Rary republicar beat `ee96c64f` pra validar fix codec, (2) aumento de quota YouTube, (3) OAuth verification, (4) decisao final billing.
+**Proximo passo:** Capa IA — INFRA 100% PRONTA em producao (Vercel + Railway). 8 migrations Supabase aplicadas (cover_library + status pending/ready/failed, brief_presets, creditos por tier, tier internal). Backend: fal_service + cover_prompt_builder + worker cover (INSERT pending → UPDATE ready/failed) + endpoints /covers/* e /covers/briefs/* + DELETE /covers/{id}. Frontend: aba /capas com BriefSelector → ManageBriefsModal (sem mais dropdown floating), CapasWizard 3-step, CapasGrid com status, ConfirmDialog estilo BeatPost. Bugs UX consertados: skeleton refresh-safe + otimismo local, drag de texto fora do modal nao fecha mais, download via blob, descartar via endpoint backend. **Bloqueador critico unico restante: prompt base mestre (T4.6) — Gustavo vai trabalhar isso na proxima sessao.** Placeholder atual (prompt do Lil Baby) funciona pra testar fluxo, mas qualidade final depende da curadoria dele. Tasks pendentes nao-bloqueantes: T4.11 (teste E2E pytest, backlog), T2.7 (curadoria de artistas obsoleta — virou "banco de aprendizado" futuro). Bloqueadores paralelos: (1) Rary republicar beat `ee96c64f` pra validar fix codec, (2) aumento de quota YouTube, (3) OAuth verification, (4) decisao final billing.
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -240,7 +240,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** `pytest tests/workers/test_convert.py` passa
 - **Dependencia:** T2.3
 
-#### `[ ]` T2.6 — Migration: novos campos de input (mood, artistas, capa biblioteca)
+#### `[x]` T2.6 — Migration: novos campos de input (mood, artistas, capa biblioteca)
 
 - **Arquivos:** `supabase/migrations/004_inputs_produtor.sql`
 - **Reformulada em 2026-05-21** apos ADR nova de capa. Removidos `visual_style` em beats e `default_visual_style` em users (conceito de estilos fixos descartado). Adicionados `default_brief` JSON e referencia a `cover_library`.
@@ -287,7 +287,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Form de upload nao envia sem mood selecionado. Click visual claro. Mobile-friendly.
 - **Dependencia:** T2.1
 
-#### `[ ]` T2.11 — UI upload: picker de capa (biblioteca + manual + atalho gerar)
+#### `[x]` T2.11 — UI upload: picker de capa (biblioteca + manual + atalho gerar)
 
 - **Arquivos:** `web/components/UploadForm.tsx` (atualiza T2.1), `web/components/CoverPicker.tsx` (novo)
 - **Reformulada em 2026-05-21** apos ADR nova de capa. Substituido o toggle "Gerar com IA / Enviar minha" por picker de biblioteca.
@@ -298,7 +298,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Picker funciona com 3 tabs. Capa selecionada via biblioteca preenche `cover_id` no submit. Manual preenche `cover_path`. Gerar agora dispara fluxo e seleciona.
 - **Dependencia:** T2.1, T2.6, T4.13 (aba `/capas` precisa existir), T4.15 (worker cover.py funcionando)
 
-#### `[ ]` T2.12 — Endpoint POST /beats atualizado: aceitar artistas + mood + cover_id (biblioteca) ou cover_path (manual)
+#### `[x]` T2.12 — Endpoint POST /beats atualizado: aceitar artistas + mood + cover_id (biblioteca) ou cover_path (manual)
 
 - **Arquivos:** `api/app/routes/beats.py` (atualiza T2.2)
 - **Reformulada em 2026-05-21** apos ADR nova de capa. Substituido `visual_style` por `cover_id` (FK biblioteca).
@@ -493,7 +493,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Estimativa:** 3-5 dias de iteracao (muito menor que 1-2 semanas dos clusters antigos).
 - **Nota seguranca:** prompt base e receita secreta. Git e privado (apos T0.6 ser privatizado). NUNCA logar prompt base em texto puro. NUNCA expor via endpoint publico.
 
-#### `[ ]` T4.7 — Service: fal_service.py (integracao fal.ai gpt-image-2)
+#### `[x]` T4.7 — Service: fal_service.py (integracao fal.ai gpt-image-2)
 
 - **Arquivos:** `api/app/services/fal_service.py`
 - **O que fazer:**
@@ -505,7 +505,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Funcao com prompt teste retorna URL valida em ~30s. Imagem baixada bate aspecto 1024x1024.
 - **Dependencia:** —
 
-#### `[ ]` T4.8 — Service: cover_prompt_builder.py (Claude monta prompt final)
+#### `[x]` T4.8 — Service: cover_prompt_builder.py (Claude monta prompt final)
 
 - **Arquivos:** `api/app/services/cover_prompt_builder.py`
 - **O que fazer:** Servico que recebe brief estruturado + chama Claude pra gerar prompt final pro fal.ai.
@@ -520,7 +520,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** `build_cover_prompt({sujeito: 'mulher', ambiente: 'interior luxo', iluminacao: 'vermelho', energia: 'sexy', nota_livre: ''}, 'Drake')` retorna prompt 400+ chars sem mencionar "Drake".
 - **Dependencia:** T4.6 (prompt base), T2.7 (lista de artistas), anthropic_service existente
 
-#### `[ ]` T4.9 — Worker cover.py: orquestra Claude + fal.ai + salva biblioteca
+#### `[x]` T4.9 — Worker cover.py: orquestra Claude + fal.ai + salva biblioteca
 
 - **Arquivos:** `api/app/workers/cover.py`
 - **O que fazer:** Endpoint `/internal/covers/generate` chamado pelo QStash ou diretamente pela aba `/capas`. State machine:
@@ -537,7 +537,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** POST com brief valido gera 1 ou 3 capas em ~30s (paralelo). Capas aparecem em `cover_library`. Creditos decrementados. usage_tracker registra Claude + fal.ai.
 - **Dependencia:** T4.7, T4.8, T4.12 (tabela cover_library), T4.14 (sistema de creditos)
 
-#### `[ ]` T4.10 — UI aba `/capas`: rota e layout base
+#### `[x]` T4.10 — UI aba `/capas`: rota e layout base
 
 - **Arquivos:**
   - `web/app/(app)/capas/page.tsx` (rota)
@@ -560,7 +560,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Test `@slow` passa.
 - **Dependencia:** T4.9
 
-#### `[ ]` T4.12 — Migration: tabela `cover_library`
+#### `[x]` T4.12 — Migration: tabela `cover_library`
 
 - **Arquivos:** `supabase/migrations/008_cover_library.sql`
 - **O que fazer:** Cria tabela:
@@ -589,7 +589,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Migration roda limpa. Insert via RLS so funciona pro user dono. select de outro user retorna 0 rows.
 - **Dependencia:** T0.5
 
-#### `[ ]` T4.13 — UI wizard de configuracao de estilo padrao
+#### `[x]` T4.13 — UI wizard de configuracao de estilo padrao
 
 - **Arquivos:**
   - `web/components/CapasWizard.tsx` (modal/full-screen)
@@ -613,7 +613,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Wizard completa fluxo. `default_brief` salvo em `user_profiles`. 4 capas teste aparecem na biblioteca apos confirmacao.
 - **Dependencia:** T2.9 (SeletorDeArtista), T4.9 (worker funcional), T4.12 (cover_library)
 
-#### `[ ]` T4.14 — Sistema de creditos por tier (sem billing)
+#### `[x]` T4.14 — Sistema de creditos por tier (sem billing)
 
 - **Arquivos:**
   - `supabase/migrations/009_credits.sql`
@@ -636,7 +636,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Upload com `cover_source='library'` ou `'manual'` nao dispara cover.py. Upload com `cover_source='inline_ai'` dispara cover.py + generate.py em paralelo.
 - **Dependencia:** T4.2 (generate ja funcionando), T2.11 (picker no upload)
 
-#### `[ ]` T4.16 — Endpoint POST /covers/generate (chamado pela aba `/capas`)
+#### `[x]` T4.16 — Endpoint POST /covers/generate (chamado pela aba `/capas`) + GET /covers + GET /covers/credits + DELETE /covers/{id} + GET/POST/PATCH/DELETE /covers/briefs/*
 
 - **Arquivos:** `api/app/routes/covers.py`
 - **O que fazer:** Endpoint publico (autenticado) que aba `/capas` chama. Aceita `{brief?: dict, lote: 1|3, override_default: bool}`.
@@ -646,7 +646,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** POST com brief gera 1-3 capas em ~30s. Resposta sincrona (job_id) seguida de Supabase Realtime na tabela cover_library pra atualizar UI.
 - **Dependencia:** T4.9 (worker), T4.14 (creditos)
 
-#### `[ ]` T4.17 — UI: notificacao quando capa fica pronta (Realtime)
+#### `[x]` T4.17 — UI: notificacao quando capa fica pronta (Realtime)
 
 - **Arquivos:**
   - `web/lib/realtime-covers.ts` (subscription)
@@ -659,7 +659,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Produtor abre /capas, clica gerar, sai pra dashboard, ve badge + toast quando pronta. Volta na aba, ve capa nova.
 - **Dependencia:** T4.10, T4.16
 
-#### `[ ]` T4.18 — UI display de custo + bloqueio quando sem creditos
+#### `[x]` T4.18 — UI display de custo + bloqueio quando sem creditos (ConfirmGenerateModal)
 
 - **Arquivos:**
   - `web/components/CreditosBar.tsx` (header da aba /capas)
@@ -985,6 +985,8 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 ---
 
 ## Historico de chats
+
+- **2026-05-21** — **Sessao gigantesca: capa IA do zero ate producao.** ADR `2026-05-21-geracao-de-capa-prompt-base-claude.md` substitui `2026-05-07-geracao-de-capa-mvp.md` (clusters fixos descartados — Gustavo descobriu que prompt base mestre + brief de 1-2 linhas + Claude gera prompts radicalmente especificos pra qualquer artista, validado em 3 testes Drake/Lil Baby/Carti). **Evolucoes de design durante a sessao**: (1) artista virou TEXTO LIVRE (nao FK rigida — milhares de artistas no mundo, todo dia nasce um); (2) brief unico evoluiu pra MULTI-PRESETS nomeados (free 1 / int 5 / premium ∞), gerenciados via modal "Gerenciar briefs"; (3) onboarding free (primeira capa por user e gratuita) — padrao SaaS sério; (4) tier 'internal' adicionado pra dono/time testar sem limite; (5) skeleton refresh-safe via `cover_library.status` (worker INSERT pending → UPDATE ready/failed) — `optimisticPending` local pra feedback IMEDIATO entre click e Realtime. **Backend entregue**: 8 migrations Supabase (011-018), services `fal_service` + `cover_prompt_builder` (com prompt do Lil Baby como placeholder ate T4.6) + `credits_service` + `presets_service`, worker `cover.py` reescrito, endpoints `/covers/*` e `/covers/briefs/*` + `DELETE /covers/{id}` com cleanup de storage. **Frontend entregue**: aba `/capas` com BriefSelector→ManageBriefsModal (dropdown floating tinha bug de stacking, virou modal direto), `CapasWizard` 3-step com edicao por ID, `CapasGrid` com render por status, `CapaCard` (PendingCard + FailedCard + ReadyCard), `CoverPicker` no upload (tab biblioteca + manual, deselect ao clicar de novo, badge "usada"), `ConfirmDialog` BeatPost-style (substituiu window.confirm), `ConfirmGenerateModal` com onboarding free banner. **Bugs UX corrigidos**: modal "Enviando..." preso → UX assincrona; drag de texto fora do modal fechava → mousedown/mouseup ref; download abria nova aba → fetch blob + URL.createObjectURL; descartar capa dava `permission denied` → endpoint DELETE backend. **Decisoes registradas em memoria**: `feedback_modo_trabalho_guiado` atualizada (modo batelada dentro de bloco aprovado), `feedback_evitar_sql_prematuro` nova, `feedback_usar_frontend_design_skill` nova, `project_capa_ia_arquitetura` nova. **Bloqueador unico restante**: T4.6 prompt base mestre (Gustavo vai trabalhar engenharia de prompt na proxima sessao). Commits: 36bb3af (backend), 9c08ca4 (UI aba), f8c5bbf (empty state ajustado), 4fee597 (wizard T4.13), 7e7477f (fix wizard step 1 reset bug), 6a7b29e (botoes funcionando T4.18), d530f83 (realtime + CoverPicker + endpoint /beats), 930d497 (fix UX modal), f3d2639 (brief presets + skeleton refresh-safe — refactor grande), 43a0741 (tier internal + fix visual), 227b6d0 (dropdown vira modal direto), 61dfd8a (4 fixes pos-teste), 6e3e024 (endpoint DELETE), 437d17d (ConfirmDialog + drag fora nao fecha). 17 commits, ~3500 inserções no total da sessao.
 
 - **2026-05-20** — 4 fixes/features pos-redesign Editorial Mono entregues em sequencia. Sessao tambem teve outage do Railway (Major Outage 22:29 UTC do dia anterior + backlog de builds no dia seguinte com sintoma "unconditional drop overload" + "Application not found" no gateway — nao era nosso codigo). (1) **fix agenda drop (640954f):** trocado `rectIntersection` por `pointerWithin` no @dnd-kit (centro do preview detectava celula errada quando chip era largo) + handleDragEnd usa `agora+30min` como default se a data alvo for hoje (antes usava 18h fixo — depois das 18h o drop sumia em silencio porque `novaData < now`). (2) **dashboard greeting (3d23572):** `DashboardGreeting` puxa `user_profiles.nome` via Supabase com fallback pro handle do email + hint "+ adicionar nome de produtor" linkando pra /configuracoes quando fica no fallback. (3) **analytics overview lifetime (c757008):** trocados os 3 KPIs da /analytics (Analytics API com delay 24-48h) por subs/views/videos via `channels.list?part=statistics,snippet` — mesma engenharia da /analytics/beats: cache 5min + botao Atualizar com `force_refresh=true`. Novo endpoint `GET /analytics/channel-overview`, novo service `get_channel_overview_realtime`, novo cache key `realtime:channel-overview`. UI ganha badge "● live" em card fresh (cache miss) + nome do canal no subtitulo. Custo de quota ~zero (1 unit/refresh manual, cache absorve cliques). Timeline grafica continua via Analytics API (unico caminho pra views/dia). (4) **dashboard views consistency (2144fa2):** Gustavo notou 3 numeros divergentes de "views" entre dashboard (390 ult 90d), Visao Geral (231 lifetime) e Meus beats (242 lifetime BeatPost). Diagnostico: Analytics API com janela conta views historicas de videos deletados/unlisted ("fantasmas") — pode dar numero MAIOR que lifetime real. Solucao: dashboard `Views Totais` migrou pra `fetchChannelOverview()` (mesmo endpoint da Visao Geral). Agora bate em 231/231 e compartilha cache de 5min (1 chamada YouTube por 5min mesmo abrindo as 2 paginas). Memoria `project_youtube_data_vs_analytics_api.md` atualizada com a aplicacao concreta. Build 17/17 verde nos 5 commits.
 
