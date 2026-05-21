@@ -42,33 +42,35 @@ function PendingCard({ index }: { index: number }) {
       }}
     >
       <div className="absolute inset-0 shimmer" style={{ background: 'var(--bg-elevated)' }} />
-
-      {/* Pulse roxo radial */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
-          background: 'radial-gradient(circle at 50% 50%, rgba(65,0,255,0.12), transparent 60%)',
+          background: 'radial-gradient(circle at 50% 50%, rgba(65,0,255,0.18), transparent 60%)',
         }}
       />
-
-      {/* Status label */}
-      <div className="absolute left-2.5 top-2.5 z-10 inline-flex items-center gap-1.5">
+      {/* Label "Gerando" destacada (igual ao GhostPendingCard) */}
+      <div
+        className="absolute left-2.5 top-2.5 z-10 inline-flex items-center gap-1.5 rounded-sm px-1.5 py-1"
+        style={{
+          background: 'rgba(0,0,0,0.55)',
+          backdropFilter: 'blur(6px)',
+          border: '1px solid var(--border-purple)',
+        }}
+      >
         <span className="led led-pulse" style={{ color: 'var(--purple-light)' }} />
         <span
           className="font-mono uppercase"
           style={{
             fontSize: 9.5,
-            fontWeight: 500,
+            fontWeight: 600,
             letterSpacing: '0.18em',
-            color: 'var(--purple-soft)',
+            color: '#FFFFFF',
           }}
         >
           Gerando
         </span>
       </div>
-
-      {/* Numeração editorial */}
       <span
         className="pointer-events-none absolute bottom-2.5 left-3 font-mono tabular"
         style={{

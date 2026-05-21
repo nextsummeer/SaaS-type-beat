@@ -7,6 +7,8 @@ import { CapaCard } from './CapaCard'
 type Props = {
   covers: CoverLibraryItem[]
   loading: boolean
+  /** Skeletons "fantasma" temporários (entre click e INSERT real). */
+  ghostPendingCount?: number
   onDownload: (cover: CoverLibraryItem) => void
   onUseInBeat: (cover: CoverLibraryItem) => void
   onDiscard: (cover: CoverLibraryItem) => void
@@ -14,19 +16,20 @@ type Props = {
 
 /**
  * Grid responsivo da biblioteca de capas.
- * O estado "Gerando" agora vem do DB (cover_library.status='pending'),
- * NÃO de state local — sobrevive a refresh.
- * CapaCard renderiza diferente por status (pending/ready/failed).
+ * Status pending/ready/failed vem do DB. Ghosts opcionais aparecem
+ * imediatamente após o click "Gerar" (feedback instantâneo) e somem
+ * assim que o INSERT real chega via Realtime.
  */
 export function CapasGrid({
   covers,
   loading,
+  ghostPendingCount = 0,
   onDownload,
   onUseInBeat,
   onDiscard,
 }: Props) {
   // Estado inicial: loading (sem dados ainda)
-  if (loading && covers.length === 0) {
+  if (loading && covers.length === 0 && ghostPendingCount === 0) {
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
@@ -36,13 +39,18 @@ export function CapasGrid({
     )
   }
 
-  // Biblioteca vazia (nenhuma row em cover_library)
-  if (covers.length === 0) {
+  // Biblioteca vazia (nenhuma row em cover_library) e sem fantasmas
+  if (covers.length === 0 && ghostPendingCount === 0) {
     return <EmptyLibrary />
   }
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Skeletons "fantasma" aparecem PRIMEIRO no grid (UX: feedback imediato) */}
+      {Array.from({ length: ghostPendingCount }).map((_, i) => (
+        <GhostPendingCard key={`ghost-${i}`} index={i} />
+      ))}
+
       {covers.map((cover, index) => (
         <div
           key={cover.id}
@@ -51,13 +59,71 @@ export function CapasGrid({
         >
           <CapaCard
             cover={cover}
-            index={index}
+            index={ghostPendingCount + index}
             onDownload={onDownload}
             onUseInBeat={onUseInBeat}
             onDiscard={onDiscard}
           />
         </div>
       ))}
+    </div>
+  )
+}
+
+/** Skeleton "fantasma" — feedback imediato pre-Realtime. Visual igual ao
+ * PendingCard real (pulse roxo + label "Gerando"). */
+function GhostPendingCard({ index }: { index: number }) {
+  const numLabel = String(index + 1).padStart(2, '0')
+  return (
+    <div
+      className="relative overflow-hidden rounded-lg rise"
+      style={{
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-purple)',
+        aspectRatio: '1 / 1',
+      }}
+    >
+      <div className="absolute inset-0 shimmer" style={{ background: 'var(--bg-elevated)' }} />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: 'radial-gradient(circle at 50% 50%, rgba(65,0,255,0.18), transparent 60%)',
+        }}
+      />
+      {/* Label "Gerando" mais visivel */}
+      <div
+        className="absolute left-2.5 top-2.5 z-10 inline-flex items-center gap-1.5 rounded-sm px-1.5 py-1"
+        style={{
+          background: 'rgba(0,0,0,0.55)',
+          backdropFilter: 'blur(6px)',
+          border: '1px solid var(--border-purple)',
+        }}
+      >
+        <span className="led led-pulse" style={{ color: 'var(--purple-light)' }} />
+        <span
+          className="font-mono uppercase"
+          style={{
+            fontSize: 9.5,
+            fontWeight: 600,
+            letterSpacing: '0.18em',
+            color: '#FFFFFF',
+          }}
+        >
+          Gerando
+        </span>
+      </div>
+      <span
+        className="pointer-events-none absolute bottom-2.5 left-3 font-mono tabular"
+        style={{
+          fontSize: 10,
+          fontWeight: 500,
+          letterSpacing: '0.18em',
+          color: 'var(--text-subtle)',
+        }}
+      >
+        [{numLabel}]
+      </span>
     </div>
   )
 }

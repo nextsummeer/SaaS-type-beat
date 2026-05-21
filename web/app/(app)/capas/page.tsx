@@ -52,6 +52,12 @@ export default function CapasPage() {
   const [wizardEditingId, setWizardEditingId] = useState<string | null>(null)
   const [manageOpen, setManageOpen] = useState(false)
   const [confirmLote, setConfirmLote] = useState<1 | 3 | null>(null)
+  /**
+   * Skeletons "fantasma" que aparecem instantaneamente ao clicar Gerar,
+   * antes do INSERT pending real chegar via Realtime. Some assim que o
+   * primeiro real pending aparece (ou após N segundos como fallback).
+   */
+  const [optimisticPending, setOptimisticPending] = useState(0)
 
   const activeBrief = presets.find((p) => p.is_active) ?? null
 
@@ -140,6 +146,9 @@ export default function CapasPage() {
       const token = session?.access_token
       if (!token) return
 
+      // OTIMISMO: mostra skeleton "Gerando" IMEDIATAMENTE (antes do Realtime/fetch)
+      setOptimisticPending((prev) => prev + lote)
+
       try {
         const res = await fetch(`${API_URL}/covers/generate`, {
           method: 'POST',
@@ -156,8 +165,9 @@ export default function CapasPage() {
       } catch (err) {
         console.error('Erro no fetch /covers/generate:', err)
       } finally {
-        // Realtime ja chama loadData quando INSERT pending aparece, mas
-        // chamamos aqui como defesa em profundidade
+        // Remove os skeletons fantasma — a essa altura, os reais ja foram
+        // criados em cover_library (status='ready' apos o worker terminar)
+        setOptimisticPending((prev) => Math.max(0, prev - lote))
         loadData()
       }
     },
@@ -266,28 +276,54 @@ export default function CapasPage() {
   // ─────────────────────────────────────────────────────────────────
   // CAPA — handlers
   // ─────────────────────────────────────────────────────────────────
-  const handleDownload = (cover: CoverLibraryItem) => {
+  const handleDownload = async (cover: CoverLibraryItem) => {
     if (!cover.image_url) return
-    const link = document.createElement('a')
-    link.href = cover.image_url
-    link.download = `capa-${cover.id.slice(0, 8)}.jpg`
-    link.target = '_blank'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    // Pra forçar download (e não abrir aba), precisa fetch como blob primeiro:
+    // o attr `download` em <a> é ignorado pra URLs cross-origin (storage Supabase).
+    try {
+      const res = await fetch(cover.image_url)
+      const blob = await res.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = `capa-${cover.id.slice(0, 8)}.jpg`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      // Libera memoria do object URL apos 1s (tempo do browser consumir)
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
+    } catch (err) {
+      console.error('Falha ao baixar capa:', err)
+      // Fallback: abre em nova aba se CORS bloqueou
+      window.open(cover.image_url, '_blank')
+    }
   }
   const handleUseInBeat = (cover: CoverLibraryItem) => {
     console.log('TODO: redirecionar pra /upload com cover_id', cover.id)
   }
   const handleDiscard = useCallback(
     async (cover: CoverLibraryItem) => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      // Confirmacao temporaria via window.confirm — substituir por modal customizado
+      // num refinement futuro. Pelo menos garante que user não deleta acidentalmente.
+      if (!confirm(`Descartar essa capa? Essa ação não pode ser desfeita.`)) {
+        return
+      }
+
       try {
-        await supabase.from('cover_library').delete().eq('id', cover.id)
+        const { error } = await supabase
+          .from('cover_library')
+          .delete()
+          .eq('id', cover.id)
+
+        if (error) {
+          console.error('Falha ao deletar capa:', error)
+          alert(`Erro ao deletar: ${error.message}`)
+          return
+        }
         await loadData()
       } catch (err) {
         console.error('Falha ao deletar capa:', err)
+        alert('Erro ao deletar a capa. Tente novamente.')
       }
     },
     [supabase, loadData],
@@ -326,6 +362,10 @@ export default function CapasPage() {
           <SectionLabel num="02" label="Capas geradas" />
           <CapasGrid
             covers={covers}
+            ghostPendingCount={Math.max(
+              0,
+              optimisticPending - covers.filter((c) => c.status === 'pending').length,
+            )}
             loading={isLoading}
             onDownload={handleDownload}
             onUseInBeat={handleUseInBeat}

@@ -76,13 +76,25 @@ export function CoverPicker({
           return
         }
         const items = await fetchCovers(token)
-        if (!cancelled) {
-          // Picker so mostra capas prontas — esconde pending/failed do upload
-          setLibrary(items.filter((it) => it.status === 'ready' && it.image_url))
-          setLoadingLibrary(false)
+        if (cancelled) return
+
+        // Picker so mostra capas que ja tem image_url (ready ou capas legacy
+        // anteriores a migration 016 que nao tem campo status preenchido
+        // mas tem image_url). NAO filtra estritamente por status='ready'
+        // porque capas legacy podem nao ter status setado.
+        const readyOnly = items.filter((it) => !!it.image_url && it.status !== 'pending' && it.status !== 'failed')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[CoverPicker] biblioteca carregada:', {
+            total: items.length,
+            ready: readyOnly.length,
+            statuses: items.map((it) => it.status),
+          })
         }
+        setLibrary(readyOnly)
+        setLoadingLibrary(false)
       } catch (err) {
         if (!cancelled) {
+          console.error('[CoverPicker] erro fetchCovers:', err)
           setLibraryError(err instanceof Error ? err.message : 'Erro ao carregar biblioteca')
           setLoadingLibrary(false)
         }
@@ -92,7 +104,9 @@ export function CoverPicker({
     return () => {
       cancelled = true
     }
-  }, [supabase])
+    // supabase client e estavel — nao incluir nas deps pra evitar re-fetch
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function exibirAviso(msg: string) {
     setAviso(msg)
