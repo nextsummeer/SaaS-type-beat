@@ -2,9 +2,10 @@
 
 import { useState, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { UploadCloud, AlertCircle, Music, Image, Plus, X, Check, Store, ExternalLink, CalendarClock, Sparkles, ArrowRight } from 'lucide-react'
+import { UploadCloud, AlertCircle, Music, Plus, X, Check, Store, ExternalLink, CalendarClock, Sparkles, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { uploadWithProgress } from '@/lib/storage'
+import { CoverPicker } from './CoverPicker'
 
 type Status = 'idle' | 'uploading' | 'error'
 
@@ -25,10 +26,12 @@ export function UploadForm() {
     return isNaN(d.getTime()) ? null : d
   }, [searchParams])
   const audioRef = useRef<HTMLInputElement>(null)
-  const coverRef = useRef<HTMLInputElement>(null)
 
   const [audioFile, setAudioFile] = useState<File | null>(null)
+  /** Capa via upload manual (modo CoverPicker tab 'Manual') */
   const [coverFile, setCoverFile] = useState<File | null>(null)
+  /** Capa selecionada da biblioteca (modo CoverPicker tab 'Biblioteca') */
+  const [selectedCoverId, setSelectedCoverId] = useState<string | null>(null)
   const [artistas, setArtistas] = useState<string[]>([''])
   const [bpm, setBpm] = useState('')
   const [jaPublicado, setJaPublicado] = useState(false)
@@ -37,7 +40,6 @@ export function UploadForm() {
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
   const [audioDragOver, setAudioDragOver] = useState(false)
-  const [coverDragOver, setCoverDragOver] = useState(false)
   const [dropAviso, setDropAviso] = useState<string | null>(null)
 
   const bpmNum = Number(bpm)
@@ -46,9 +48,10 @@ export function UploadForm() {
   const artistasUnicos = artistasLimpos.filter(
     (a, i) => artistasLimpos.findIndex((b) => b.toLowerCase() === a.toLowerCase()) === i,
   )
+  const hasCover = !!coverFile || !!selectedCoverId
   const canSubmit =
     !!audioFile &&
-    !!coverFile &&
+    hasCover &&
     artistasUnicos.length > 0 &&
     bpmValid &&
     (!jaPublicado || storeLink.trim().length > 0)
@@ -75,23 +78,6 @@ export function UploadForm() {
       return
     }
     setAudioFile(arquivo)
-  }
-
-  function handleCoverDrop(e: React.DragEvent) {
-    e.preventDefault()
-    setCoverDragOver(false)
-    if (uploading) return
-    const arquivo = e.dataTransfer.files?.[0]
-    if (!arquivo) return
-    const ehImg =
-      arquivo.type === 'image/jpeg' ||
-      arquivo.type === 'image/png' ||
-      /\.(jpe?g|png)$/i.test(arquivo.name)
-    if (!ehImg) {
-      exibirAviso('Capa precisa ser JPG ou PNG.')
-      return
-    }
-    setCoverFile(arquivo)
   }
 
   function adicionarArtista() {
@@ -131,15 +117,23 @@ export function UploadForm() {
 
       await uploadWithProgress(signedData.signedUrl, audioFile!, setAudioProgress)
 
-      const coverExt = coverFile!.name.split('.').pop()?.toLowerCase() ?? 'jpg'
-      const coverPath = `${user.id}/${beatId}/cover.${coverExt}`
-      const { data: coverSigned, error: coverSignedError } = await supabase.storage
-        .from('covers')
-        .createSignedUploadUrl(coverPath)
-      if (coverSignedError || !coverSigned) {
-        throw new Error(`Erro ao preparar upload da capa: ${coverSignedError?.message}`)
+      // Capa pode vir de 2 caminhos:
+      //  (a) Manual: faz upload do file pro storage, manda cover_path
+      //  (b) Biblioteca: capa ja existe em cover_library, manda cover_id direto
+      let coverPath: string | null = null
+      const coverId = selectedCoverId
+
+      if (coverFile) {
+        const coverExt = coverFile.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+        coverPath = `${user.id}/${beatId}/cover.${coverExt}`
+        const { data: coverSigned, error: coverSignedError } = await supabase.storage
+          .from('covers')
+          .createSignedUploadUrl(coverPath)
+        if (coverSignedError || !coverSigned) {
+          throw new Error(`Erro ao preparar upload da capa: ${coverSignedError?.message}`)
+        }
+        await uploadWithProgress(coverSigned.signedUrl, coverFile)
       }
-      await uploadWithProgress(coverSigned.signedUrl, coverFile!)
 
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Sessão expirada')
@@ -155,6 +149,7 @@ export function UploadForm() {
           body: JSON.stringify({
             audio_path: audioPath,
             cover_path: coverPath,
+            cover_id: coverId,
             artistas: artistasUnicos,
             artista_nome: artistasUnicos.join(' x '),
             bpm: bpmNum,
@@ -524,75 +519,17 @@ export function UploadForm() {
         </div>
       )}
 
-      {/* Cover */}
+      {/* Capa: picker com 2 tabs (biblioteca + manual) */}
       <div>
         <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
           Capa do beat <span style={{ color: 'var(--led-error)' }}>*</span>
         </label>
-        <button
-          type="button"
-          onClick={() => coverRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault()
-            if (!uploading) setCoverDragOver(true)
-          }}
-          onDragLeave={() => setCoverDragOver(false)}
-          onDrop={handleCoverDrop}
+        <CoverPicker
+          manualFile={coverFile}
+          selectedCoverId={selectedCoverId}
+          onPickFile={setCoverFile}
+          onPickLibrary={setSelectedCoverId}
           disabled={uploading}
-          className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-5 text-center transition-all disabled:cursor-not-allowed disabled:opacity-50"
-          style={{
-            borderColor: coverDragOver
-              ? '#FFFFFF'
-              : coverFile
-                ? 'var(--border-strong)'
-                : 'var(--border-medium)',
-            background: coverDragOver
-              ? 'rgba(255,255,255,0.04)'
-              : coverFile
-                ? 'var(--bg-surface)'
-                : 'var(--bg-base)',
-          }}
-        >
-          {coverDragOver ? (
-            <>
-              <span
-                className="led led-pulse"
-                style={{ color: '#FFFFFF', width: 8, height: 8 }}
-              />
-              <p
-                className="font-mono uppercase"
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  letterSpacing: '0.18em',
-                  color: 'var(--text-primary)',
-                }}
-              >
-                Solte a capa aqui
-              </p>
-            </>
-          ) : coverFile ? (
-            <>
-              {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <Image className="h-6 w-6" style={{ color: 'var(--text-primary)' }} />
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{coverFile.name}</p>
-            </>
-          ) : (
-            <>
-              {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <Image className="h-6 w-6" style={{ color: 'var(--text-muted)' }} />
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                Arraste ou <span style={{ color: 'var(--text-primary)', textDecoration: 'underline', textUnderlineOffset: 2 }}>clique para adicionar</span> (JPG ou PNG)
-              </p>
-            </>
-          )}
-        </button>
-        <input
-          ref={coverRef}
-          type="file"
-          accept=".jpg,.jpeg,.png,image/jpeg,image/png"
-          className="hidden"
-          onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
         />
       </div>
 

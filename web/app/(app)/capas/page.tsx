@@ -85,6 +85,46 @@ export default function CapasPage() {
     loadData()
   }, [loadData])
 
+  /**
+   * Realtime: subscribe a INSERT em cover_library do user atual.
+   * Quando uma capa nova chega (worker terminou), recarrega dados sem
+   * precisar de refresh manual. Substitui o skeleton "Gerando..." pela
+   * capa real no grid + atualiza créditos.
+   */
+  useEffect(() => {
+    let channelRef: ReturnType<typeof supabase.channel> | null = null
+    let cancelled = false
+
+    async function setupRealtime() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user || cancelled) return
+
+      channelRef = supabase
+        .channel(`cover-library-${session.user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'cover_library',
+            filter: `user_id=eq.${session.user.id}`,
+          },
+          () => {
+            // Recarrega dados completos (cobre nova capa + decrement créditos)
+            loadData()
+          },
+        )
+        .subscribe()
+    }
+
+    setupRealtime()
+
+    return () => {
+      cancelled = true
+      if (channelRef) supabase.removeChannel(channelRef)
+    }
+  }, [supabase, loadData])
+
   // ── HANDLERS ──
   const handleEditStyle = () => {
     setWizardMode('configure')

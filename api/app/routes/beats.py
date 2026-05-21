@@ -13,7 +13,10 @@ logger = logging.getLogger(__name__)
 
 class CreateBeatRequest(BaseModel):
     audio_path: str
+    """Caminho de capa MANUAL no Supabase Storage. Mutualmente exclusivo com cover_id."""
     cover_path: Optional[str] = None
+    """ID de capa da biblioteca (cover_library). Mutualmente exclusivo com cover_path."""
+    cover_id: Optional[str] = None
     artista_nome: Optional[str] = None
     artistas: Optional[List[str]] = None
     bpm: int
@@ -121,13 +124,42 @@ def create_beat(
     artista_nome = " x ".join(artistas_clean) if artistas_clean else (body.artista_nome or None)
 
     client = get_admin_client()
+
+    # ── Resolve capa: cover_id (biblioteca) OU cover_path (manual) ──
+    # Se cover_id presente, valida ownership e copia o storage_path da cover_library
+    # pra cover_path. Mantemos cover_path duplicado pra retrocompat
+    # (workers atuais leem cover_path).
+    cover_source = "manual"  # default — beats antigos ja sao manual
+    final_cover_path: Optional[str] = body.cover_path
+    final_cover_id: Optional[str] = None
+
+    if body.cover_id:
+        # Valida que a capa pertence ao user
+        cover_resp = (
+            client.table("cover_library")
+            .select("id, user_id, storage_path")
+            .eq("id", body.cover_id)
+            .maybe_single()
+            .execute()
+        )
+        cover_data = cover_resp.data if cover_resp else None
+        if not cover_data:
+            raise HTTPException(status_code=404, detail="Capa nao encontrada na biblioteca")
+        if cover_data["user_id"] != str(user.id):
+            raise HTTPException(status_code=403, detail="Capa pertence a outro usuario")
+        final_cover_id = body.cover_id
+        final_cover_path = cover_data["storage_path"]
+        cover_source = "library"
+
     result = (
         client.table("beats")
         .insert(
             {
                 "user_id": str(user.id),
                 "audio_path": body.audio_path,
-                "cover_path": body.cover_path,
+                "cover_path": final_cover_path,
+                "cover_id": final_cover_id,
+                "cover_source": cover_source,
                 "artista_nome": artista_nome,
                 "bpm": body.bpm,
                 "store_link": body.store_link,
@@ -141,6 +173,26 @@ def create_beat(
         raise HTTPException(status_code=500, detail="Erro ao salvar beat no banco")
 
     beat = result.data[0]
+
+    # Se usou capa da biblioteca, incrementa o contador (best-effort, nao quebra
+    # se falhar — beat ja foi criado)
+    if final_cover_id:
+        try:
+            # Busca contador atual + incrementa (UPDATE simples, sem RPC atomico)
+            cur = (
+                client.table("cover_library")
+                .select("used_in_beats_count")
+                .eq("id", final_cover_id)
+                .maybe_single()
+                .execute()
+            )
+            if cur and cur.data:
+                new_count = int(cur.data.get("used_in_beats_count") or 0) + 1
+                client.table("cover_library").update({
+                    "used_in_beats_count": new_count
+                }).eq("id", final_cover_id).execute()
+        except Exception as exc:
+            logger.warning("Falha ao incrementar used_in_beats_count: %s", exc)
 
     try:
         dispatch_convert_job(beat["id"])
