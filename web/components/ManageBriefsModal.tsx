@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Loader2, Pencil, Trash2, X, Check, AlertCircle, Plus, Sparkles } from 'lucide-react'
 import type { BriefPreset } from '@/lib/api'
 
@@ -42,6 +42,7 @@ export function ManageBriefsModal({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [activatingId, setActivatingId] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const mouseDownOnBackdropRef = useRef(false)
 
   useEffect(() => {
     if (!open) {
@@ -122,8 +123,14 @@ export function ManageBriefsModal({
         background: 'rgba(0,0,0,0.78)',
         backdropFilter: 'blur(8px)',
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+      onMouseDown={(e) => {
+        mouseDownOnBackdropRef.current = e.target === e.currentTarget
+      }}
+      onMouseUp={(e) => {
+        if (mouseDownOnBackdropRef.current && e.target === e.currentTarget) {
+          onClose()
+        }
+        mouseDownOnBackdropRef.current = false
       }}
     >
       <div

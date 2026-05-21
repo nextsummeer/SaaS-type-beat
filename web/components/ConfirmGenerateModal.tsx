@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Loader2, Sparkles, X, AlertCircle, Gift } from 'lucide-react'
 
 type Props = {
@@ -28,6 +28,8 @@ export function ConfirmGenerateModal({
   onCancel,
   onConfirm,
 }: Props) {
+  const mouseDownOnBackdropRef = useRef(false)
+
   useEffect(() => {
     if (!open) return
     function handleKey(e: KeyboardEvent) {
@@ -53,8 +55,18 @@ export function ConfirmGenerateModal({
         background: 'rgba(0,0,0,0.78)',
         backdropFilter: 'blur(8px)',
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !loading) onCancel()
+      onMouseDown={(e) => {
+        mouseDownOnBackdropRef.current = e.target === e.currentTarget
+      }}
+      onMouseUp={(e) => {
+        if (
+          mouseDownOnBackdropRef.current &&
+          e.target === e.currentTarget &&
+          !loading
+        ) {
+          onCancel()
+        }
+        mouseDownOnBackdropRef.current = false
       }}
     >
       <div

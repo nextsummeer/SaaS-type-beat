@@ -118,6 +118,9 @@ export function CapasWizard({
 
   const dialogRef = useRef<HTMLDivElement>(null)
   const wasOpenRef = useRef(false)
+  // Track se o mousedown comecou no backdrop. Evita fechar quando user
+  // arrasta texto/seleção pra fora do modal (mouseup acaba no backdrop).
+  const mouseDownOnBackdropRef = useRef(false)
 
   // Reset state SOMENTE na transicao fechado → aberto.
   // Sem esse guard, atualizar `initialBrief` no parent durante o save
@@ -195,8 +198,18 @@ export function CapasWizard({
         background: 'rgba(0,0,0,0.78)',
         backdropFilter: 'blur(8px)',
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !saving) onClose()
+      onMouseDown={(e) => {
+        mouseDownOnBackdropRef.current = e.target === e.currentTarget
+      }}
+      onMouseUp={(e) => {
+        if (
+          mouseDownOnBackdropRef.current &&
+          e.target === e.currentTarget &&
+          !saving
+        ) {
+          onClose()
+        }
+        mouseDownOnBackdropRef.current = false
       }}
     >
       <div

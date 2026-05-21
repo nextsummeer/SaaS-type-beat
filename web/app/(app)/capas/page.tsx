@@ -22,6 +22,7 @@ import { CapasGrid } from '@/components/CapasGrid'
 import { CapasWizard } from '@/components/CapasWizard'
 import { ConfirmGenerateModal } from '@/components/ConfirmGenerateModal'
 import { ManageBriefsModal } from '@/components/ManageBriefsModal'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
 
@@ -53,6 +54,9 @@ export default function CapasPage() {
   const [wizardEditingId, setWizardEditingId] = useState<string | null>(null)
   const [manageOpen, setManageOpen] = useState(false)
   const [confirmLote, setConfirmLote] = useState<1 | 3 | null>(null)
+  /** Capa pendente de confirmacao de delete (modal ConfirmDialog) */
+  const [confirmDiscard, setConfirmDiscard] = useState<CoverLibraryItem | null>(null)
+  const [discardLoading, setDiscardLoading] = useState(false)
   /**
    * Skeletons "fantasma" que aparecem instantaneamente ao clicar Gerar,
    * antes do INSERT pending real chegar via Realtime. Some assim que o
@@ -302,34 +306,36 @@ export default function CapasPage() {
   const handleUseInBeat = (cover: CoverLibraryItem) => {
     console.log('TODO: redirecionar pra /upload com cover_id', cover.id)
   }
-  const handleDiscard = useCallback(
-    async (cover: CoverLibraryItem) => {
-      // Confirmacao via window.confirm — substituir por modal customizado depois.
-      if (!confirm('Descartar essa capa? Essa ação não pode ser desfeita.')) {
-        return
-      }
+  // Click no menu "Descartar" abre o modal de confirmação
+  const handleDiscard = useCallback((cover: CoverLibraryItem) => {
+    setConfirmDiscard(cover)
+  }, [])
 
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
-      if (!token) {
-        alert('Sessão expirada — faça login de novo')
-        return
-      }
+  // Click "Confirmar" no modal de descarte: chama o endpoint DELETE
+  const confirmDiscardAction = useCallback(async () => {
+    if (!confirmDiscard) return
+    const cover = confirmDiscard
 
-      try {
-        // Via endpoint backend (DELETE /covers/{id}) que faz cleanup do storage
-        // alem do banco. Frontend direto via supabase client dava
-        // 'permission denied' porque a tabela nao tem grant DELETE pro
-        // role authenticated — padrao do projeto e tudo via service_role.
-        await deleteCover(token, cover.id)
-        await loadData()
-      } catch (err) {
-        console.error('Falha ao deletar capa:', err)
-        alert(`Erro ao deletar: ${err instanceof Error ? err.message : 'desconhecido'}`)
-      }
-    },
-    [supabase, loadData],
-  )
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) {
+      setConfirmDiscard(null)
+      return
+    }
+
+    setDiscardLoading(true)
+    try {
+      await deleteCover(token, cover.id)
+      await loadData()
+      setConfirmDiscard(null)
+    } catch (err) {
+      console.error('Falha ao deletar capa:', err)
+      // Mantem o modal aberto pra user ver erro no console; toast/inline error vem depois
+      setConfirmDiscard(null)
+    } finally {
+      setDiscardLoading(false)
+    }
+  }, [confirmDiscard, supabase, loadData])
 
   // ─────────────────────────────────────────────────────────────────
   // RENDER
@@ -415,6 +421,18 @@ export default function CapasPage() {
         loading={false}
         onCancel={() => setConfirmLote(null)}
         onConfirm={confirmGenerateAction}
+      />
+
+      <ConfirmDialog
+        open={confirmDiscard !== null}
+        title="Descartar essa capa?"
+        description="A capa será removida da biblioteca e o arquivo apagado. Essa ação não pode ser desfeita."
+        confirmLabel="Descartar"
+        cancelLabel="Cancelar"
+        danger
+        loading={discardLoading}
+        onCancel={() => !discardLoading && setConfirmDiscard(null)}
+        onConfirm={confirmDiscardAction}
       />
     </>
   )
