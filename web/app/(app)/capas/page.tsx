@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
 import { ArrowUpRight, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -229,7 +228,7 @@ function EmptyNoBrief({ onConfigure }: { onConfigure: () => void }) {
           que combina com seus type beats — depois é só clicar pra criar.
         </p>
 
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+        <div className="mt-8 flex justify-center">
           <button
             type="button"
             onClick={onConfigure}
@@ -243,20 +242,6 @@ function EmptyNoBrief({ onConfigure }: { onConfigure: () => void }) {
               className="transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
             />
           </button>
-
-          <Link
-            href="/upload"
-            className="group inline-flex items-center gap-1.5 text-[13px] font-medium transition-colors"
-            style={{ color: 'var(--text-muted)' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--text-secondary)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--text-muted)'
-            }}
-          >
-            Subir capa manual no upload
-          </Link>
         </div>
       </div>
     </div>
@@ -264,109 +249,185 @@ function EmptyNoBrief({ onConfigure }: { onConfigure: () => void }) {
 }
 
 /**
- * Decoração SVG do estado vazio — 3 quadrados em sequência editorial,
- * com numeração mono e gradientes sutis. Sugere "biblioteca a nascer".
+ * Decoração SVG do estado vazio — 3 quadrados em sequência editorial.
+ * O do meio é o "destaque": gradient roxo→magenta visível + sparkle pulsando.
+ * Os laterais são placeholders tracejados marcantes.
+ * Sugere "biblioteca a nascer com IA".
  */
 function BlankCoversArt() {
   return (
     <svg
-      width="280"
-      height="120"
-      viewBox="0 0 280 120"
+      width="380"
+      height="180"
+      viewBox="0 0 380 180"
       fill="none"
       aria-hidden
     >
       <defs>
-        <linearGradient id="blank-grad-1" x1="0%" y1="0%" x2="100%" y2="100%">
+        {/* Gradient interno das boxes laterais (sutil, sugere "ainda vazio") */}
+        <linearGradient id="blank-side" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="rgba(255,255,255,0.06)" />
           <stop offset="100%" stopColor="rgba(255,255,255,0.02)" />
         </linearGradient>
-        <linearGradient id="blank-grad-2" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="rgba(199,181,255,0.10)" />
-          <stop offset="100%" stopColor="rgba(255,80,214,0.04)" />
+
+        {/* Gradient da box central — destaque MARCANTE roxo→magenta */}
+        <linearGradient id="blank-hero" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="rgba(65,0,255,0.32)" />
+          <stop offset="55%" stopColor="rgba(101,51,255,0.22)" />
+          <stop offset="100%" stopColor="rgba(255,26,190,0.18)" />
         </linearGradient>
+
+        {/* Glow externo da box central */}
+        <radialGradient id="blank-hero-glow" cx="50%" cy="50%" r="60%">
+          <stop offset="0%" stopColor="rgba(199,181,255,0.30)" />
+          <stop offset="100%" stopColor="transparent" />
+        </radialGradient>
+
+        {/* Filtro de glow pro sparkle */}
+        <filter id="sparkle-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
 
-      {/* Card 1 — outline esquerdo */}
-      <rect
-        x="20"
-        y="20"
-        width="80"
-        height="80"
-        rx="6"
-        fill="url(#blank-grad-1)"
-        stroke="rgba(255,255,255,0.10)"
-        strokeWidth="1"
-        strokeDasharray="2 3"
-      />
-      <text
-        x="32"
-        y="93"
-        fill="rgba(255,255,255,0.30)"
-        fontSize="9"
-        fontFamily="ui-monospace, monospace"
-        letterSpacing="0.18em"
-      >
-        [01]
-      </text>
-
-      {/* Card 2 — destaque centro com leve gradient */}
-      <rect
-        x="110"
-        y="20"
-        width="80"
-        height="80"
-        rx="6"
-        fill="url(#blank-grad-2)"
-        stroke="rgba(199,181,255,0.28)"
-        strokeWidth="1"
-      />
-      {/* Cintilação central — sparkle marker */}
-      <g transform="translate(150, 60)">
-        <circle r="2" fill="#C7B5FF" opacity="0.85" />
-        <circle r="6" fill="none" stroke="rgba(199,181,255,0.30)" strokeWidth="1">
-          <animate attributeName="r" values="4;10;4" dur="2.4s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.45;0;0.45" dur="2.4s" repeatCount="indefinite" />
-        </circle>
+      {/* ── Card 01 — placeholder lateral esquerdo ── */}
+      <g>
+        <rect
+          x="20"
+          y="30"
+          width="110"
+          height="110"
+          rx="8"
+          fill="url(#blank-side)"
+          stroke="rgba(255,255,255,0.22)"
+          strokeWidth="1.2"
+          strokeDasharray="3 5"
+        />
+        <text
+          x="34"
+          y="128"
+          fill="rgba(255,255,255,0.55)"
+          fontSize="11"
+          fontWeight="500"
+          fontFamily="ui-monospace, monospace"
+          letterSpacing="0.20em"
+        >
+          [01]
+        </text>
       </g>
-      <text
-        x="122"
-        y="93"
-        fill="#C7B5FF"
-        opacity="0.65"
-        fontSize="9"
-        fontFamily="ui-monospace, monospace"
-        letterSpacing="0.18em"
-      >
-        [02]
-      </text>
 
-      {/* Card 3 — outline direito */}
-      <rect
-        x="200"
-        y="20"
-        width="80"
-        height="80"
-        rx="6"
-        fill="url(#blank-grad-1)"
-        stroke="rgba(255,255,255,0.10)"
-        strokeWidth="1"
-        strokeDasharray="2 3"
-      />
-      <text
-        x="212"
-        y="93"
-        fill="rgba(255,255,255,0.30)"
-        fontSize="9"
-        fontFamily="ui-monospace, monospace"
-        letterSpacing="0.18em"
-      >
-        [03]
-      </text>
+      {/* ── Card 02 — destaque MARCANTE central ── */}
+      <g>
+        {/* Halo externo morfando */}
+        <rect
+          x="130"
+          y="20"
+          width="120"
+          height="120"
+          rx="14"
+          fill="url(#blank-hero-glow)"
+          opacity="0.85"
+        >
+          <animate
+            attributeName="opacity"
+            values="0.55;1;0.55"
+            dur="3.2s"
+            repeatCount="indefinite"
+          />
+        </rect>
 
-      {/* Linhas guias entre cards — sutil, editorial */}
-      <line x1="100" y1="60" x2="110" y2="60" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
-      <line x1="190" y1="60" x2="200" y2="60" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+        {/* Box principal */}
+        <rect
+          x="140"
+          y="30"
+          width="110"
+          height="110"
+          rx="8"
+          fill="url(#blank-hero)"
+          stroke="rgba(199,181,255,0.55)"
+          strokeWidth="1.2"
+        />
+
+        {/* Sparkle SVG central — 4 pontas, estilo Lucide */}
+        <g transform="translate(195, 78)" filter="url(#sparkle-glow)">
+          <path
+            d="M 0 -12 L 2 -2 L 12 0 L 2 2 L 0 12 L -2 2 L -12 0 L -2 -2 Z"
+            fill="#FFFFFF"
+          >
+            <animateTransform
+              attributeName="transform"
+              type="rotate"
+              from="0"
+              to="360"
+              dur="16s"
+              repeatCount="indefinite"
+            />
+            <animate
+              attributeName="opacity"
+              values="0.85;1;0.85"
+              dur="2.2s"
+              repeatCount="indefinite"
+            />
+          </path>
+
+          {/* Anel pulsante secundário */}
+          <circle r="20" fill="none" stroke="rgba(199,181,255,0.55)" strokeWidth="1">
+            <animate attributeName="r" values="14;24;14" dur="2.4s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.65;0;0.65" dur="2.4s" repeatCount="indefinite" />
+          </circle>
+
+          {/* 2º anel pulsante (defasado) */}
+          <circle r="20" fill="none" stroke="rgba(255,80,214,0.45)" strokeWidth="1">
+            <animate attributeName="r" values="14;24;14" dur="2.4s" begin="1.2s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.55;0;0.55" dur="2.4s" begin="1.2s" repeatCount="indefinite" />
+          </circle>
+        </g>
+
+        <text
+          x="154"
+          y="128"
+          fill="rgba(255,255,255,0.92)"
+          fontSize="11"
+          fontWeight="500"
+          fontFamily="ui-monospace, monospace"
+          letterSpacing="0.20em"
+        >
+          [02]
+        </text>
+      </g>
+
+      {/* ── Card 03 — placeholder lateral direito ── */}
+      <g>
+        <rect
+          x="260"
+          y="30"
+          width="110"
+          height="110"
+          rx="8"
+          fill="url(#blank-side)"
+          stroke="rgba(255,255,255,0.22)"
+          strokeWidth="1.2"
+          strokeDasharray="3 5"
+        />
+        <text
+          x="274"
+          y="128"
+          fill="rgba(255,255,255,0.55)"
+          fontSize="11"
+          fontWeight="500"
+          fontFamily="ui-monospace, monospace"
+          letterSpacing="0.20em"
+        >
+          [03]
+        </text>
+      </g>
+
+      {/* Linhas guias finas conectando as boxes — editorial */}
+      <line x1="130" y1="85" x2="140" y2="85" stroke="rgba(255,255,255,0.28)" strokeWidth="1" />
+      <line x1="250" y1="85" x2="260" y2="85" stroke="rgba(255,255,255,0.28)" strokeWidth="1" />
     </svg>
   )
 }
