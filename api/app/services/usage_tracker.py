@@ -21,7 +21,7 @@ PRICING: dict[str, dict[str, float]] = {
     "gemini_2_5_flash": {"input": 0.30, "output": 2.50},
     "youtube_upload": {"flat_usd": 0.0},     # quota free, sem custo monetario
     "youtube_data_api": {"flat_usd": 0.0},   # videos.list 1 unit/chunk, sem custo monetario
-    "fal_gpt_image_2": {"flat_usd": 0.05},   # capa IA (quando ativar)
+    "fal_gpt_image_2": {"flat_usd": 0.0083},  # gpt-image-2 quality=low 1024x1024 (validado 2026-05-21)
 }
 
 
