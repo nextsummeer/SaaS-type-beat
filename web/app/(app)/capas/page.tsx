@@ -88,9 +88,10 @@ export default function CapasPage() {
   /**
    * Chamado pelo wizard quando produtor salva o brief.
    * - Persiste default_brief em user_profiles
-   * - Se action='save_and_generate', dispara POST /covers/generate (lote 1).
+   * - Fecha o modal LOGO (UX: produtor não fica preso esperando 30s da geração)
+   * - Se action='save_and_generate', dispara POST /covers/generate em background.
+   *   Aba mostra skeleton via generatingCount enquanto roda.
    *   Primeira capa pode ser gratis (logica no backend via has_generated_first_cover).
-   * - Recarrega dados ao final.
    */
   const handleWizardSave = useCallback(
     async (brief: CoverBrief, action: 'save_only' | 'save_and_generate') => {
@@ -98,7 +99,7 @@ export default function CapasPage() {
       const token = session?.access_token
       if (!token) throw new Error('Sessão expirada')
 
-      // 1. Persiste o brief
+      // 1. Persiste o brief (rápido, ~200ms)
       const { error: updateError } = await supabase
         .from('user_profiles')
         .update({ default_brief: brief })
@@ -109,9 +110,13 @@ export default function CapasPage() {
         throw new Error('Falha ao salvar estilo padrão')
       }
 
+      // 2. Fecha o wizard ANTES de atualizar defaultBrief no state.
+      //    Isso evita race condition que disparava reset do useEffect interno
+      //    do wizard (Step 1 bug de 2026-05-21).
+      setWizardOpen(false)
       setDefaultBrief(brief)
 
-      // 2. Se pediu geração, dispara o endpoint
+      // 3. Geração em background (não bloqueia o fechamento do modal)
       if (action === 'save_and_generate') {
         setGeneratingCount(1)
         try {
@@ -126,7 +131,6 @@ export default function CapasPage() {
           if (!res.ok) {
             const body = await res.json().catch(() => ({}))
             console.error('Falha ao gerar capa:', body)
-            // Nao throw — o brief ja foi salvo, geracao e bonus
           }
         } catch (err) {
           console.error('Erro no fetch /covers/generate:', err)
@@ -135,8 +139,7 @@ export default function CapasPage() {
         }
       }
 
-      // 3. Fecha o wizard + recarrega dados (créditos, biblioteca, has_generated_first_cover)
-      setWizardOpen(false)
+      // 4. Recarrega tudo (créditos, biblioteca, has_generated_first_cover)
       await loadData()
     },
     [supabase, loadData],

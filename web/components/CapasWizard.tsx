@@ -109,10 +109,16 @@ export function CapasWizard({
   const [saving, setSaving] = useState<SaveAction | null>(null)
 
   const dialogRef = useRef<HTMLDivElement>(null)
+  const wasOpenRef = useRef(false)
 
-  // Reset state quando o modal abre. Pre-fill se for edição.
+  // Reset state SOMENTE na transicao fechado → aberto.
+  // Sem esse guard, atualizar `initialBrief` no parent durante o save
+  // resetaria o wizard pro Step 1 indevidamente (bug observado em 2026-05-21).
   useEffect(() => {
-    if (!open) return
+    const justOpened = open && !wasOpenRef.current
+    wasOpenRef.current = open
+    if (!justOpened) return
+
     setStep(1)
     setArtistaNome(initialBrief?.artista_nome ?? '')
     setSujeito(initialBrief?.sujeito ?? null)
