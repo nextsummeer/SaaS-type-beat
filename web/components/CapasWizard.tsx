@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Building2,
@@ -218,11 +219,11 @@ export function CapasWizard({
               style={{
                 fontSize: 10,
                 letterSpacing: '0.22em',
-                color: 'var(--text-subtle)',
+                color: mode === 'pontual' ? '#FCD34D' : 'var(--text-subtle)',
               }}
             >
               {mode === 'pontual'
-                ? 'Brief pontual · não salva como padrão'
+                ? '⚠ BRIEF PONTUAL · NÃO ALTERA SEU PADRÃO'
                 : isFirstTime
                 ? 'Configuração inicial'
                 : 'Editar estilo padrão'}
@@ -275,6 +276,7 @@ export function CapasWizard({
           )}
           {step === 3 && (
             <Step3Confirmacao
+              mode={mode}
               artistaNome={trimmed}
               sujeito={sujeito}
               ambiente={ambiente}
@@ -722,6 +724,7 @@ const ENERGIA_DISPLAY: Record<string, string> = {
 }
 
 function Step3Confirmacao({
+  mode,
   artistaNome,
   sujeito,
   ambiente,
@@ -730,6 +733,7 @@ function Step3Confirmacao({
   notaLivre,
   onChangeNota,
 }: {
+  mode: WizardMode
   artistaNome: string
   sujeito: string | null
   ambiente: string | null
@@ -745,7 +749,7 @@ function Step3Confirmacao({
   if (energia && ENERGIA_DISPLAY[energia]) tokens.push(ENERGIA_DISPLAY[energia])
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
       <div>
         <p
           className="font-mono uppercase mb-3"
@@ -761,9 +765,44 @@ function Step3Confirmacao({
           className="font-display text-[24px] font-semibold leading-tight"
           style={{ color: 'var(--text-primary)', letterSpacing: '-0.022em' }}
         >
-          Seu estilo padrão
+          {mode === 'pontual' ? 'Brief pontual' : 'Seu estilo padrão'}
         </h2>
       </div>
+
+      {/* Aviso destacado em modo pontual — reforça que NAO altera o padrao.
+          Sem isso, user confunde com "alterei o padrão" e fica frustrado quando
+          o botão "Gerar 1 capa" do header continua usando o brief antigo. */}
+      {mode === 'pontual' && (
+        <div
+          className="flex items-start gap-3 rounded-lg px-4 py-3"
+          style={{
+            background: 'rgba(252,211,77,0.06)',
+            border: '1px solid rgba(252,211,77,0.30)',
+          }}
+        >
+          <AlertCircle
+            size={15}
+            strokeWidth={2}
+            style={{ color: 'var(--led-warning)', marginTop: 1, flexShrink: 0 }}
+          />
+          <div>
+            <p
+              className="font-medium text-[13px]"
+              style={{ color: '#FCD34D' }}
+            >
+              Esse brief é apenas pra esta geração
+            </p>
+            <p
+              className="mt-0.5 text-[12px] leading-relaxed"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Seu estilo padrão (botões "Gerar 1 capa" / "Gerar 3 variações" do
+              header) <strong>não será alterado</strong>. Pra mudar o padrão,
+              feche este modal e clique em <em>"editar"</em> no header.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Resumo do brief */}
       <div

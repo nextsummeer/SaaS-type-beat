@@ -233,15 +233,15 @@ export default function CapasPage() {
     setConfirmLote(lote)
   }
 
-  const confirmGenerateAction = useCallback(async () => {
+  const confirmGenerateAction = useCallback(() => {
     if (!confirmLote || !defaultBrief) return
-    setConfirmLoading(true)
-    try {
-      await triggerGenerate(defaultBrief, confirmLote)
-    } finally {
-      setConfirmLoading(false)
-      setConfirmLote(null)
-    }
+    const lote = confirmLote
+    const briefSnapshot = defaultBrief
+    // Fecha modal IMEDIATAMENTE — geração roda em background (UX assíncrona).
+    // Antes esperava o triggerGenerate (~30s), modal travava com 'Enviando...'.
+    setConfirmLote(null)
+    setConfirmLoading(false)
+    void triggerGenerate(briefSnapshot, lote)
   }, [confirmLote, defaultBrief, triggerGenerate])
   const handleDownload = (cover: CoverLibraryItem) => {
     const link = document.createElement('a')
