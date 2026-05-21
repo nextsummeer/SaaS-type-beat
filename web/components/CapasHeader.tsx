@@ -20,6 +20,12 @@ const TIER_LABELS: Record<string, string> = {
   free: 'Free',
   intermediate: 'Intermediário',
   premium: 'Premium',
+  internal: 'Interno · ∞',
+}
+
+/** True quando os limites do tier sao efetivamente ilimitados. */
+function isUnlimitedTier(tier: string): boolean {
+  return tier === 'internal'
 }
 
 function daysUntilReset(resetAt: string | null): number | null {
@@ -175,12 +181,16 @@ function CreditsBar({
   credits: CoverCreditsState
   daysLeft: number | null
 }) {
+  const unlimited = isUnlimitedTier(credits.tier)
   const pct = credits.limit > 0 ? (credits.remaining / credits.limit) * 100 : 0
-  const isOut = credits.remaining === 0 && credits.limit > 0
-  const isLow = pct > 0 && pct <= 20
-  const isMid = pct > 20 && pct <= 50
+  const isOut = credits.remaining === 0 && credits.limit > 0 && !unlimited
+  const isLow = !unlimited && pct > 0 && pct <= 20
+  const isMid = !unlimited && pct > 20 && pct <= 50
 
-  const fillColor = isOut
+  // Tier interno usa cor neutra (não importa "porcentagem")
+  const fillColor = unlimited
+    ? 'var(--purple-light)'
+    : isOut
     ? 'var(--led-error)'
     : isLow
     ? 'var(--led-error)'
@@ -200,21 +210,36 @@ function CreditsBar({
               lineHeight: 1,
             }}
           >
-            {credits.remaining}
+            {unlimited ? '∞' : credits.remaining}
           </span>
-          <span
-            className="font-mono tabular"
-            style={{
-              fontSize: 12,
-              color: 'var(--text-subtle)',
-              letterSpacing: '0.04em',
-            }}
-          >
-            / {credits.limit}
-          </span>
+          {!unlimited && (
+            <span
+              className="font-mono tabular"
+              style={{
+                fontSize: 12,
+                color: 'var(--text-subtle)',
+                letterSpacing: '0.04em',
+              }}
+            >
+              / {credits.limit}
+            </span>
+          )}
+          {unlimited && (
+            <span
+              className="font-mono uppercase"
+              style={{
+                fontSize: 10.5,
+                color: 'var(--purple-soft)',
+                letterSpacing: '0.16em',
+                marginLeft: 4,
+              }}
+            >
+              ilimitado
+            </span>
+          )}
         </div>
 
-        {daysLeft !== null && (
+        {!unlimited && daysLeft !== null && (
           <span
             className="font-mono tabular"
             style={{
@@ -228,19 +253,21 @@ function CreditsBar({
         )}
       </div>
 
-      <div
-        className="relative h-[3px] w-full overflow-hidden rounded-full"
-        style={{ background: 'rgba(255,255,255,0.06)' }}
-      >
+      {!unlimited && (
         <div
-          className="absolute inset-y-0 left-0 transition-all duration-500"
-          style={{
-            width: `${pct}%`,
-            background: fillColor,
-            boxShadow: `0 0 8px ${fillColor}`,
-          }}
-        />
-      </div>
+          className="relative h-[3px] w-full overflow-hidden rounded-full"
+          style={{ background: 'rgba(255,255,255,0.06)' }}
+        >
+          <div
+            className="absolute inset-y-0 left-0 transition-all duration-500"
+            style={{
+              width: `${pct}%`,
+              background: fillColor,
+              boxShadow: `0 0 8px ${fillColor}`,
+            }}
+          />
+        </div>
+      )}
 
       {(isOut || isLow) && (
         <div

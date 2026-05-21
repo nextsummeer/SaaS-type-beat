@@ -14,6 +14,7 @@ PRESET_LIMITS: dict[str, int] = {
     "free": 1,
     "intermediate": 5,
     "premium": -1,
+    "internal": -1,  # Tier interno (dono/time) — ilimitado
 }
 
 

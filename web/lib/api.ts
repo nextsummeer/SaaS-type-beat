@@ -456,7 +456,7 @@ export interface CoverLibraryItem {
   status: CoverStatus
 }
 
-export type UserTier = 'free' | 'intermediate' | 'premium'
+export type UserTier = 'free' | 'intermediate' | 'premium' | 'internal'
 
 export interface CoverCreditsState {
   tier: UserTier

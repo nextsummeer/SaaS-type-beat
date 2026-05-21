@@ -56,7 +56,11 @@ export function BriefSelector({
   const limitLabel = limit === -1 ? '∞' : limit
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div
+      className="relative"
+      ref={containerRef}
+      style={{ isolation: 'isolate', zIndex: open ? 50 : 'auto' }}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -105,11 +109,12 @@ export function BriefSelector({
       {open && (
         <div
           role="listbox"
-          className="absolute left-0 right-0 z-40 mt-1.5 overflow-hidden rounded-lg"
+          className="absolute left-0 right-0 mt-1.5 overflow-hidden rounded-lg"
           style={{
-            background: 'var(--bg-overlay)',
+            zIndex: 100,
+            background: '#16161B',  // bg-elevated opaco (sem alpha) pra cobrir tudo abaixo
             border: '1px solid var(--border-medium)',
-            boxShadow: 'var(--shadow-lg)',
+            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(0,0,0,0.4)',
             minWidth: 260,
           }}
         >

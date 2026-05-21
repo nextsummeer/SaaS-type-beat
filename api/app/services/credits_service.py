@@ -20,6 +20,7 @@ PLAN_LIMITS: dict[str, int] = {
     "free": 3,
     "intermediate": 15,
     "premium": 40,
+    "internal": 999999,  # Tier interno (dono/time) — pratico-ilimitado
 }
 
 
