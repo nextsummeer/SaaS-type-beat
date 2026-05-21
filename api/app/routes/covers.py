@@ -82,6 +82,44 @@ def get_credits(authorization: str = Header(...)):
     return credits_service.get_remaining(str(user.id))
 
 
+@router.delete("/{cover_id}", status_code=204)
+def delete_cover(cover_id: str, authorization: str = Header(...)):
+    """Deleta uma capa da biblioteca + remove o arquivo do storage.
+
+    Valida ownership via user_id. Beats que referenciam essa capa
+    (beats.cover_id FK on delete set null) ficam sem capa, nao quebram.
+    """
+    user = _authenticate(authorization)
+    user_id = str(user.id)
+    client = get_admin_client()
+
+    cur = (
+        client.table("cover_library")
+        .select("id, user_id, storage_path")
+        .eq("id", cover_id)
+        .maybe_single()
+        .execute()
+    )
+    data = cur.data if cur else None
+    if not data:
+        raise HTTPException(status_code=404, detail="Capa nao encontrada")
+    if data["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Capa pertence a outro user")
+
+    # Cleanup storage (best-effort — nao bloqueia delete se falhar)
+    storage_path = data.get("storage_path")
+    if storage_path:
+        try:
+            client.storage.from_("covers").remove([storage_path])
+            logger.info("cover delete: removed storage_path=%s", storage_path)
+        except Exception as exc:
+            logger.warning("cover delete: falha remover storage %s: %s", storage_path, exc)
+
+    client.table("cover_library").delete().eq("id", cover_id).execute()
+    logger.info("cover delete: cover_id=%s user=%s", cover_id, user_id)
+    return None
+
+
 @router.post("/generate")
 def generate(body: GenerateCoverRequest, authorization: str = Header(...)):
     """Gera 1 ou 3 capas via IA pra biblioteca do user.

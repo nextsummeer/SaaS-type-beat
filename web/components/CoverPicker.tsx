@@ -150,6 +150,13 @@ export function CoverPicker({
   function handlePickLibraryCover(cover: CoverLibraryItem) {
     if (disabled) return
 
+    // Toggle: se ja selecionada, deseleciona ao clicar de novo
+    if (selectedCoverId === cover.id) {
+      onPickLibrary(null)
+      setConfirmReuseId(null)
+      return
+    }
+
     // Bloqueio com escape: capa usada exige confirmação
     if (cover.used_in_beats_count > 0 && confirmReuseId !== cover.id) {
       setConfirmReuseId(cover.id)

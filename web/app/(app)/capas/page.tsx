@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   fetchCovers,
   fetchCoverCredits,
+  deleteCover,
   fetchBriefs,
   createBrief,
   updateBrief,
@@ -303,27 +304,28 @@ export default function CapasPage() {
   }
   const handleDiscard = useCallback(
     async (cover: CoverLibraryItem) => {
-      // Confirmacao temporaria via window.confirm — substituir por modal customizado
-      // num refinement futuro. Pelo menos garante que user não deleta acidentalmente.
-      if (!confirm(`Descartar essa capa? Essa ação não pode ser desfeita.`)) {
+      // Confirmacao via window.confirm — substituir por modal customizado depois.
+      if (!confirm('Descartar essa capa? Essa ação não pode ser desfeita.')) {
+        return
+      }
+
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) {
+        alert('Sessão expirada — faça login de novo')
         return
       }
 
       try {
-        const { error } = await supabase
-          .from('cover_library')
-          .delete()
-          .eq('id', cover.id)
-
-        if (error) {
-          console.error('Falha ao deletar capa:', error)
-          alert(`Erro ao deletar: ${error.message}`)
-          return
-        }
+        // Via endpoint backend (DELETE /covers/{id}) que faz cleanup do storage
+        // alem do banco. Frontend direto via supabase client dava
+        // 'permission denied' porque a tabela nao tem grant DELETE pro
+        // role authenticated — padrao do projeto e tudo via service_role.
+        await deleteCover(token, cover.id)
         await loadData()
       } catch (err) {
         console.error('Falha ao deletar capa:', err)
-        alert('Erro ao deletar a capa. Tente novamente.')
+        alert(`Erro ao deletar: ${err instanceof Error ? err.message : 'desconhecido'}`)
       }
     },
     [supabase, loadData],

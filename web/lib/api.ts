@@ -492,6 +492,18 @@ export async function fetchCoverCredits(token: string): Promise<CoverCreditsStat
   return res.json()
 }
 
+/** Deleta uma capa da biblioteca + remove arquivo do storage. */
+export async function deleteCover(token: string, id: string): Promise<void> {
+  const res = await fetch(`${API_URL}/covers/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok && res.status !== 204) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao deletar capa`)
+  }
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // Brief Presets (configurações de estilo nomeadas)
 // ──────────────────────────────────────────────────────────────────────
