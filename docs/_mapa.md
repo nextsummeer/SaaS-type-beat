@@ -25,7 +25,8 @@
 - `decisoes/2026-05-07-geracao-de-capa-mvp.md` — Capa IA por estilo+mood (clusters fixos), fal.ai $0.05/imagem [SUPERSEDED em 2026-05-21]
 - `decisoes/2026-05-12-bpm-manual-e-link-loja.md` — BPM informado pelo produtor + link da loja opcional no upload (T2.13) [ativo]
 - `decisoes/2026-05-21-geracao-de-capa-prompt-base-claude.md` — Capa IA reformulada: prompt base mestre + brief estruturado + Claude runtime, aba dedicada `/capas` com biblioteca, sistema de creditos por tier, fal.ai quality=low $0.013/capa [ativo, complementado em 2026-05-21 sessao 3]
-- `decisoes/2026-05-21-prompt-dna-capa-v2.md` — Prompt DNA v2: principio Captured Not Composed + DNA universal + anti-aesthetics + 7 blocos + brief v2 (6+2 campos com genero como ancora) + sistema de variacao por 7 eixos + prompt caching Claude [ativo, importante]
+- `decisoes/2026-05-21-prompt-dna-capa-v2.md` — Prompt DNA v2: principio Captured Not Composed + DNA universal + anti-aesthetics + 7 blocos + brief v2 (6+2 campos com genero como ancora) + sistema de variacao por 7 eixos + prompt caching Claude [SUPERSEDED em 2026-05-22 pelo v3 -- capas saíram visualmente ruins, abordagem reescrita]
+- `decisoes/2026-05-22-prompt-dna-capa-v3.md` — Prompt DNA v3: camera video-still fixa em 2 variantes (padrao + underground agressivo) + estrutura 12 elementos + sub-locations por artista (5 validados, expansivel) + drop campo cenario + anti-repeticao via query DB + palavras/references banidas vs permitidas + anti-bias inline [ativo, importante]
 
 ## Arquitetura
 - `arquitetura/pipeline-upload-postagem.md` — Fluxo ponta-a-ponta + state machine [ativo]

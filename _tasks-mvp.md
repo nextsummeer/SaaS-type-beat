@@ -1,12 +1,12 @@
 # _tasks — [NOME] Fase 1 (MVP) @gustavo
 
 **Criado:** 2026-04-25
-**Atualizado:** 2026-05-21 (sessao 3 FECHADA: prompt DNA v2 + brief v2 + variacao 7 eixos + back-compat + wizard v2 -- 8 tasks T4.19-T4.26 todas concluidas)
+**Atualizado:** 2026-05-22 (sessao 4 ABERTA: prompt DNA v3 -- camera video-still fixa + sub-locations por artista + drop campo cenario + anti-repeticao via DB. v2 SUPERSEDED apos teste visual produzir capas ruins.)
 **Outcome:** Produtor convidado faz login, conecta canal YouTube, configura brief de estilo padrao na aba `/capas` (multi-presets nomeados, ate N por tier), gera capas reusaveis com IA (prompt base + Claude + fal.ai, ~30s, $0.013), sobe um beat informando artista de referencia + mood, escolhe capa da biblioteca ou envia propria, recebe titulo+descricao+tags geradas pela IA, edita o que quiser, confirma agendamento, e ve video publicado/agendado no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Meta: beta fechado setembro 2026.
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** Sessao 3 (DNA v2 da capa IA) FECHADA -- 8 tasks T4.19-T4.26 todas concluidas em 9 commits sequenciais (7a1f10d -> 9d57b15 ou proximo). Pacote `cover_prompt_builder/` modular com 10 modulos (types, system_prompt secreto integral, vocabulary, variation, sanitizer, validators, brief_converter, builder, user_prompt, __init__). Brief v2 com 6+2 campos. Migration 019 aplicada em prod. Wizard reescrito 3-step. Back-compat v1->v2 server-side. Botao "Gerar variacao" adicionado. CLAUDE.md regra 6 atualizada. Memoria `project_capa_ia_arquitetura` reescrita. **Proxima sessao deve atacar:** (1) teste real ao Claude rodando 5 briefs canonicos do builder v2 ponta-a-ponta com cache_read_input_tokens > 0 na 2a chamada (custo ~$0.07, ~2min) -- ficou pendente pra economizar API call; (2) vocabulary v2 rico (matriz scene x light x mood + sub-locations curadas + sub-DNA modo simbolico) pra habilitar opcao `aleatorio` no wizard; (3) eval suite de 15-20 briefs canonicos pra regression visual; (4) reavaliar validador AVOID warning-mode -> hard-fail apos 1 semana de logs. Tasks pendentes velhas (sem mudanca): T4.11 (teste E2E pytest, backlog), T4.15 (generate.py NAO dispara cover.py). Bloqueadores paralelos (sem mudanca): (1) Rary republicar beat `ee96c64f`, (2) aumento quota YouTube, (3) OAuth verification, (4) decisao billing.
+**Proximo passo:** T4.28 -- `prompt_skeleton.py` (camera DNA video-still em 2 variantes: padrao calibrado + underground agressivo) -- AGUARDANDO Gustavo mandar 1 brief validado da sessao paralela como calibragem antes de implementar. Sessao 4 ABRIU em 2026-05-22 apos v2 (T4.19-T4.26) ter sido testada e produzido capas visualmente ruins -- causa: camera "Analog film + 35mm" gerava estetica polida oposta ao desejado. ADR `2026-05-22-prompt-dna-capa-v3.md` substitui v2 com camera video-still fixa (VHS/MiniDV/phone video comprimido) + estrutura 12 elementos + sub-locations por artista (5 validados: Drake, Travis, Weeknd, Fakemink, Nettspend; expansivel) + drop campo cenario do brief (inferido do universo do artista) + anti-repeticao via query nas ultimas 5 variation_seeds + palavras banidas (music video, cinematic, B-roll, director...) + references banidas (cinematografos/Vogue) vs permitidas (Larry Clark, Nan Goldin, Cobrasnake, Hedi Slimane) + anti-bias inline (sem asiaticos default, sem gang signs). Sequencia aprovada: T4.27 setup -> T4.28 skeleton -> T4.29 artist_universe -> T4.30 genre_dna+mood_modulation+lighting_setups -> T4.31 variation_engine -> T4.32 builder+validators+user_prompt+switch+smoke test -> T4.33 drop cenario backend+frontend. img2img fica pra DEPOIS da v3. T4.19-T4.26 marcadas como "iteracao 1 superada pela v3" (preservadas no historico). Tasks velhas (sem mudanca): T4.11 (teste E2E pytest, backlog), T4.15 (generate.py NAO dispara cover.py). Bloqueadores paralelos (sem mudanca): (1) Rary republicar beat `ee96c64f`, (2) aumento quota YouTube, (3) OAuth verification, (4) decisao billing.
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -662,7 +662,9 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Display sempre consistente com `credits_service.get_remaining`. Modal aparece antes de gerar. Bloqueio funciona.
 - **Dependencia:** T4.10, T4.14
 
-### Bloco prompt DNA v2 (aberto em 2026-05-21 sessao 3 apos ADR `2026-05-21-prompt-dna-capa-v2.md`)
+### Bloco prompt DNA v2 (aberto em 2026-05-21 sessao 3 apos ADR `2026-05-21-prompt-dna-capa-v2.md`) -- ITERACAO 1 SUPERADA PELA v3
+
+> **STATUS 2026-05-22:** Esta v2 foi entregue em prod (T4.19-T4.26 em 9 commits sequenciais 7a1f10d..38fff86) mas teste visual de Gustavo na aba `/capas` produziu capas visualmente ruins. Causa raiz: camera "Analog film + 35mm + Canon Sure Shot" gerava estetica cinematografica polida, oposta ao desejado. Substituida pela v3 (`Bloco prompt DNA v3` abaixo, ADR `2026-05-22-prompt-dna-capa-v3.md`). Tasks marcadas como `[x]` preservadas no historico pra rastreabilidade. Arquivos que SOBREVIVEM no pacote: `types.py`, `sanitizer.py`, `brief_converter.py`, `__init__.py`. Arquivos REESCRITOS na v3: `system_prompt.py`, `vocabulary.py`, `variation.py`, `validators.py`, `user_prompt.py`, `builder.py`.
 
 > **Reformulacao da engenharia de prompt da capa IA.** Substitui o `PROMPT_BASE_TEMPLATE` placeholder (capa Lil Baby hardcoded) por sistema estruturado: principio "Captured, Not Composed" + DNA universal + anti-aesthetics block + gramatica de 7 blocos + brief v2 (6+2 campos com genero como ancora) + sistema de variacao por 7 eixos sorteados em Python + prompt caching Claude. Detalhes no ADR e em `docs/sessoes/2026-05-21-engenharia-prompt-capa-ia-estado-atual.md`.
 
@@ -794,6 +796,111 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
   - Memoria `project_capa_ia_arquitetura.md` atualizada (substitui versao antiga)
 - **Criterio de pronto:** docs alinhados com codigo em producao.
 - **Dependencia:** T4.19-T4.25
+
+### Bloco prompt DNA v3 (aberto em 2026-05-22 sessao 4 apos ADR `2026-05-22-prompt-dna-capa-v3.md`)
+
+> **Reformulacao APOS teste visual mostrar capas ruins na v2.** Substitui camera "Analog film + 35mm" por camera video-still fixa em 2 variantes (padrao calibrado + underground agressivo). Estrutura de 7 blocos genericos vira 12 elementos ordenados com peças fixas + variaveis. Cenarios genericos saem -- sub-locations agora curadas por artista (5 validados, expansivel) e Claude sorteia UMA por chamada. Brief perde campo `cenario` (inferido do universo do artista). Anti-repeticao via query nas ultimas 5 `variation_seeds` do user. Palavras banidas (music video, cinematic, B-roll, director, scene from...) + references banidas (cinematografos/Vogue) vs permitidas (Larry Clark, Nan Goldin, Cobrasnake, Hedi Slimane). Anti-bias inline (sem asiaticos default, sem gang signs). Detalhes em `docs/decisoes/2026-05-22-prompt-dna-capa-v3.md`.
+
+#### `[x]` T4.27 — Setup v3 (ADR + tasks no ledger + marcar v2 como superseded)
+
+> Este commit. Sem codigo, so docs.
+
+- **Arquivos:**
+  - `docs/decisoes/2026-05-22-prompt-dna-capa-v3.md` (novo)
+  - `docs/_mapa.md` (adiciona entrada v3, marca v2 como SUPERSEDED)
+  - `_tasks-mvp.md` (este arquivo -- topo, bloco v2 marcado, bloco v3 aberto, T4.27-T4.33, historico)
+- **Criterio de pronto:** ADR no repo, ledger atualizado, commit limpo.
+- **Dependencia:** —
+
+#### `[ ]` T4.28 — `prompt_skeleton.py` (camera DNA 2 variantes + guard-rails + palavras/refs banidas)
+
+- **Arquivos:**
+  - `api/app/services/cover_prompt_builder/prompt_skeleton.py` (novo)
+- **O que fazer:**
+  - Constante `CAMERA_DNA_PADRAO` -- texto integral da camera video-still calibrada (ADR §1, variante padrao)
+  - Constante `CAMERA_DNA_UNDERGROUND` -- texto integral da camera agressiva (ADR §1, variante underground)
+  - Funcao `pick_camera_dna(brief) -> str` -- retorna underground SE `genero_primario == 'underground_trap'` OU `genero_secundario == 'underground_trap'`, senao padrao
+  - Constante `SHOT_ON_CLOSER` -- texto fixo "Shot on: a beat-up VHS camcorder..."
+  - Constante `GUARD_RAIL_ANTI_DESTRUICAO` -- texto fixo "The compression is light but the image stays soft..."
+  - Dict `MOOD_CLOSERS` -- frase final adaptada por mood (sad/dark/sexy/chill/party/flexin)
+  - Constante `BANNED_WORDS` -- lista de palavras banidas (music video, cinematic, B-roll, director, BTS, behind-the-scenes, scene from, frame from a movie, film still, movie ending coded)
+  - Constante `BANNED_REFERENCES` -- diretores/cinematografos (Drive, Neon Demon, Wong Kar-wai, Tony Scott, Sofia Coppola, Helmut Newton, Guy Bourdin, Vogue)
+  - Constante `ALLOWED_REFERENCES` -- fotografos intimos (Larry Clark, Nan Goldin, Cobrasnake, Hedi Slimane, Mark Hunter, Theo Skudra)
+- **Criterio de pronto:** Imports OK. `pick_camera_dna(brief_underground)` retorna a versao agressiva. `pick_camera_dna(brief_outro)` retorna a padrao.
+- **Dependencia:** T4.27
+
+#### `[ ]` T4.29 — `artist_universe.py` (5 artistas validados + fallback gracioso)
+
+- **Arquivos:**
+  - `api/app/services/cover_prompt_builder/artist_universe.py` (novo)
+- **O que fazer:**
+  - Dict `ARTIST_UNIVERSE` com 5 entradas (chave em lowercase): drake, travis scott, the weeknd, fakemink, nettspend
+  - Cada entrada tem: `sub_locations` (5-8 frases ricas com referencias culturais especificas), `wardrobe_pool` (vocabulario amplo, sem virar uniforme), `thematic_sentence`, `references` (foto-coded permitidas), `city_anchor` (None quando placeless)
+  - Funcao `get_universe(artista_primario, artista_secundario) -> dict` -- normaliza para lowercase, faz lookup. Quando 2 artistas no brief, retorna entrada combinada (`sub_locations` unidas, `references` unidas, `thematic_sentence` adaptada).
+  - Fallback gracioso: artista fora do dicionario retorna `{"sub_locations": [], "wardrobe_pool": ["generic genre-appropriate wardrobe"], "thematic_sentence": None, "references": [], "city_anchor": None}` -- builder usa so genero+mood nesse caso.
+- **Criterio de pronto:** `get_universe('Drake', None)` retorna dict completo com >=5 sub_locations. `get_universe('Artista Inventado', None)` retorna fallback sem crash.
+- **Dependencia:** T4.27
+
+#### `[ ]` T4.30 — `genre_dna.py` + `mood_modulation.py` + `lighting_setups.py`
+
+- **Arquivos:**
+  - `api/app/services/cover_prompt_builder/genre_dna.py` (novo)
+  - `api/app/services/cover_prompt_builder/mood_modulation.py` (novo)
+  - `api/app/services/cover_prompt_builder/lighting_setups.py` (novo)
+- **O que fazer:**
+  - `genre_dna.py`: dict `GENRE_DNA` com 11 generos. Cada entrada tem: `thematic_sentence_template` (com placeholder pra artista city), `vocabulary_pool` (wardrobe + cultural objects), `era_anchor` (ex: "Late-2020s underground internet rap aesthetic" pra underground_trap), `palette_anchors` (cores tipicas do genero)
+  - `mood_modulation.py`: dict `MOOD_DNA` com 6 moods (flexin/dark/sad/sexy/party/chill). Cada entrada tem: `palette_hue` (cool/warm/mixed), `energy_phrase` (3-word soco), `closer_phrase` (3-word fim), `body_language` (descricao pose/atitude)
+  - `lighting_setups.py`: dict `LIGHTING_SETUPS` com 6 luzes (sol_duro_dia/golden_hour/noite_natural/flash_duro/luz_colorida/meia_luz). Cada entrada tem: `full_description` (3-5 linhas detalhadas pro bloco LIGHTING do prompt), `color_implications` (cores que dominam naturalmente)
+- **Criterio de pronto:** Imports OK. `GENRE_DNA['underground_trap']['era_anchor']` retorna string nao-vazia. Idem pros outros 2.
+- **Dependencia:** T4.27
+
+#### `[ ]` T4.31 — `variation_engine.py` (sorteio + anti-repeticao via DB)
+
+- **Arquivos:**
+  - `api/app/services/cover_prompt_builder/variation_engine.py` (novo)
+- **O que fazer:**
+  - Funcao `fetch_recent_seeds(user_id, artista_primario, limit=5) -> list[dict]` -- query `cover_library` filtrando por user_id + brief_used.artista_primario, ordenando por created_at desc, retorna lista de `variation_seeds` JSONB
+  - Funcao `sample_for_brief(brief, universe, force_variation=False) -> dict` -- sorteia: 1 sub_location (de `universe['sub_locations']`, excluindo as ultimas 3-5 se force_variation), 1 lighting setup (do brief, fixo nao aleatorio), N optional_details (do `universe['wardrobe_pool']` + objetos culturais), 1 mood closer (de `MOOD_DNA[mood]['closer_phrase']`)
+  - Retorna dict no formato persistido em `variation_seeds`: `{"sub_location_chosen": str, "lighting_setup": str, "optional_details": list[str], "mood_closer": str}`
+- **Criterio de pronto:** Chamado 20× pra Drake/trap/dark com force_variation=False retorna pelo menos 5 sub_locations diferentes. Chamado com force_variation=True excluindo lista de 3 sub_locations retorna sub_location FORA dessa lista.
+- **Dependencia:** T4.29, T4.30
+
+#### `[ ]` T4.32 — `builder.py` + `validators.py` + `user_prompt.py` reescritos pra v3 + switch atomico + smoke test Claude real
+
+- **Arquivos:**
+  - `api/app/services/cover_prompt_builder/builder.py` (REESCRITO)
+  - `api/app/services/cover_prompt_builder/validators.py` (REESCRITO)
+  - `api/app/services/cover_prompt_builder/user_prompt.py` (REESCRITO)
+  - `api/app/services/cover_prompt_builder/system_prompt.py` (REESCRITO -- SYSTEM_PROMPT v3 estruturado em 12 elementos)
+  - `api/app/services/cover_prompt_builder/__init__.py` (ajusta exports)
+  - DELETAR: `api/app/services/cover_prompt_builder/vocabulary.py` (substituido por genre_dna/mood_modulation/lighting_setups)
+  - DELETAR: `api/app/services/cover_prompt_builder/variation.py` (substituido por variation_engine)
+- **O que fazer:**
+  - `user_prompt.py`: monta os 12 elementos ordenados (camera + thematic + frase mestre + sujeito + frase-soco + wardrobe + setting + lighting + guard-rail + palette + optional details + energy+shot on+references+closer)
+  - `validators.py`: 5 validacoes -- length 1500-4000, likeness nome direto (primario+secundario), likeness apelidos, BANNED_WORDS no corpo (hard fail), BANNED_REFERENCES no corpo (hard fail). Anti-aesthetics inline V2 removido (substituido por palavras/refs banidas v3). AVOID block warning-mode removido (estrutura v3 nao usa AVOID block).
+  - `builder.py`: orquestra sanitize_free_note -> pick_camera_dna -> get_universe -> sample_for_brief -> build_user_prompt -> Claude com prompt caching -> validate -> BuildResult
+  - SYSTEM_PROMPT v3: instrucoes pro Sonnet 4.6 seguir estrutura 12 elementos + sortear UMA sub-location e expandir + nunca usar palavras banidas + usar so references permitidas + anti-bias inline (sem asiaticos default, sem gang signs)
+  - **Smoke test:** rodar 1 brief de Gustavo (Drake/trap/dark/grupo/noite_natural) e validar visualmente no fal.ai antes de seguir
+- **Criterio de pronto:** Smoke test gera capa visualmente coerente com handoff v3. Pacote modular completo. 49+ pytest verdes.
+- **Dependencia:** T4.28, T4.29, T4.30, T4.31
+
+#### `[ ]` T4.33 — Drop campo `cenario` (backend + frontend + types) + ajustes wizard
+
+- **Arquivos:**
+  - `api/app/services/cover_prompt_builder/types.py` (remove `cenario` de `CoverBrief` + `CenarioSlug` Literal)
+  - `api/app/services/cover_prompt_builder/brief_converter.py` (remove mapeamento de cenario, remove _AMBIENTE_MAP)
+  - `api/app/routes/covers.py` (BriefModel remove campo cenario v2 + ambiente v1)
+  - `api/app/routes/briefs.py` (BriefBodyModel idem)
+  - `web/lib/api.ts` (CoverBrief interface remove cenario)
+  - `web/components/CapasWizard.tsx` (remove step do Cenario)
+  - `web/components/CapasBrief.tsx` (idem se aplicavel)
+- **O que fazer:**
+  - Tira o campo do tipo Python + Pydantic + TypeScript + UI do wizard
+  - Atualiza memoria `project_capa_ia_arquitetura.md` refletindo v3
+  - Atualiza CLAUDE.md regra 6 com texto da v3 (definido no ADR §Consequencias)
+  - Push final pra prod
+- **Criterio de pronto:** Wizard nao mostra step Cenario. Backend aceita brief sem cenario. lib/api.ts compilou sem erro. Push verde Railway+Vercel.
+- **Dependencia:** T4.32
 
 ---
 
@@ -1109,6 +1216,8 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 ---
 
 ## Historico de chats
+
+- **2026-05-22 (sessao 4 ABERTA)** — DNA v3 da capa IA. Teste visual de Gustavo na aba `/capas` apos deploy da v2 (T4.19-T4.26) produziu capas ruins. Causa raiz: camera "Analog film + 35mm + Canon Sure Shot" gerava estetica cinematografica polida, oposta ao desejado. Gustavo conduziu sessao paralela com Claude normal iterando direto contra fal.ai e validou visualmente 5 briefs (Drake, The Weeknd, Fakemink+Gunnr, Nettspend+2hollis, Travis+Don Toliver). Da sessao saiu `beatpost_handoff_v3.md` com arquitetura nova. ADR `2026-05-22-prompt-dna-capa-v3.md` substitui v2 (preservada como "iteracao 1 superada" no historico). **Mudancas principais v3:** (1) camera DNA passa de "Analog film" pra "video still" (VHS/MiniDV/phone video comprimido, 720x480 letterbox bars), FIXA, em 2 variantes -- padrao calibrado pros 10 generos + agressiva pro underground (com termos "Heavy/blocky pixelation/vertical glitch line/low-bitrate" liberados SO no underground por decisao consciente de Gustavo); (2) estrutura de 7 blocos genericos vira 12 elementos ordenados; (3) sub-locations saem do conceito de "cenario generico" e viram "por artista" -- dicionario `ARTIST_UNIVERSE` com 5 validados (Drake/Travis/Weeknd/Fakemink/Nettspend), Claude sorteia UMA por chamada e expande com riqueza cultural, fallback gracioso pra artistas fora do dicionario; (4) brief perde campo `cenario` (inferido do universo); (5) anti-repeticao via query nas ultimas 5 `variation_seeds` do user; (6) palavras banidas (music video, cinematic, B-roll, director, BTS, scene from, film still) + references banidas (cinematografos Drive/Wong Kar-wai, editorial fashion Vogue/Helmut Newton) vs permitidas (fotografos intimo-coded: Larry Clark, Nan Goldin, Cobrasnake, Hedi Slimane); (7) anti-bias inline (sem asiaticos default, sem gang signs/peace signs em crews). Img2img adiado pra DEPOIS da v3 (Gustavo ainda criando prompts). 7 tasks novas T4.27-T4.33. Arquivos sobreviventes do pacote v2: types.py, sanitizer.py, brief_converter.py, __init__.py. Reescritos na v3: system_prompt/vocabulary/variation/validators/user_prompt/builder. Migration 019 (schema cover_library.variation_seeds JSONB) preservada -- estrutura nova de seeds: `{sub_location_chosen, lighting_setup, optional_details, mood_closer}`. **Aguardando Gustavo mandar 1 brief validado da sessao paralela pra calibrar T4.28 antes de codar.**
 
 - **2026-05-21 (sessao 3 FECHADA)** — Bloco prompt DNA v2 da capa IA 100% entregue. 8 tasks T4.19-T4.26 todas concluidas em 9 commits sequenciais (`7a1f10d` docs + ADR -> `d32caf7` T4.19 -> `9044544` T4.20 -> `5c5dbc8` T4.21 -> `0363603` T4.22 migration aplicada -> `0e96922` T4.23 switch atomico -> `da0d60a` T4.24 wizard -> `24bab9b` T4.25 botao variacao -> commit fechamento T4.26). **Entregue:** pacote modular `api/app/services/cover_prompt_builder/` com 10 modulos (types, system_prompt secreto 9031 chars, vocabulary minimo, variation 7 eixos, sanitizer nota livre, validators 6 checks, brief_converter back-compat, user_prompt template, builder orquestrador, __init__). Brief v2 com 6+2 campos (genero como ancora). Migration 019 aplicada em prod (coluna variation_seeds JSONB + index GIN + funcao de migracao PL/pgSQL temporaria dropada). Wizard CapasWizard reescrito (~720 linhas, 3-step, mantem Editorial Mono). ManageBriefsModal le campos v2 com fallback v1. Botao "Gerar variacao" adicionado no header. CLAUDE.md regra 6 atualizada. Memoria `project_capa_ia_arquitetura` reescrita. **Decisoes da sessao:** brief evoluiu 5 -> 6+2 campos (reversao consciente, genero virou ancora); migracao destrutiva autorizada (Gustavo unico user, mas cobre 3 lugares -- cover_library/user_profiles/brief_presets); opcao `aleatorio` escondida do wizard ate vocabulary v2 entregar matriz scene x light x mood; validador AVOID em warning-mode por 1 semana; script Python `migrate_cover_briefs_to_v2.py` PULADO (SQL puro atomico foi suficiente). **Pre-acao em prod:** 3 presets de teste v1 deletados (Tame Impala/The Weeknd/Drake type 2) antes de rodar migration -- migration rodou contra 0 rows e validacao confirmou via query consolidada. **Pendente pra proxima sessao:** teste real ao Claude rodando 5 briefs canonicos do builder v2 ponta-a-ponta (custo ~$0.07) + vocabulary v2 rico + eval suite + reavaliar AVOID hard-fail. 49 testes pytest verdes + build Next.js 18/18 paginas no commit final. **Sinceridade:** 3 botoes de gerar na mesma linha (Gerar 1 / Gerar variacao / Gerar 3) aumenta carga visual -- avaliar uso real e rebalancear se variacao se mostrar redundante.
 
