@@ -765,7 +765,10 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Wizard cria/edita preset com brief v2. Salva via API. Direcao visual Editorial Mono mantida.
 - **Dependencia:** T4.23
 
-#### `[ ]` T4.25 — ManageBriefsModal + ConfirmGenerateModal + botao "Gerar variacao"
+#### `[x]` T4.25 — ManageBriefsModal + ConfirmGenerateModal + botao "Gerar variacao"
+
+> ManageBriefsModal: resumo do brief agora le campos v2 (artista_primario + genero_primario + mood + cenario + atmosfera_luz) com fallback v1 (?? artista_nome, ?? energia, etc) durante a janela de transicao. ConfirmGenerateModal nao precisou de mudancas (era ja agnostico a v1/v2). page.tsx + CapasHeader: novo botao "Gerar variacao" entre os 2 botoes existentes, signature `onGenerate(lote, intent)` ampliada com intent='new'|'variation' (tecnicamente identicos -- so signaling UX, logado em console pra futuro analytics). Build verde 18/18 paginas. **Sinceridade (memory feedback_sinceridade_estrategica):** 3 botoes na mesma linha aumenta carga visual; vale rebalancear na proxima iteracao se o produtor mostrar que usa pouco o "Gerar variacao" separado.
+
 
 - **Arquivos:**
   - `web/components/ManageBriefsModal.tsx`

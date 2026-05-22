@@ -54,6 +54,10 @@ export default function CapasPage() {
   const [wizardEditingId, setWizardEditingId] = useState<string | null>(null)
   const [manageOpen, setManageOpen] = useState(false)
   const [confirmLote, setConfirmLote] = useState<1 | 3 | null>(null)
+  // 'new' = capa nova do zero | 'variation' = outra leitura do mesmo brief.
+  // Tecnicamente identicos (mesmo brief, novo sorteio de variation_seeds).
+  // Diferenca e apenas signaling UX pro produtor.
+  const [confirmIntent, setConfirmIntent] = useState<'new' | 'variation'>('new')
   /** Capa pendente de confirmacao de delete (modal ConfirmDialog) */
   const [confirmDiscard, setConfirmDiscard] = useState<CoverLibraryItem | null>(null)
   const [discardLoading, setDiscardLoading] = useState(false)
@@ -146,10 +150,13 @@ export default function CapasPage() {
   // GERAÇÃO
   // ─────────────────────────────────────────────────────────────────
   const triggerGenerate = useCallback(
-    async (brief: CoverBrief, lote: 1 | 3) => {
+    async (brief: CoverBrief, lote: 1 | 3, intent: 'new' | 'variation' = 'new') => {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
       if (!token) return
+
+      // Log local de signaling -- futuro: plugar em analytics real
+      console.log(`[covers] generate intent=${intent} lote=${lote}`)
 
       // OTIMISMO: mostra skeleton "Gerando" IMEDIATAMENTE (antes do Realtime/fetch)
       setOptimisticPending((prev) => prev + lote)
@@ -179,18 +186,20 @@ export default function CapasPage() {
     [supabase, loadData],
   )
 
-  const handleGenerate = (lote: 1 | 3) => {
+  const handleGenerate = (lote: 1 | 3, intent: 'new' | 'variation' = 'new') => {
     if (!activeBrief) return
+    setConfirmIntent(intent)
     setConfirmLote(lote)
   }
 
   const confirmGenerateAction = useCallback(() => {
     if (!confirmLote || !activeBrief) return
     const lote = confirmLote
+    const intent = confirmIntent
     const briefSnapshot = activeBrief.brief
     setConfirmLote(null)
-    void triggerGenerate(briefSnapshot, lote)
-  }, [confirmLote, activeBrief, triggerGenerate])
+    void triggerGenerate(briefSnapshot, lote, intent)
+  }, [confirmLote, confirmIntent, activeBrief, triggerGenerate])
 
   // ─────────────────────────────────────────────────────────────────
   // BRIEFS (CRUD)

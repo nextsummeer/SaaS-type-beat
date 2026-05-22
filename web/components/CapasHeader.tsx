@@ -1,6 +1,6 @@
 'use client'
 
-import { Sparkles, AlertCircle } from 'lucide-react'
+import { Sparkles, AlertCircle, Shuffle } from 'lucide-react'
 import type { BriefPreset, CoverCreditsState } from '@/lib/api'
 import { BriefSelector } from './BriefSelector'
 
@@ -10,7 +10,12 @@ type Props = {
   credits: CoverCreditsState | null
   loading: boolean
   onOpenBriefManager: () => void
-  onGenerate: (lote: 1 | 3) => void
+  /**
+   * intent='new' = capa nova do zero (sortei do brief).
+   * intent='variation' = mesma chamada tecnica, mas signaling
+   * UX de 'tentar outra leitura do mesmo brief'.
+   */
+  onGenerate: (lote: 1 | 3, intent?: 'new' | 'variation') => void
 }
 
 const TIER_LABELS: Record<string, string> = {
@@ -130,7 +135,21 @@ export function CapasHeader({
               ? 'Sem créditos suficientes'
               : undefined
           }
-          onClick={() => onGenerate(1)}
+          onClick={() => onGenerate(1, 'new')}
+        />
+        <GenerateButton
+          label="Gerar variação"
+          credits={1}
+          enabled={canGenerateOne && !loading}
+          icon="shuffle"
+          tooltip={
+            !hasActive
+              ? 'Selecione ou crie um brief primeiro'
+              : !canGenerateOne
+              ? 'Sem créditos suficientes'
+              : 'Mesmo brief, outra leitura'
+          }
+          onClick={() => onGenerate(1, 'variation')}
         />
         <GenerateButton
           label="Gerar 3 variações"
@@ -143,7 +162,7 @@ export function CapasHeader({
               ? 'Sem créditos suficientes (precisa 3)'
               : undefined
           }
-          onClick={() => onGenerate(3)}
+          onClick={() => onGenerate(3, 'new')}
         />
       </div>
     </div>
@@ -279,13 +298,17 @@ function GenerateButton({
   enabled,
   tooltip,
   onClick,
+  icon = 'sparkles',
 }: {
   label: string
   credits: number
   enabled: boolean
   tooltip?: string
   onClick: () => void
+  /** 'sparkles' (default, capa nova) | 'shuffle' (variação do brief atual) */
+  icon?: 'sparkles' | 'shuffle'
 }) {
+  const Icon = icon === 'shuffle' ? Shuffle : Sparkles
   return (
     <button
       type="button"
@@ -295,7 +318,7 @@ function GenerateButton({
       className="btn-primary group disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:transform-none disabled:hover:shadow-none"
       style={{ paddingLeft: 16, paddingRight: 18 }}
     >
-      <Sparkles size={13} strokeWidth={2.2} />
+      <Icon size={13} strokeWidth={2.2} />
       {label}
       <span
         className="font-mono tabular"
