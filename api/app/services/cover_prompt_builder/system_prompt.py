@@ -101,7 +101,7 @@ OUTPUT FORMAT
 ================================================================================
 
 - Output ONLY the final prompt -- no explanation, no markdown headers, no preamble, no numbered list, no AVOID block.
-- Length: 1500-3000 characters total. Dense and specific. No filler.
+- Length: 2500-5500 characters total. Dense and specific -- BeatPost's aesthetic comes from cultural density, not brevity. Pack each element with concrete details. Avoid filler but DO NOT clip elements short to save chars.
 - Plain paragraphs separated by single blank lines. NO bullet points, NO numbered structure visible in the output.
 - The output must read as ONE continuous prompt to a text-to-image model, not as a structured form.
 """

@@ -21,9 +21,14 @@ from app.services.cover_prompt_builder.prompt_skeleton import (
 )
 from app.services.cover_prompt_builder.types import CoverBrief
 
-# Faixa de comprimento esperada do prompt final (chars). ~300-700 palavras.
+# Faixa de comprimento esperada do prompt final (chars).
+# Calibrada contra os 5 prompts validados visualmente em 2026-05-22:
+# Drake (~3700), Weeknd (~2700), Fakemink (~4400), Nettspend (~4800),
+# Travis (~3500). Sonnet 4.6 expande com riqueza cultural -- 5000-6500
+# e' a faixa real, nao 1500-3500. Calibrado em 2026-05-22 apos
+# rejeitar prompts de 5956 e 6142 chars na primeira rodada em prod.
 MIN_LENGTH: int = 1500
-MAX_LENGTH: int = 3500
+MAX_LENGTH: int = 6500
 
 
 # Blocklist inicial de apelidos por artista popular (lowercase).
