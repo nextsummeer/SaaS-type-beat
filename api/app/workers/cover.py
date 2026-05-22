@@ -117,11 +117,18 @@ def generate_covers(
             errors.append(f"{label}: falha ao criar registro pending")
             continue
 
-        # Helper pra marcar como failed e seguir
-        def _fail(reason: str):
+        # Helper pra marcar como failed e seguir. Aceita opcional prompt_final
+        # pra preservar texto rejeitado pelo validator (debug no DB).
+        def _fail(reason: str, prompt_to_save: str | None = None,
+                  seeds_to_save: dict | None = None):
             errors.append(f"{label}: {reason}")
+            update_payload: dict = {"status": "failed"}
+            if prompt_to_save:
+                update_payload["prompt_final"] = prompt_to_save
+            if seeds_to_save:
+                update_payload["variation_seeds"] = seeds_to_save
             try:
-                client.table("cover_library").update({"status": "failed"}).eq(
+                client.table("cover_library").update(update_payload).eq(
                     "id", pending_id
                 ).execute()
             except Exception as exc:
@@ -139,9 +146,13 @@ def generate_covers(
             user_id=user_id,
             force_variation=force_variation,
         )
-        if not build_result.prompt_final:
+        # Builder retorna prompt_final mesmo quando validation falha (pra debug).
+        # Decisao de continuar usa validation_passed.
+        if not build_result.validation_passed:
             _fail(
-                f"falha em builder v3: {build_result.validation_error or 'sem prompt'} (sem cobranca)"
+                f"falha em builder v3: {build_result.validation_error or 'sem prompt'} (sem cobranca)",
+                prompt_to_save=build_result.prompt_final,
+                seeds_to_save=build_result.variation_seeds or None,
             )
             continue
         prompt_final = build_result.prompt_final

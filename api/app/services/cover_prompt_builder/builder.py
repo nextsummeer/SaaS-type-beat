@@ -190,8 +190,11 @@ def build_cover_prompt(
             result.error,
             prompt_final[:120],
         )
+        # IMPORTANTE: retorna o prompt EM prompt_final mesmo quando validacao
+        # falha -- worker decide via validation_passed se vai usar ou marcar
+        # como failed. Isso preserva o texto rejeitado pra debug no DB.
         return BuildResult(
-            prompt_final=None,
+            prompt_final=prompt_final,
             variation_seeds=seeds_dict,
             validation_passed=False,
             validation_error=result.error,
