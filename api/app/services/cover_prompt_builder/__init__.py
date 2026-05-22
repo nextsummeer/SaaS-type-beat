@@ -1,17 +1,16 @@
-"""Pacote cover_prompt_builder -- engenharia de prompt da capa IA.
+"""Pacote cover_prompt_builder -- engenharia de prompt da capa IA (v3).
 
-ADR 2026-05-21-prompt-dna-capa-v2.md
-
-Switch atomico (T4.23): exporta o builder v2 (builder.py). legacy.py
-foi DELETADO -- pipeline ponta-a-ponta usa o builder novo agora.
+ADR 2026-05-22-prompt-dna-capa-v3.md
 
 Tipos publicos:
-    build_cover_prompt(brief: CoverBrief, seed=None, user_id=None) -> BuildResult
-    CoverBrief                -- dataclass do brief v2
-    VariationAxes             -- dataclass dos 7 eixos sorteados
+    build_cover_prompt(brief, seed=None, user_id=None, force_variation=False)
+        -> BuildResult
+    CoverBrief                -- dataclass do brief v3 (sem cenario)
+    VariationAxes             -- dataclass legacy v2, preservado pra
+                                 compat (nao usado pelo builder v3)
     BuildResult               -- dataclass do resultado
-    normalize_brief(dict) -> dict   -- converte v1 -> v2 se necessario
-    parse_brief(dict) -> CoverBrief -- dict -> CoverBrief tipado
+    normalize_brief(dict)     -- converte v1 -> v2 (back-compat)
+    parse_brief(dict)         -- dict -> CoverBrief tipado
 """
 from app.services.cover_prompt_builder.brief_converter import (
     normalize_brief,

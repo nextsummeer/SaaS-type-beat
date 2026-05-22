@@ -48,6 +48,9 @@ class GenerateCoverRequest(BaseModel):
     brief: BriefModel
     lote: int = 1
     save_as_default: bool = False
+    # v3: True quando produtor clica "Gerar variacao" -- ativa anti-repeticao
+    # no builder (query nas ultimas 5 capas do mesmo user+artista).
+    force_variation: bool = False
 
 
 def _authenticate(authorization: str):
@@ -182,11 +185,13 @@ def generate(body: GenerateCoverRequest, authorization: str = Header(...)):
                 user_id, exc,
             )
 
-    # Chama o worker (assinatura v2: sem artista_nome separado)
+    # Chama o worker (assinatura v3: sem artista_nome separado, com
+    # force_variation pra anti-repeticao)
     result = generate_covers(
         user_id=user_id,
         brief=brief_dict,
         lote=body.lote,
+        force_variation=body.force_variation,
     )
 
     # Se nada gerou e o motivo foi falta de creditos, devolve 402

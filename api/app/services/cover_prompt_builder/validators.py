@@ -1,31 +1,32 @@
-"""Validators do prompt final retornado pelo Claude.
+"""Validators v3 do prompt final retornado pelo Claude.
 
-ADR 2026-05-21-prompt-dna-capa-v2.md (secao 9.4)
+ADR 2026-05-22-prompt-dna-capa-v3.md (secao 6)
 
-6 validacoes (estrutura 7 blocos descartada por ser ruidosa demais
-contra falsos positivos -- sera reavaliada se necessario):
+5 validacoes (estrutura 7 blocos e AVOID block descartados):
 
-1. Comprimento 1500-4000 chars (~300-600 palavras)
+1. Comprimento 1500-3500 chars
 2. Likeness -- nome direto (case-insensitive, primario E secundario)
-3. Likeness -- apelidos por artista popular (blocklist inicial)
+3. Likeness -- apelidos por artista popular (blocklist)
 4. Likeness -- frases-ancora genericas
-5. AVOID block presente no fim (WARNING-MODE: loga mas aceita output)
-6. Anti-aesthetics inline (corpo nao pode conter termos proibidos)
+5. Palavras banidas (BANNED_WORDS de prompt_skeleton)
+6. References banidas (BANNED_REFERENCES de prompt_skeleton)
 
-Pra estender a blocklist de apelidos, basta adicionar entradas a
-ARTIST_NICKNAMES (chave em lowercase, lista de apelidos em lowercase).
+Pra estender blocklist de apelidos: adicionar entradas a ARTIST_NICKNAMES.
 """
 from dataclasses import dataclass, field
 
+from app.services.cover_prompt_builder.prompt_skeleton import (
+    BANNED_REFERENCES,
+    BANNED_WORDS,
+)
 from app.services.cover_prompt_builder.types import CoverBrief
 
-# Tamanho do prompt final esperado (chars). 300-600 palavras ~= 1500-4000 chars.
+# Faixa de comprimento esperada do prompt final (chars). ~300-700 palavras.
 MIN_LENGTH: int = 1500
-MAX_LENGTH: int = 4000
+MAX_LENGTH: int = 3500
 
 
 # Blocklist inicial de apelidos por artista popular (lowercase).
-# Versao MINIMA: 6 artistas. Expandir conforme uso real cresce.
 ARTIST_NICKNAMES: dict[str, list[str]] = {
     "drake": [
         "drizzy",
@@ -35,8 +36,12 @@ ARTIST_NICKNAMES: dict[str, list[str]] = {
         "six god",
         "the boy from toronto",
         "the boy from the 6",
-        "ovo sound",
         "ovo legend",
+    ],
+    "the weeknd": [
+        "abel tesfaye",
+        "starboy",
+        "xo legend",
     ],
     "kendrick lamar": [
         "k dot",
@@ -49,7 +54,6 @@ ARTIST_NICKNAMES: dict[str, list[str]] = {
         "k dot",
         "kdot",
         "kung fu kenny",
-        "compton legend",
     ],
     "future": [
         "pluto",
@@ -68,8 +72,11 @@ ARTIST_NICKNAMES: dict[str, list[str]] = {
         "dominique armani",
         "4pf",
     ],
+    "travis scott": [
+        "la flame",
+        "cactus jack legend",
+    ],
     "21 savage": [
-        "she.iy.shyaa",
         "savage mode",
     ],
 }
@@ -89,38 +96,10 @@ GENERIC_LIKENESS_PHRASES: list[str] = [
     "the iconic singer",
 ]
 
-# Termos esteticamente proibidos no CORPO do prompt (fora do bloco AVOID:).
-ANTI_AESTHETICS_INLINE: list[str] = [
-    "porcelain skin",
-    "porcelain",
-    "studio lighting",
-    "studio lights",
-    "ring light",
-    "softbox",
-    "three-point lighting",
-    "cinematic bokeh",
-    "planned bokeh",
-    "glowing border",
-    "glowing vignette",
-    "soft border",
-    "halo effect",
-    "smooth flawless",
-    "flawless skin",
-    "perfect symmetry",
-    "3d render",
-    "3d model",
-    "cgi look",
-    "octane render",
-    "anime",
-    "cartoon",
-    "illustration",
-    "digital painting",
-]
-
 
 @dataclass
 class ValidationResult:
-    """Resultado de `validate_prompt()`.
+    """Resultado de validate_prompt.
 
     `ok=False` indica falha hard (worker marca capa como `failed`).
     `warnings` sao avisos nao-bloqueantes (loga mas aceita output).
@@ -131,16 +110,7 @@ class ValidationResult:
 
 
 def validate_prompt(prompt: str, brief: CoverBrief) -> ValidationResult:
-    """Roda as 6 validacoes do prompt final retornado pelo Claude.
-
-    Args:
-        prompt: prompt final stripped.
-        brief: brief usado pra gerar (precisamos do nome do artista pra
-               checar likeness).
-
-    Returns:
-        ValidationResult com ok=True/False, error opcional, warnings.
-    """
+    """Roda 5 validacoes do prompt final retornado pelo Claude (v3)."""
     warnings: list[str] = []
 
     # 1. Comprimento
@@ -157,14 +127,14 @@ def validate_prompt(prompt: str, brief: CoverBrief) -> ValidationResult:
         if name and _has_artist_name(prompt_lower, name):
             return ValidationResult(
                 ok=False,
-                error=f"prompt cita o nome do artista '{name}' diretamente (likeness violado)",
+                error=f"prompt cita nome do artista '{name}' diretamente (likeness violado)",
             )
 
     # 3. Likeness -- apelidos por artista
     for name in (brief.artista_primario, brief.artista_secundario):
         if not name:
             continue
-        nicknames = ARTIST_NICKNAMES.get(name.lower(), [])
+        nicknames = ARTIST_NICKNAMES.get(name.strip().lower(), [])
         for nick in nicknames:
             if nick in prompt_lower:
                 return ValidationResult(
@@ -180,31 +150,27 @@ def validate_prompt(prompt: str, brief: CoverBrief) -> ValidationResult:
                 error=f"prompt usa frase-ancora generica '{phrase}' (likeness violado)",
             )
 
-    # 5. AVOID block (WARNING-MODE -- nao bloqueia)
-    # Em 2026-05-28 (1 semana apos deploy) reavaliar e virar hard-fail.
-    if "AVOID:" not in prompt and "Avoid:" not in prompt and "avoid:" not in prompt:
-        warnings.append(
-            "output nao tem bloco AVOID: explicito (warning-mode, nao bloqueante)"
-        )
-
-    # 6. Anti-aesthetics inline (no CORPO, fora do bloco AVOID)
-    body_lower = _extract_body_before_avoid(prompt).lower()
-    for term in ANTI_AESTHETICS_INLINE:
-        if term in body_lower:
+    # 5. Palavras banidas (v3 -- estetica polida)
+    for word in BANNED_WORDS:
+        if word in prompt_lower:
             return ValidationResult(
                 ok=False,
-                error=f"corpo do prompt contem termo anti-aesthetic '{term}' "
-                f"(deveria estar so no bloco AVOID:, nao na descricao)",
+                error=f"prompt contem palavra banida '{word}' (dispara estetica cinematografica polida)",
+            )
+
+    # 6. References banidas (cinematografos / editorial fashion)
+    for ref in BANNED_REFERENCES:
+        if ref in prompt_lower:
+            return ValidationResult(
+                ok=False,
+                error=f"prompt contem reference banida '{ref}' (cinematografo / editorial fashion)",
             )
 
     return ValidationResult(ok=True, warnings=warnings)
 
 
 def _has_artist_name(prompt_lower: str, artist_name: str) -> bool:
-    """True se o prompt menciona o nome (completo ou palavras de 4+ chars).
-
-    Mesma logica do legacy mas adaptada.
-    """
+    """True se prompt menciona o nome (completo ou palavras de 4+ chars)."""
     name_lower = artist_name.strip().lower()
     if not name_lower:
         return False
@@ -217,15 +183,3 @@ def _has_artist_name(prompt_lower: str, artist_name: str) -> bool:
             return True
 
     return False
-
-
-def _extract_body_before_avoid(prompt: str) -> str:
-    """Retorna so a parte do prompt ANTES do bloco AVOID:.
-
-    Cada checagem de anti-aesthetics roda contra essa parte -- o bloco
-    AVOID: e onde os termos proibidos APARECEM intencionalmente.
-    """
-    for marker in ("AVOID:", "Avoid:", "avoid:"):
-        if marker in prompt:
-            return prompt.split(marker, 1)[0]
-    return prompt

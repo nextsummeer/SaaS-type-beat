@@ -46,6 +46,7 @@ def generate_covers(
     user_id: str,
     brief: dict,
     lote: int = 1,
+    force_variation: bool = False,
 ) -> dict:
     """Gera N capas via IA pro user. Cobra apenas pelo que entrega.
 
@@ -126,17 +127,21 @@ def generate_covers(
             except Exception as exc:
                 logger.error("cover worker: falha ao marcar failed: %s", exc)
 
-        # b. Claude monta prompt final (builder v2 -- retorna BuildResult)
+        # b. Claude monta prompt final (builder v3 -- retorna BuildResult)
         try:
             cover_brief = parse_brief(brief)
         except ValueError as exc:
             _fail(f"brief invalido: {exc}")
             continue
 
-        build_result = build_cover_prompt(cover_brief, user_id=user_id)
+        build_result = build_cover_prompt(
+            cover_brief,
+            user_id=user_id,
+            force_variation=force_variation,
+        )
         if not build_result.prompt_final:
             _fail(
-                f"falha em builder v2: {build_result.validation_error or 'sem prompt'} (sem cobranca)"
+                f"falha em builder v3: {build_result.validation_error or 'sem prompt'} (sem cobranca)"
             )
             continue
         prompt_final = build_result.prompt_final

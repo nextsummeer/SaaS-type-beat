@@ -812,7 +812,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** ADR no repo, ledger atualizado, commit limpo.
 - **Dependencia:** —
 
-#### `[ ]` T4.28 — `prompt_skeleton.py` (camera DNA 2 variantes + guard-rails + palavras/refs banidas)
+#### `[x]` T4.28 — `prompt_skeleton.py` (camera DNA 2 variantes + guard-rails + palavras/refs banidas)
 
 - **Arquivos:**
   - `api/app/services/cover_prompt_builder/prompt_skeleton.py` (novo)
@@ -829,7 +829,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Imports OK. `pick_camera_dna(brief_underground)` retorna a versao agressiva. `pick_camera_dna(brief_outro)` retorna a padrao.
 - **Dependencia:** T4.27
 
-#### `[ ]` T4.29 — `artist_universe.py` (5 artistas validados + fallback gracioso)
+#### `[x]` T4.29 — `artist_universe.py` (5 artistas validados + fallback gracioso)
 
 - **Arquivos:**
   - `api/app/services/cover_prompt_builder/artist_universe.py` (novo)
@@ -841,7 +841,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** `get_universe('Drake', None)` retorna dict completo com >=5 sub_locations. `get_universe('Artista Inventado', None)` retorna fallback sem crash.
 - **Dependencia:** T4.27
 
-#### `[ ]` T4.30 — `genre_dna.py` + `mood_modulation.py` + `lighting_setups.py`
+#### `[x]` T4.30 — `genre_dna.py` + `mood_modulation.py` + `lighting_setups.py`
 
 - **Arquivos:**
   - `api/app/services/cover_prompt_builder/genre_dna.py` (novo)
@@ -854,7 +854,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Imports OK. `GENRE_DNA['underground_trap']['era_anchor']` retorna string nao-vazia. Idem pros outros 2.
 - **Dependencia:** T4.27
 
-#### `[ ]` T4.31 — `variation_engine.py` (sorteio + anti-repeticao via DB)
+#### `[x]` T4.31 — `variation_engine.py` (sorteio + anti-repeticao via DB)
 
 - **Arquivos:**
   - `api/app/services/cover_prompt_builder/variation_engine.py` (novo)
@@ -865,7 +865,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Chamado 20× pra Drake/trap/dark com force_variation=False retorna pelo menos 5 sub_locations diferentes. Chamado com force_variation=True excluindo lista de 3 sub_locations retorna sub_location FORA dessa lista.
 - **Dependencia:** T4.29, T4.30
 
-#### `[ ]` T4.32 — `builder.py` + `validators.py` + `user_prompt.py` reescritos pra v3 + switch atomico + smoke test Claude real
+#### `[x]` T4.32 — `builder.py` + `validators.py` + `user_prompt.py` reescritos pra v3 + switch atomico + smoke test Claude real
 
 - **Arquivos:**
   - `api/app/services/cover_prompt_builder/builder.py` (REESCRITO)
