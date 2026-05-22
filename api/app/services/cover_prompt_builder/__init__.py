@@ -20,13 +20,11 @@ from app.services.cover_prompt_builder.builder import build_cover_prompt
 from app.services.cover_prompt_builder.types import (
     BuildResult,
     CoverBrief,
-    VariationAxes,
 )
 
 __all__ = [
     "build_cover_prompt",
     "CoverBrief",
-    "VariationAxes",
     "BuildResult",
     "normalize_brief",
     "parse_brief",

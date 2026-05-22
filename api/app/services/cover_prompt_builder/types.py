@@ -37,18 +37,6 @@ MoodSlug = Literal[
     "chill",
 ]
 
-CenarioSlug = Literal[
-    "rua_americana",
-    "interior_intimo",
-    "interior_luxo",
-    "festa_underground",
-    "paisagem_urbana",
-    "paisagem_aberta",
-    "closeup_objeto",
-    "lugar_simbolico",
-    "aleatorio",
-]
-
 AtmosferaLuzSlug = Literal[
     "sol_duro_dia",
     "golden_hour",
@@ -62,53 +50,20 @@ AtmosferaLuzSlug = Literal[
 
 @dataclass(frozen=True)
 class CoverBrief:
-    """Brief v2 do produtor.
+    """Brief v3 do produtor.
 
-    6 campos obrigatorios + 2 opcionais (genero_secundario, artista_secundario)
-    + nota_livre opcional.
+    5 campos obrigatorios + 2 opcionais (genero_secundario, artista_secundario)
+    + nota_livre opcional. V3 removeu campo `cenario` -- Claude infere do
+    universo do artista (sub-location sorteada do artist_universe).
     """
     genero_primario: GeneroSlug
     artista_primario: str
     quem_aparece: QuemSlug
     mood: MoodSlug
-    cenario: CenarioSlug
     atmosfera_luz: AtmosferaLuzSlug
     genero_secundario: GeneroSlug | None = None
     artista_secundario: str | None = None
     nota_livre: str | None = None
-
-
-@dataclass(frozen=True)
-class VariationAxes:
-    """7 eixos sorteados em runtime + 3 valores resolvidos de `aleatorio` do brief.
-
-    Persistido em `cover_library.variation_seeds` (JSONB) por capa pra
-    debug e analytics futuras.
-    """
-    resolved_quem: str
-    resolved_cenario: str
-    resolved_luz: str
-    subject_framing: str
-    camera_angle: str
-    time_of_day: str
-    sub_location: str
-    secondary_prop: str
-    motion_state: str
-    film_quirk: str
-
-    def as_dict(self) -> dict:
-        return {
-            "resolved_quem": self.resolved_quem,
-            "resolved_cenario": self.resolved_cenario,
-            "resolved_luz": self.resolved_luz,
-            "subject_framing": self.subject_framing,
-            "camera_angle": self.camera_angle,
-            "time_of_day": self.time_of_day,
-            "sub_location": self.sub_location,
-            "secondary_prop": self.secondary_prop,
-            "motion_state": self.motion_state,
-            "film_quirk": self.film_quirk,
-        }
 
 
 @dataclass

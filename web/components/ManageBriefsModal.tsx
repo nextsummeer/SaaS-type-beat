@@ -210,12 +210,12 @@ export function ManageBriefsModal({
               const isDeleting = deletingId === p.id
               const isActivating = activatingId === p.id
               const isSavingName = savingNameId === p.id
-              // Resumo aceita brief v2 (preferido) com fallback pra v1 legacy
+              // Resumo aceita brief v3 (preferido) com fallback pra v1 legacy.
+              // V3 removeu cenario -- inferido do universo do artista.
               const briefSummary = [
                 p.brief.artista_primario ?? p.brief.artista_nome,
                 p.brief.genero_primario,
                 p.brief.mood ?? p.brief.energia,
-                p.brief.cenario ?? p.brief.ambiente,
                 p.brief.atmosfera_luz ?? p.brief.iluminacao,
               ].filter(Boolean).join(' · ')
 

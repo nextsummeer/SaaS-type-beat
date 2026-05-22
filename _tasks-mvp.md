@@ -884,7 +884,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Smoke test gera capa visualmente coerente com handoff v3. Pacote modular completo. 49+ pytest verdes.
 - **Dependencia:** T4.28, T4.29, T4.30, T4.31
 
-#### `[ ]` T4.33 — Drop campo `cenario` (backend + frontend + types) + ajustes wizard
+#### `[x]` T4.33 — Drop campo `cenario` (backend + frontend + types) + ajustes wizard
 
 - **Arquivos:**
   - `api/app/services/cover_prompt_builder/types.py` (remove `cenario` de `CoverBrief` + `CenarioSlug` Literal)

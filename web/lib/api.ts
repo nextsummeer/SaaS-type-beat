@@ -433,31 +433,28 @@ export async function fetchAchievements(token: string): Promise<AchievementsResp
 // ──────────────────────────────────────────────────────────────────────
 
 /**
- * Brief v2 (DNA v2 da capa IA). ADR 2026-05-21-prompt-dna-capa-v2.md.
+ * Brief v3 (DNA v3 da capa IA). ADR 2026-05-22-prompt-dna-capa-v3.md.
  *
- * Aceita campos v1 (legacy) como opcionais pra compatibilidade com o
- * wizard atual ate T4.24 reescrever pra v2. O backend faz conversao
- * server-side via cover_prompt_builder.normalize_brief.
- *
- * APOS T4.24 entregar + 1 release validando, remover todos os @deprecated.
+ * V3 removeu `cenario` (inferido do universo do artista via
+ * artist_universe.py no backend). Campos v1 ainda aceitos como
+ * opcionais pra back-compat (backend converte via normalize_brief).
  */
 export interface CoverBrief {
-  // v2 (preferidas)
+  // v3 (preferidas) -- sem `cenario`
   genero_primario?: string | null
   genero_secundario?: string | null
   artista_primario?: string | null
   artista_secundario?: string | null
   quem_aparece?: string | null
   mood?: string | null
-  cenario?: string | null
   atmosfera_luz?: string | null
 
-  // v1 (legacy, convertido server-side -- remover apos T4.24)
+  // v1 (legacy, convertido server-side -- remover quando wizard estabilizar)
   /** @deprecated use artista_primario */
   artista_nome?: string | null
   /** @deprecated use quem_aparece */
   sujeito?: string | null
-  /** @deprecated use cenario */
+  /** @deprecated (campo cenario removido na v3) */
   ambiente?: string | null
   /** @deprecated use atmosfera_luz */
   iluminacao?: string | null

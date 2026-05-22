@@ -23,17 +23,16 @@ class BriefModel(BaseModel):
     Apos T4.24 entregar o wizard v2 e validarmos por 1 release, os campos
     v1 podem ser removidos. ADR 2026-05-21-prompt-dna-capa-v2.md.
     """
-    # v2 (preferidas)
+    # v3 (preferidas) -- campo `cenario` removido (inferido do universo do artista)
     genero_primario: str | None = None
     genero_secundario: str | None = None
     artista_primario: str | None = None
     artista_secundario: str | None = None
     quem_aparece: str | None = None
     mood: str | None = None
-    cenario: str | None = None
     atmosfera_luz: str | None = None
 
-    # v1 (legacy -- convertido server-side)
+    # v1 (legacy -- convertido server-side via normalize_brief)
     artista_nome: str | None = None
     sujeito: str | None = None
     ambiente: str | None = None

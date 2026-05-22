@@ -78,17 +78,6 @@ const MOOD_OPTIONS: Option[] = [
   { slug: 'chill', label: 'Chill', icon: Sparkles, description: 'Atmosferico, calmo' },
 ]
 
-const CENARIO_OPTIONS: Option[] = [
-  { slug: 'rua_americana', label: 'Rua / hood', icon: Home },
-  { slug: 'interior_intimo', label: 'Quarto / carro', icon: Lamp },
-  { slug: 'interior_luxo', label: 'Interior luxo', icon: Building2 },
-  { slug: 'festa_underground', label: 'Festa underground', icon: Volume2 },
-  { slug: 'paisagem_urbana', label: 'Paisagem urbana', icon: Moon },
-  { slug: 'paisagem_aberta', label: 'Natureza', icon: MountainSnow },
-  { slug: 'closeup_objeto', label: 'Close objeto', icon: Package },
-  { slug: 'lugar_simbolico', label: 'Lugar simbolico', icon: Square },
-]
-
 const ATMOSFERA_LUZ_OPTIONS: Option[] = [
   { slug: 'sol_duro_dia', label: 'Sol duro', icon: Sun },
   { slug: 'golden_hour', label: 'Golden hour', icon: Sunset },
@@ -125,15 +114,6 @@ const DISPLAY_PT: Record<string, string> = {
   sexy: 'sexy',
   party: 'party',
   chill: 'chill',
-  // Cenario
-  rua_americana: 'rua',
-  interior_intimo: 'quarto',
-  interior_luxo: 'interior luxo',
-  festa_underground: 'festa',
-  paisagem_urbana: 'paisagem urbana',
-  paisagem_aberta: 'natureza',
-  closeup_objeto: 'close objeto',
-  lugar_simbolico: 'simbolico',
   // Luz
   sol_duro_dia: 'sol duro',
   golden_hour: 'golden hour',
@@ -163,7 +143,7 @@ type Props = {
  * Wizard de configuracao do brief (v2 -- DNA da capa IA).
  * 3 steps:
  *   1. Identidade: artista primario (+ opcional 2o) + genero primario (+ opcional 2o)
- *   2. Visual: 4 grids (quem aparece, mood, cenario, atmosfera de luz)
+ *   2. Visual: 3 grids (quem aparece, mood, atmosfera de luz). V3 removeu cenario.
  *   3. Confirmacao: nome do brief + resumo + nota livre + CTAs
  *
  * isOnboardingFree=true mostra "Gerar 1 capa teste (gratis)" no step 3.
@@ -189,10 +169,9 @@ export function CapasWizard({
   const [generoPrimario, setGeneroPrimario] = useState<string | null>(null)
   const [generoSecundario, setGeneroSecundario] = useState<string | null>(null)
 
-  // Visual
+  // Visual (v3 -- sem campo `cenario`, inferido do universo do artista)
   const [quemAparece, setQuemAparece] = useState<string | null>(null)
   const [mood, setMood] = useState<string | null>(null)
-  const [cenario, setCenario] = useState<string | null>(null)
   const [atmosferaLuz, setAtmosferaLuz] = useState<string | null>(null)
 
   // Comum
@@ -224,7 +203,6 @@ export function CapasWizard({
     setGeneroSecundario(initialBrief?.genero_secundario ?? null)
     setQuemAparece(initialBrief?.quem_aparece ?? null)
     setMood(initialBrief?.mood ?? null)
-    setCenario(initialBrief?.cenario ?? null)
     setAtmosferaLuz(initialBrief?.atmosfera_luz ?? null)
     setNotaLivre(initialBrief?.nota_livre ?? '')
     setSaving(null)
@@ -272,7 +250,6 @@ export function CapasWizard({
             artista_secundario: trimmedArtistaSec || null,
             quem_aparece: quemAparece,
             mood,
-            cenario,
             atmosfera_luz: atmosferaLuz,
             nota_livre: notaLivre.trim() || null,
           },
@@ -377,11 +354,9 @@ export function CapasWizard({
             <Step2Visual
               quemAparece={quemAparece}
               mood={mood}
-              cenario={cenario}
               atmosferaLuz={atmosferaLuz}
               onPickQuem={setQuemAparece}
               onPickMood={setMood}
-              onPickCenario={setCenario}
               onPickAtmosfera={setAtmosferaLuz}
             />
           )}
@@ -395,7 +370,6 @@ export function CapasWizard({
               generoSecundario={generoSecundario}
               quemAparece={quemAparece}
               mood={mood}
-              cenario={cenario}
               atmosferaLuz={atmosferaLuz}
               notaLivre={notaLivre}
               onChangeNota={setNotaLivre}
@@ -719,25 +693,22 @@ function Step1Identidade({
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Step 2 — Visual (4 grids: quem, mood, cenario, atmosfera de luz)
+// Step 2 — Visual (3 grids: quem, mood, atmosfera de luz)
+// V3 removeu cenário (inferido do universo do artista).
 // ─────────────────────────────────────────────────────────────────────
 function Step2Visual({
   quemAparece,
   mood,
-  cenario,
   atmosferaLuz,
   onPickQuem,
   onPickMood,
-  onPickCenario,
   onPickAtmosfera,
 }: {
   quemAparece: string | null
   mood: string | null
-  cenario: string | null
   atmosferaLuz: string | null
   onPickQuem: (v: string | null) => void
   onPickMood: (v: string | null) => void
-  onPickCenario: (v: string | null) => void
   onPickAtmosfera: (v: string | null) => void
 }) {
   return (
@@ -764,7 +735,8 @@ function Step2Visual({
           style={{ color: 'var(--text-secondary)' }}
         >
           Escolha 1 opção em cada categoria. Pode pular as que não importam —
-          a IA preenche o que faltar.
+          a IA preenche o que faltar. O cenário é inferido automaticamente
+          a partir do artista.
         </p>
       </div>
 
@@ -779,12 +751,6 @@ function Step2Visual({
         options={MOOD_OPTIONS}
         value={mood}
         onPick={onPickMood}
-      />
-      <CardGroup
-        label="Cenário"
-        options={CENARIO_OPTIONS}
-        value={cenario}
-        onPick={onPickCenario}
       />
       <CardGroup
         label="Atmosfera de luz"
@@ -925,7 +891,6 @@ function Step3Confirmacao({
   generoSecundario,
   quemAparece,
   mood,
-  cenario,
   atmosferaLuz,
   notaLivre,
   onChangeNota,
@@ -938,7 +903,6 @@ function Step3Confirmacao({
   generoSecundario: string | null
   quemAparece: string | null
   mood: string | null
-  cenario: string | null
   atmosferaLuz: string | null
   notaLivre: string
   onChangeNota: (v: string) => void
@@ -952,11 +916,10 @@ function Step3Confirmacao({
     identidadeTokens.push(`+ ${DISPLAY_PT[generoSecundario]}`)
   }
 
-  // Linha 2: visual (quem + mood + cenario + luz)
+  // Linha 2: visual (quem + mood + luz) -- cenario removido na v3
   const visualTokens: string[] = []
   if (quemAparece && DISPLAY_PT[quemAparece]) visualTokens.push(DISPLAY_PT[quemAparece])
   if (mood && DISPLAY_PT[mood]) visualTokens.push(DISPLAY_PT[mood])
-  if (cenario && DISPLAY_PT[cenario]) visualTokens.push(DISPLAY_PT[cenario])
   if (atmosferaLuz && DISPLAY_PT[atmosferaLuz]) visualTokens.push(DISPLAY_PT[atmosferaLuz])
 
   // Sugestao de nome baseada em artista + mood

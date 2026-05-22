@@ -25,15 +25,6 @@ _SUJEITO_MAP: dict[str, str] = {
     "so_objeto": "sem_pessoa",
 }
 
-_AMBIENTE_MAP: dict[str, str] = {
-    "rua_hood": "rua_americana",
-    "interior_luxo": "interior_luxo",
-    "noturno": "paisagem_urbana",
-    "natureza": "paisagem_aberta",
-    "neon": "festa_underground",
-    "minimalista": "closeup_objeto",
-}
-
 _ILUMINACAO_MAP: dict[str, str] = {
     "sol_duro": "sol_duro_dia",
     "golden_hour": "golden_hour",
@@ -56,7 +47,6 @@ DEFAULT_GENERO_PRIMARIO: str = "trap"
 DEFAULT_ARTISTA: str = "Lil Baby"
 DEFAULT_QUEM: str = "homem_solo"
 DEFAULT_MOOD: str = "flexin"
-DEFAULT_CENARIO: str = "rua_americana"
 DEFAULT_LUZ: str = "golden_hour"
 
 
@@ -68,6 +58,11 @@ def is_v1(brief: dict) -> bool:
         return False
     v1_keys = {"sujeito", "ambiente", "iluminacao", "energia", "artista_nome"}
     return any(k in brief for k in v1_keys)
+
+
+def has_cenario_legacy(brief: dict) -> bool:
+    """True se brief tem o campo `cenario` que saiu na v3."""
+    return isinstance(brief, dict) and "cenario" in brief
 
 
 def convert_v1_to_v2(brief_v1: dict) -> dict:
@@ -85,7 +80,6 @@ def convert_v1_to_v2(brief_v1: dict) -> dict:
         "artista_secundario": None,
         "quem_aparece": _SUJEITO_MAP.get(brief_v1.get("sujeito"), DEFAULT_QUEM),
         "mood": _ENERGIA_MAP.get(brief_v1.get("energia"), DEFAULT_MOOD),
-        "cenario": _AMBIENTE_MAP.get(brief_v1.get("ambiente"), DEFAULT_CENARIO),
         "atmosfera_luz": _ILUMINACAO_MAP.get(brief_v1.get("iluminacao"), DEFAULT_LUZ),
         "nota_livre": brief_v1.get("nota_livre"),
     }
@@ -122,6 +116,8 @@ def parse_brief(brief: dict) -> CoverBrief:
     if not normalized.get("genero_primario"):
         raise ValueError("genero_primario obrigatorio")
 
+    # V3 removeu `cenario`. Ignora silenciosamente se vier no dict
+    # (briefs antigos do banco passam sem crash).
     return CoverBrief(
         genero_primario=normalized["genero_primario"],
         genero_secundario=normalized.get("genero_secundario"),
@@ -129,7 +125,6 @@ def parse_brief(brief: dict) -> CoverBrief:
         artista_secundario=(normalized.get("artista_secundario") or None),
         quem_aparece=normalized.get("quem_aparece") or DEFAULT_QUEM,
         mood=normalized.get("mood") or DEFAULT_MOOD,
-        cenario=normalized.get("cenario") or DEFAULT_CENARIO,
         atmosfera_luz=normalized.get("atmosfera_luz") or DEFAULT_LUZ,
         nota_livre=normalized.get("nota_livre"),
     )
