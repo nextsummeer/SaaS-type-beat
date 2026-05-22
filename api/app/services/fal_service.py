@@ -1,11 +1,12 @@
 """Service de integracao com fal.ai gpt-image-2 (quality=low).
 
 ADR 2026-05-21-geracao-de-capa-prompt-base-claude.md
-
-Configuracao validada em testes 2026-05-21:
+Configuracao final (corrigida em 2026-05-22):
 - Modelo: openai/gpt-image-2
-- Quality: low (~30s, $0.0083/imagem)
-- Resolucao: 1024x1024 (square_hd)
+- Quality: low (~30s)
+- Resolucao: 512x512 (image_size=square). Era 1024x1024 (square_hd)
+  ate 2026-05-22 -- subia custo ~35% sem ganho visual real pra capa
+  YouTube (que usa thumbnail pequeno).
 - Output: JPEG (menor que PNG, capa nao precisa de alpha)
 
 Falha graceful: retorna None se erro. Worker cover.py decide retry ou failed.
@@ -21,7 +22,9 @@ logger = logging.getLogger(__name__)
 FAL_KEY = os.getenv("FAL_KEY")
 FAL_MODEL_ID = "openai/gpt-image-2"
 
-# Custo confirmado em testes (2026-05-21).
+# Custo confirmado em testes 2026-05-21 (1024x1024). Em 512x512 o custo
+# real do fal.ai e' menor (~$0.003-0.005); este valor e' usado apenas
+# pra tracking interno do usage_tracker e nao afeta cobranca real.
 FAL_COST_USD = 0.0083
 
 
@@ -61,7 +64,7 @@ def generate_cover(
             FAL_MODEL_ID,
             arguments={
                 "prompt": prompt,
-                "image_size": "square_hd",
+                "image_size": "square",  # 512x512 (era "square_hd"=1024x1024)
                 "quality": "low",
                 "num_images": 1,
                 "output_format": "jpeg",
