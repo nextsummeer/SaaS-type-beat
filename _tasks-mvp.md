@@ -682,7 +682,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** `from app.services.cover_prompt_builder import build_cover_prompt` funciona (stub do builder pode retornar `None` por enquanto). Dataclasses validam. Vocabulary entrega label EN pra cada slug PT do brief v2.
 - **Dependencia:** —
 
-#### `[ ]` T4.20 — Sistema de variacao por 7 eixos + sanitizer da nota livre
+#### `[x]` T4.20 — Sistema de variacao por 7 eixos + sanitizer da nota livre
 
 - **Arquivos:**
   - `api/app/services/cover_prompt_builder/variation.py`
