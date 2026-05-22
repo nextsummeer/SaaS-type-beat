@@ -432,14 +432,40 @@ export async function fetchAchievements(token: string): Promise<AchievementsResp
 // Capas (geração via IA)
 // ──────────────────────────────────────────────────────────────────────
 
+/**
+ * Brief v2 (DNA v2 da capa IA). ADR 2026-05-21-prompt-dna-capa-v2.md.
+ *
+ * Aceita campos v1 (legacy) como opcionais pra compatibilidade com o
+ * wizard atual ate T4.24 reescrever pra v2. O backend faz conversao
+ * server-side via cover_prompt_builder.normalize_brief.
+ *
+ * APOS T4.24 entregar + 1 release validando, remover todos os @deprecated.
+ */
 export interface CoverBrief {
-  /** Texto livre — produtor digita qualquer nome de artista. NAO e FK. */
-  artista_nome: string
-  sujeito: string | null
-  ambiente: string | null
-  iluminacao: string | null
-  energia: string | null
-  nota_livre: string | null
+  // v2 (preferidas)
+  genero_primario?: string | null
+  genero_secundario?: string | null
+  artista_primario?: string | null
+  artista_secundario?: string | null
+  quem_aparece?: string | null
+  mood?: string | null
+  cenario?: string | null
+  atmosfera_luz?: string | null
+
+  // v1 (legacy, convertido server-side -- remover apos T4.24)
+  /** @deprecated use artista_primario */
+  artista_nome?: string | null
+  /** @deprecated use quem_aparece */
+  sujeito?: string | null
+  /** @deprecated use cenario */
+  ambiente?: string | null
+  /** @deprecated use atmosfera_luz */
+  iluminacao?: string | null
+  /** @deprecated use mood */
+  energia?: string | null
+
+  // Comum (manteve nome)
+  nota_livre?: string | null
 }
 
 export type CoverStatus = 'pending' | 'ready' | 'failed'

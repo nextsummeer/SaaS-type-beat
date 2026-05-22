@@ -31,7 +31,7 @@ import uuid
 import requests
 
 from app.services import credits_service
-from app.services.cover_prompt_builder import build_cover_prompt
+from app.services.cover_prompt_builder import build_cover_prompt, parse_brief
 from app.services.fal_service import generate_cover
 from app.services.supabase_service import get_admin_client
 
@@ -45,15 +45,16 @@ FAL_DOWNLOAD_TIMEOUT_SECONDS = 30
 def generate_covers(
     user_id: str,
     brief: dict,
-    artista_nome: str,
     lote: int = 1,
 ) -> dict:
     """Gera N capas via IA pro user. Cobra apenas pelo que entrega.
 
     Args:
         user_id: dono.
-        brief: dict com chaves opcionais sujeito/ambiente/iluminacao/energia/nota_livre.
-        artista_nome: nome do artista (resolvido pelo caller).
+        brief: dict v2 ja normalizado (genero_primario, artista_primario,
+               quem_aparece, mood, cenario, atmosfera_luz, opcionais
+               secundarios + nota_livre). Caller (routes) ja chamou
+               normalize_brief() pra converter v1 se necessario.
         lote: 1 ou 3.
 
     Returns:
@@ -125,11 +126,21 @@ def generate_covers(
             except Exception as exc:
                 logger.error("cover worker: falha ao marcar failed: %s", exc)
 
-        # b. Claude monta prompt final
-        prompt_final = build_cover_prompt(brief, artista_nome, user_id=user_id)
-        if not prompt_final:
-            _fail("falha em cover_prompt_builder (sem cobranca)")
+        # b. Claude monta prompt final (builder v2 -- retorna BuildResult)
+        try:
+            cover_brief = parse_brief(brief)
+        except ValueError as exc:
+            _fail(f"brief invalido: {exc}")
             continue
+
+        build_result = build_cover_prompt(cover_brief, user_id=user_id)
+        if not build_result.prompt_final:
+            _fail(
+                f"falha em builder v2: {build_result.validation_error or 'sem prompt'} (sem cobranca)"
+            )
+            continue
+        prompt_final = build_result.prompt_final
+        variation_seeds = build_result.variation_seeds
 
         # c. fal.ai gera imagem
         fal_result = generate_cover(prompt_final, user_id=user_id)
@@ -187,7 +198,7 @@ def generate_covers(
             _cleanup_storage(client, storage_path)
             continue
 
-        # e. UPDATE pending → ready
+        # e. UPDATE pending → ready (com variation_seeds do builder v2)
         total_cost = round(fal_cost + 0.005, 6)
         try:
             client.table("cover_library").update({
@@ -195,6 +206,7 @@ def generate_covers(
                 "storage_path": storage_path,
                 "image_hash": image_hash,
                 "prompt_final": prompt_final,
+                "variation_seeds": variation_seeds,
                 "cost_usd": total_cost,
                 "status": "ready",
             }).eq("id", pending_id).execute()

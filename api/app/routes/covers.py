@@ -16,16 +16,31 @@ logger = logging.getLogger(__name__)
 
 
 class BriefModel(BaseModel):
-    """Brief estruturado do produtor. Artista e texto livre (NAO e FK pra
-    artistas_referencia) — produtor digita qualquer nome. ADR 2026-05-21:
-    'sao milhares de artistas, todo dia nasce um novo' — curadoria manual
-    inviavel. A tabela artistas_referencia continua existindo mas e opcional
-    pra autocomplete/sugestoes futuras."""
-    artista_nome: str
+    """Brief do produtor. Aceita formato v2 (campos novos) E v1 (legacy)
+    via back-compat -- conversor server-side em
+    `cover_prompt_builder.brief_converter` detecta e converte.
+
+    Apos T4.24 entregar o wizard v2 e validarmos por 1 release, os campos
+    v1 podem ser removidos. ADR 2026-05-21-prompt-dna-capa-v2.md.
+    """
+    # v2 (preferidas)
+    genero_primario: str | None = None
+    genero_secundario: str | None = None
+    artista_primario: str | None = None
+    artista_secundario: str | None = None
+    quem_aparece: str | None = None
+    mood: str | None = None
+    cenario: str | None = None
+    atmosfera_luz: str | None = None
+
+    # v1 (legacy -- convertido server-side)
+    artista_nome: str | None = None
     sujeito: str | None = None
     ambiente: str | None = None
     iluminacao: str | None = None
     energia: str | None = None
+
+    # Comum
     nota_livre: str | None = None
 
 
@@ -140,22 +155,18 @@ def generate(body: GenerateCoverRequest, authorization: str = Header(...)):
     if body.lote not in (1, 3):
         raise HTTPException(status_code=422, detail="lote deve ser 1 ou 3")
 
-    # Artista e texto livre — sem lookup em tabela. Apenas validar nao-vazio.
-    artista_nome = (body.brief.artista_nome or "").strip()
-    if not artista_nome:
-        raise HTTPException(status_code=422, detail="artista_nome obrigatorio")
+    # Normaliza brief (converte v1 -> v2 se necessario)
+    from app.services.cover_prompt_builder import normalize_brief
+
+    raw_brief = body.brief.model_dump(exclude_none=True)
+    brief_dict = normalize_brief(raw_brief)
+
+    # Apos normalizacao, artista_primario e obrigatorio
+    artista_primario = (brief_dict.get("artista_primario") or "").strip()
+    if not artista_primario:
+        raise HTTPException(status_code=422, detail="artista_primario obrigatorio")
 
     client = get_admin_client()
-
-    # Brief dict a passar pro worker (artista_nome incluido pro audit em cover_library.brief_used)
-    brief_dict = {
-        "artista_nome": artista_nome,
-        "sujeito": body.brief.sujeito,
-        "ambiente": body.brief.ambiente,
-        "iluminacao": body.brief.iluminacao,
-        "energia": body.brief.energia,
-        "nota_livre": body.brief.nota_livre,
-    }
 
     # Se solicitado, salva como default no perfil ANTES de gerar
     # (mesmo se a geracao falhar, a preferencia fica salva)
@@ -171,11 +182,10 @@ def generate(body: GenerateCoverRequest, authorization: str = Header(...)):
                 user_id, exc,
             )
 
-    # Chama o worker
+    # Chama o worker (assinatura v2: sem artista_nome separado)
     result = generate_covers(
         user_id=user_id,
         brief=brief_dict,
-        artista_nome=artista_nome,
         lote=body.lote,
     )
 

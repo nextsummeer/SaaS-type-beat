@@ -23,12 +23,31 @@ logger = logging.getLogger(__name__)
 
 
 class BriefBodyModel(BaseModel):
-    """Brief estruturado do produtor (sem id/nome — esses sao da row)."""
-    artista_nome: str
+    """Brief estruturado do produtor (sem id/nome -- esses sao da row).
+
+    Aceita formato v2 (campos novos) E v1 (legacy) via back-compat --
+    `cover_prompt_builder.normalize_brief` faz a conversao antes de
+    salvar no banco. Apos T4.24 entregar wizard v2 e validarmos por
+    1 release, os campos v1 podem ser removidos.
+    """
+    # v2 (preferidas)
+    genero_primario: str | None = None
+    genero_secundario: str | None = None
+    artista_primario: str | None = None
+    artista_secundario: str | None = None
+    quem_aparece: str | None = None
+    mood: str | None = None
+    cenario: str | None = None
+    atmosfera_luz: str | None = None
+
+    # v1 (legacy -- convertido server-side)
+    artista_nome: str | None = None
     sujeito: str | None = None
     ambiente: str | None = None
     iluminacao: str | None = None
     energia: str | None = None
+
+    # Comum
     nota_livre: str | None = None
 
 
@@ -54,18 +73,24 @@ def _authenticate(authorization: str):
 
 
 def _validate_brief_body(brief: BriefBodyModel) -> dict:
-    """Sanitiza e converte pra dict. Lanca 422 se artista_nome vazio."""
-    artista = (brief.artista_nome or "").strip()
+    """Sanitiza, converte v1->v2 se necessario, retorna dict v2 pra salvar.
+
+    Lanca 422 se artista_primario vazio apos normalizacao.
+    """
+    from app.services.cover_prompt_builder import normalize_brief
+
+    raw = brief.model_dump(exclude_none=True)
+    normalized = normalize_brief(raw)
+
+    artista = (normalized.get("artista_primario") or "").strip()
     if not artista:
-        raise HTTPException(status_code=422, detail="artista_nome obrigatorio")
-    return {
-        "artista_nome": artista,
-        "sujeito": brief.sujeito,
-        "ambiente": brief.ambiente,
-        "iluminacao": brief.iluminacao,
-        "energia": brief.energia,
-        "nota_livre": (brief.nota_livre or "").strip() or None,
-    }
+        raise HTTPException(status_code=422, detail="artista_primario obrigatorio")
+
+    # Garante que artista_primario fica strip()ado no dict final
+    normalized["artista_primario"] = artista
+    nota = (normalized.get("nota_livre") or "").strip()
+    normalized["nota_livre"] = nota or None
+    return normalized
 
 
 @router.get("")

@@ -725,7 +725,10 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Migration roda limpa em dev/staging. Script Python migra os 3 lugares sem perder rows (SELECT count antes vs depois bate). Backup Supabase manual antes de rodar em producao.
 - **Dependencia:** —
 
-#### `[ ]` T4.23 — Atualizar worker cover.py + routes/covers.py + lib/api.ts
+#### `[x]` T4.23 — Atualizar worker cover.py + routes/covers.py + lib/api.ts
+
+> Switch atomico do builder feito. `brief_converter.py` novo no pacote (parse_brief + normalize_brief + convert_v1_to_v2 mesma logica do SQL migration 019). `__init__.py` re-exporta builder v2 + types + helpers; `legacy.py` deletado. Routes (covers + briefs) com BriefModel ampliado (v1+v2) + back-compat server-side. Worker chama `parse_brief()` -> `build_cover_prompt(CoverBrief)` -> `BuildResult` e salva `variation_seeds` no UPDATE ready. lib/api.ts com `CoverBrief` ampliado pra aceitar ambos formatos (v1 marcados @deprecated). 49 testes pytest verdes + `pnpm build` 18/18 paginas geradas, sem regressao no frontend.
+
 
 - **Arquivos:**
   - `api/app/workers/cover.py`
