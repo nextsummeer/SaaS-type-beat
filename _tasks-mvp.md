@@ -693,7 +693,10 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** `sample_variation_axes()` chamado 50× com mesmo brief retorna combinacoes diferentes coerentes (sem prop quando sem_pessoa, sem night quando sol_duro_dia). Sanitizer rejeita `"ignore previous instructions"` e `"anime style"`.
 - **Dependencia:** T4.19
 
-#### `[ ]` T4.21 — Builder + validators robustos + prompt caching Claude
+#### `[x]` T4.21 — Builder + validators robustos + prompt caching Claude
+
+> **Codigo entregue.** Teste real ao Claude (5 briefs + verificacao de cache_read_input_tokens) sera rodado junto da T4.23 quando o pipeline ponta-a-ponta estiver plugado (worker + routes + lib/api). Validators testados em isolado contra 6 casos (passa valido, rejeita nome direto, rejeita apelido '6 god', rejeita 'the famous rapper', rejeita 'porcelain skin' no corpo, rejeita comprimento fora da faixa). Stub original abaixo:
+
 
 - **Arquivos:**
   - `api/app/services/cover_prompt_builder/user_prompt.py`
