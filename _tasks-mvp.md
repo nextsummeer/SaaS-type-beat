@@ -710,7 +710,11 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Dependencia:** T4.19, T4.20
 - **Nota:** consultar https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching antes de implementar o cache_control.
 
-#### `[ ]` T4.22 — Migration brief v2 + script de migracao de dados (3 lugares)
+#### `[x]` T4.22 — Migration brief v2 + script de migracao de dados (3 lugares)
+
+> **Aplicada em producao 2026-05-21.** Pre-acao: deletados 3 presets de teste em `brief_presets` (Tame Impala/The Weeknd/Drake type 2) que estavam no formato v1 antigo. Migration 019 rodou contra 0 rows em todos os 3 lugares (cover_library/user_profiles/brief_presets), criou coluna `variation_seeds JSONB` em cover_library + index GIN. Funcao PL/pgSQL temporaria dropada limpa. Validacao confirmada via query consolidada (col=1, idx=1, funcao=0, presets=0). Decisao: pulado script Python `migrate_cover_briefs_to_v2.py` do ADR original -- SQL puro fez tudo atomicamente.
+
+
 
 - **Arquivos:**
   - `supabase/migrations/019_cover_brief_v2.sql` (numeracao apos a 018)
