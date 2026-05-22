@@ -141,7 +141,13 @@ ALLOWED_WORD_REPLACEMENTS: list[str] = [
 # polida. Validators rejeita.
 
 BANNED_REFERENCES: list[str] = [
-    "drive",  # filme Drive 2011
+    # Filme Drive (2011) -- usar strings ESPECIFICAS, NUNCA "drive" cru
+    # porque pega "hard drive", "night drives", "driveway" em contexto
+    # legitimo (inclusive nos prompts validados do Gustavo).
+    "drive (2011)",
+    "nicolas winding refn",
+    "ryan gosling drive",
+    # Outras referencias cinematograficas/editoriais
     "neon demon",
     "wong kar-wai",
     "tony scott",
