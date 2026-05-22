@@ -1,12 +1,12 @@
 # _tasks — [NOME] Fase 1 (MVP) @gustavo
 
 **Criado:** 2026-04-25
-**Atualizado:** 2026-05-21 (sessao 2: capa IA infra completa, brief presets, skeleton refresh-safe, tier internal)
+**Atualizado:** 2026-05-21 (sessao 3: prompt DNA v2 + brief v2 + sistema de variacao por 7 eixos)
 **Outcome:** Produtor convidado faz login, conecta canal YouTube, configura brief de estilo padrao na aba `/capas` (multi-presets nomeados, ate N por tier), gera capas reusaveis com IA (prompt base + Claude + fal.ai, ~30s, $0.013), sobe um beat informando artista de referencia + mood, escolhe capa da biblioteca ou envia propria, recebe titulo+descricao+tags geradas pela IA, edita o que quiser, confirma agendamento, e ve video publicado/agendado no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Meta: beta fechado setembro 2026.
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** Capa IA — INFRA 100% PRONTA em producao (Vercel + Railway). 8 migrations Supabase aplicadas (cover_library + status pending/ready/failed, brief_presets, creditos por tier, tier internal). Backend: fal_service + cover_prompt_builder + worker cover (INSERT pending → UPDATE ready/failed) + endpoints /covers/* e /covers/briefs/* + DELETE /covers/{id}. Frontend: aba /capas com BriefSelector → ManageBriefsModal (sem mais dropdown floating), CapasWizard 3-step, CapasGrid com status, ConfirmDialog estilo BeatPost. Bugs UX consertados: skeleton refresh-safe + otimismo local, drag de texto fora do modal nao fecha mais, download via blob, descartar via endpoint backend. **Bloqueador critico unico restante: prompt base mestre (T4.6) — Gustavo vai trabalhar isso na proxima sessao.** Placeholder atual (prompt do Lil Baby) funciona pra testar fluxo, mas qualidade final depende da curadoria dele. Tasks pendentes nao-bloqueantes: T4.11 (teste E2E pytest, backlog), T2.7 (curadoria de artistas obsoleta — virou "banco de aprendizado" futuro). Bloqueadores paralelos: (1) Rary republicar beat `ee96c64f` pra validar fix codec, (2) aumento de quota YouTube, (3) OAuth verification, (4) decisao final billing.
+**Proximo passo:** T4.19 — refatorar `cover_prompt_builder.py` em pacote modular (`cover_prompt_builder/` com types/system_prompt/vocabulary minimo). Sessao 3 abriu refatoracao da engenharia de prompt da capa IA via ADR `2026-05-21-prompt-dna-capa-v2.md`: principio "Captured, Not Composed" + DNA universal + anti-aesthetics block + gramatica de 7 blocos + brief v2 (6+2 campos com genero como ancora) + sistema de variacao deterministico por 7 eixos sorteados em Python + prompt caching da Anthropic. T4.6 (prompt base mestre placeholder) RESOLVIDA via T4.19-T4.26. Sequencia aprovada: T4.19 → T4.20 → T4.21 → T4.22 → T4.23 → T4.24 → T4.25 → T4.26. Decisoes fechadas: opcao `aleatorio` em cenario/luz escondida do wizard ate vocabulary v2 entregar matriz de compatibilidade, migrations destrutivas autorizadas (Gustavo unico usuario com dados reais — mas cobre os 3 lugares: cover_library + user_profiles.default_brief + brief_presets), validador AVOID em warning-mode por 1 semana antes de hard-fail. Bloqueadores paralelos sem mudanca: (1) Rary republicar beat `ee96c64f` pra validar fix codec, (2) aumento de quota YouTube, (3) OAuth verification, (4) decisao final billing.
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -478,20 +478,11 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 
 > **Mudanca conceitual:** clusters fixos de estilos descartados. Novo modelo: prompt base mestre + brief estruturado do produtor (5 campos) → Claude monta prompt final → fal.ai gpt-image-2 quality=low gera ($0.013/capa total). Aba dedicada `/capas` com biblioteca reusavel + sistema de creditos por tier. UX assincrona.
 
-#### `[ ]` T4.6 — Curadoria do prompt base mestre (Gustavo, manual)
+#### `[x]` T4.6 — Curadoria do prompt base mestre (RESOLVIDA via T4.19-T4.26)
 
-- **Arquivos:**
-  - `api/app/services/cover_prompt_builder.py` (constante `PROMPT_BASE_TEMPLATE` hardcoded)
-  - `docs/referencias/prompt-base-capa.md` (criar — anotacoes sobre iteracoes do prompt base + versao atual)
-- **O que fazer:** Gustavo finaliza o prompt base mestre. Esse e o **molde estrutural** (analog film + sujeito + setting + lighting + palette + energy + shot on) que sera preenchido pelo Claude em runtime com o brief especifico do produtor.
-  1. Iterar prompt base ate funcionar bem em 3-5 briefs de teste diferentes (Drake/sexy, Lil Baby/hood, Drake/agressivo ja validados em 2026-05-21)
-  2. Cada iteracao: chama Claude com prompt base + brief curto, valida prompt final, gera capa no fal.ai, julga visualmente
-  3. Documentar versoes e razoes em `docs/referencias/prompt-base-capa.md`
-  4. Versao final vai hardcoded em `cover_prompt_builder.py`
-- **Criterio de pronto:** Prompt base entrega capas radio-ready em pelo menos 5 briefs de teste cobrindo estilos diferentes. Hardcoded no codigo.
-- **Dependencia:** —
-- **Estimativa:** 3-5 dias de iteracao (muito menor que 1-2 semanas dos clusters antigos).
-- **Nota seguranca:** prompt base e receita secreta. Git e privado (apos T0.6 ser privatizado). NUNCA logar prompt base em texto puro. NUNCA expor via endpoint publico.
+- **Status:** substituida em 2026-05-21 (sessao 3) pelo sistema DNA + sistema de variacao por 7 eixos descrito no ADR `2026-05-21-prompt-dna-capa-v2.md` e implementado nas tasks T4.19-T4.26.
+- **Por que:** o conceito de "PROMPT_BASE_TEMPLATE unico" (1 exemplo concreto de capa servindo como molde) provou ser limitante quando o brief pedia algo muito diferente do exemplo. A v2 substitui pelo SYSTEM_PROMPT estruturado em 5 secoes (Master Principle + Universal DNA + Anti-Aesthetics + Genre Anchor + Output Rules), com diversidade real injetada por 7 eixos sorteados em Python.
+- **Nota seguranca preservada:** o SYSTEM_PROMPT v2 continua sendo receita secreta. NUNCA logar em texto puro. NUNCA expor via endpoint publico.
 
 #### `[x]` T4.7 — Service: fal_service.py (integracao fal.ai gpt-image-2)
 
@@ -670,6 +661,120 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
   - Botoes de geracao disabled quando creditos < lote pedido. Mostra tooltip "Sem creditos suficientes. Upgrade pra plano premium em [link]"
 - **Criterio de pronto:** Display sempre consistente com `credits_service.get_remaining`. Modal aparece antes de gerar. Bloqueio funciona.
 - **Dependencia:** T4.10, T4.14
+
+### Bloco prompt DNA v2 (aberto em 2026-05-21 sessao 3 apos ADR `2026-05-21-prompt-dna-capa-v2.md`)
+
+> **Reformulacao da engenharia de prompt da capa IA.** Substitui o `PROMPT_BASE_TEMPLATE` placeholder (capa Lil Baby hardcoded) por sistema estruturado: principio "Captured, Not Composed" + DNA universal + anti-aesthetics block + gramatica de 7 blocos + brief v2 (6+2 campos com genero como ancora) + sistema de variacao por 7 eixos sorteados em Python + prompt caching Claude. Detalhes no ADR e em `docs/sessoes/2026-05-21-engenharia-prompt-capa-ia-estado-atual.md`.
+
+#### `[ ]` T4.19 — Refatorar cover_prompt_builder em pacote (types + system_prompt + vocabulary minimo)
+
+- **Arquivos:**
+  - `api/app/services/cover_prompt_builder.py` (DELETAR)
+  - `api/app/services/cover_prompt_builder/__init__.py` (criar — re-exporta `build_cover_prompt`)
+  - `api/app/services/cover_prompt_builder/types.py` (criar)
+  - `api/app/services/cover_prompt_builder/system_prompt.py` (criar — texto integral do SYSTEM_PROMPT v2 em ingles, ~250 linhas)
+  - `api/app/services/cover_prompt_builder/vocabulary.py` (criar — versao MINIMA: so mapeamento slug PT → frase EN basica)
+- **O que fazer:**
+  - Apaga o arquivo monolitico antigo (`cover_prompt_builder.py` na raiz de `services/`)
+  - Cria pacote com dataclasses `CoverBrief`, `VariationAxes`, `BuildResult` em `types.py`
+  - `system_prompt.py` exporta constante `SYSTEM_PROMPT` com o texto da secao 7 do ADR `2026-05-21-prompt-dna-capa-v2.md`
+  - `vocabulary.py` so mapeia slugs PT do brief v2 → frases EN basicas pros 11 generos, 6 quem_aparece, 6 mood, 9 cenarios, 7 luzes. Matriz de compatibilidade rica fica pra proxima sessao.
+- **Criterio de pronto:** `from app.services.cover_prompt_builder import build_cover_prompt` funciona (stub do builder pode retornar `None` por enquanto). Dataclasses validam. Vocabulary entrega label EN pra cada slug PT do brief v2.
+- **Dependencia:** —
+
+#### `[ ]` T4.20 — Sistema de variacao por 7 eixos + sanitizer da nota livre
+
+- **Arquivos:**
+  - `api/app/services/cover_prompt_builder/variation.py`
+  - `api/app/services/cover_prompt_builder/sanitizer.py`
+- **O que fazer:**
+  - `variation.py`: constantes dos 7 eixos (subject_framing, camera_angle, time_of_day, sub_location, secondary_prop, motion_state, film_quirk). Funcao `sample_variation_axes(brief, seed=None)` respeita dependencias basicas: `secondary_prop` ignorado se `quem_aparece=sem_pessoa`, `time_of_day` compativel com `atmosfera_luz` (ex: `luz_colorida` forca `night_practical`), `sub_location` lista basica por cenario. Sem matriz de compatibilidade refinada (fica pra vocabulary v2).
+  - `sanitizer.py`: `sanitize_free_note(note)` trunca em 280 chars, rejeita prompt-injection (lista de padroes: `"ignore previous"`, `"system:"`, etc), rejeita termos incompativeis com estetica (`"anime"`, `"cartoon"`, `"3d render"`, etc).
+- **Criterio de pronto:** `sample_variation_axes()` chamado 50× com mesmo brief retorna combinacoes diferentes coerentes (sem prop quando sem_pessoa, sem night quando sol_duro_dia). Sanitizer rejeita `"ignore previous instructions"` e `"anime style"`.
+- **Dependencia:** T4.19
+
+#### `[ ]` T4.21 — Builder + validators robustos + prompt caching Claude
+
+- **Arquivos:**
+  - `api/app/services/cover_prompt_builder/user_prompt.py`
+  - `api/app/services/cover_prompt_builder/validators.py`
+  - `api/app/services/cover_prompt_builder/builder.py`
+- **O que fazer:**
+  - `user_prompt.py`: template da secao 8 do ADR v2 + funcao de preenchimento com brief + variation_seeds enriquecidos via vocabulary
+  - `validators.py`: 7 validacoes — comprimento 1500-4000 chars, likeness nome direto (primario E secundario), likeness apelidos (blocklist comeca com 5-6 artistas: Drake, Kendrick, Future, Carti, Lil Baby), likeness frases-ancora genericas ("the artist from", "the famous", etc), estrutura 7 blocos por keywords, AVOID block presente (**warning-mode** nesta fase — loga warning mas aceita output), anti-aesthetics inline (corpo nao pode conter `"porcelain"`, `"studio lighting"`, `"cinematic bokeh"`, `"glowing border"`)
+  - `builder.py`: `build_cover_prompt(brief, seed=None)` orquestra — sanitizacao → sample_variation_axes → enriquecimento vocabulary → user_prompt → chamada Claude Sonnet 4.6 COM prompt caching habilitado (`cache_control: {"type": "ephemeral"}` no system) → validacao → retorna BuildResult. usage_tracker registra tokens IN/OUT/CACHE-READ/CACHE-WRITE separados.
+- **Criterio de pronto:** 5 briefs de teste diferentes (Lil Baby/trap/flexin/rua, Drake/trap+ambient/sad/paisagem, PartyNextDoor+Bryson/rnb/sexy/interior, Future/ambient/chill/lugar_simbolico, Carti/rage/dark/festa) geram prompts validos 300-600 palavras sem mencionar nome do artista. Segunda chamada com mesmo brief usa cache (verificar via `response.usage.cache_read_input_tokens > 0`).
+- **Dependencia:** T4.19, T4.20
+- **Nota:** consultar https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching antes de implementar o cache_control.
+
+#### `[ ]` T4.22 — Migration brief v2 + script de migracao de dados (3 lugares)
+
+- **Arquivos:**
+  - `supabase/migrations/019_cover_brief_v2.sql` (numeracao apos a 018)
+  - `api/scripts/migrate_cover_briefs_to_v2.py`
+- **O que fazer:**
+  - SQL: renomeia colunas em `cover_library` (sujeito→quem_aparece_legacy, ambiente→ambiente_legacy, iluminacao→iluminacao_legacy, energia→energia_legacy, artista_nome→artista_primario). Adiciona colunas novas: genero_primario, genero_secundario, artista_secundario, quem_aparece, mood, cenario, atmosfera_luz, variation_seeds (JSONB). Index GIN em variation_seeds. Mesma operacao em `brief_presets` (mesma estrutura de colunas).
+  - Script Python: itera `cover_library`, `user_profiles.default_brief` (JSONB com keys antigas), `brief_presets`. Converte cada um usando os mapeamentos LEGACY definidos no ADR secao 10 (sujeito.jovem→quem_aparece.homem_solo, ambiente.rua_hood→cenario.rua_americana, iluminacao.vermelho→atmosfera_luz.luz_colorida, energia.hood_famous→mood.flexin, etc). Roda em transacao.
+- **Criterio de pronto:** Migration roda limpa em dev/staging. Script Python migra os 3 lugares sem perder rows (SELECT count antes vs depois bate). Backup Supabase manual antes de rodar em producao.
+- **Dependencia:** —
+
+#### `[ ]` T4.23 — Atualizar worker cover.py + routes/covers.py + lib/api.ts
+
+- **Arquivos:**
+  - `api/app/workers/cover.py`
+  - `api/app/routes/covers.py`
+  - `web/lib/api.ts`
+- **O que fazer:**
+  - Worker: importa `build_cover_prompt` do pacote novo. Recebe brief com keys novas. Salva os 7 eixos sorteados em `cover_library.variation_seeds` no INSERT pending (ou no UPDATE ready se preferir). Mudancas minimas no resto da logica — pipeline atual fica intacto.
+  - Routes: `BriefModel` ganha campos novos (genero_primario obrigatorio, genero_secundario opcional, artista_primario/artista_secundario, quem_aparece, mood, cenario, atmosfera_luz). Validacao Pydantic aceita brief novo. Back-compat: durante 1 release, se request vier com keys antigas (sujeito, ambiente, etc), converte server-side com warning no log.
+  - lib/api.ts: types `CoverBrief`, `BriefPreset` atualizados com campos novos.
+- **Criterio de pronto:** POST /covers/generate com brief v2 gera capa end-to-end. variation_seeds aparecem no DB. Brief antigo em request (transicao) ainda funciona com warning no log.
+- **Dependencia:** T4.21, T4.22
+
+#### `[ ]` T4.24 — Reescrever CapasWizard com 6 campos novos (skill frontend-design)
+
+- **Arquivos:**
+  - `web/components/CapasWizard.tsx`
+  - `web/components/CapasBrief.tsx` (form reutilizavel)
+- **O que fazer:**
+  - Invocar skill frontend-design pra manter direcao Editorial Mono
+  - Wizard com:
+    - Genero primario (grid de 11 cards, single-select)
+    - Botao "+" pra adicionar genero secundario (opcional, mesma lista, exclui o primario)
+    - Artista primario (input texto)
+    - Botao "+" pra adicionar artista secundario (opcional)
+    - Quem aparece (6 cards — opcao `aleatorio` NAO aparece nesta fase)
+    - Mood (6 cards com descricao curta na UI)
+    - Cenario (8 cards — exclui `aleatorio` nesta fase)
+    - Luz (6 cards — exclui `aleatorio` nesta fase)
+    - Nota livre (textarea opcional, max 280 chars)
+  - Validacao client-side coerente com o backend (Pydantic mirror)
+- **Criterio de pronto:** Wizard cria/edita preset com brief v2. Salva via API. Direcao visual Editorial Mono mantida.
+- **Dependencia:** T4.23
+
+#### `[ ]` T4.25 — ManageBriefsModal + ConfirmGenerateModal + botao "Gerar variacao"
+
+- **Arquivos:**
+  - `web/components/ManageBriefsModal.tsx`
+  - `web/components/ConfirmGenerateModal.tsx`
+  - `web/app/(app)/capas/page.tsx`
+- **O que fazer:**
+  - ManageBriefsModal: lista presets com resumo do brief v2 (genero + mood + cenario em vez de sujeito + ambiente + iluminacao + energia)
+  - ConfirmGenerateModal: pequenos ajustes de label se necessario
+  - page.tsx: botao "Gerar variacao" ao lado de "Gerar 1" e "Gerar 3". Tecnicamente identico a "Gerar 1" — diferenca e psicologica/UX (sinaliza "vamos so tentar diferente" vs "vamos gerar do zero"). Logar internamente o tipo de acao pra analytics futuras.
+- **Criterio de pronto:** Fluxo end-to-end no browser: criar preset v2 → gerar capa → gerar variacao → ver na biblioteca.
+- **Dependencia:** T4.24
+
+#### `[ ]` T4.26 — Atualizar CLAUDE.md regra 6 + docs/_mapa.md + commit final
+
+- **Arquivos:**
+  - `CLAUDE.md` (regra 6)
+  - `docs/_mapa.md` (entrada do ADR v2 — ja adicionada na abertura do bloco)
+- **O que fazer:**
+  - CLAUDE.md regra 6 reescrita refletindo brief v2 + 7 eixos + DNA (texto novo definido no ADR `2026-05-21-prompt-dna-capa-v2.md` secao Consequencias)
+  - Memoria `project_capa_ia_arquitetura.md` atualizada (substitui versao antiga)
+- **Criterio de pronto:** docs alinhados com codigo em producao.
+- **Dependencia:** T4.19-T4.25
 
 ---
 
@@ -985,6 +1090,8 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 ---
 
 ## Historico de chats
+
+- **2026-05-21 (sessao 3)** — Abertura da fase de engenharia de prompt da capa IA. ADR `2026-05-21-prompt-dna-capa-v2.md` complementa o ADR de 2026-05-21 (sessao 2): adiciona principio "Captured, Not Composed" + DNA universal + anti-aesthetics block (6 categorias) + gramatica visual de 7 blocos + sistema de variacao deterministico por 7 eixos sorteados em Python + prompt caching da Anthropic. Brief evolui de 5 campos pros 6+2 campos (genero primario/secundario + artista primario/secundario + quem aparece + mood + cenario + atmosfera de luz + nota livre). Reversao consciente do plano anterior de reduzir pra 3 campos — genero se mostrou o sinal mais informativo da cena de type beat e foi promovido a ancora estetica. T4.6 (prompt base mestre placeholder) fechada como RESOLVIDA via T4.19-T4.26. 8 tasks novas abertas com plano em 8 etapas. **Decisoes fechadas:** opcao `aleatorio` em cenario/luz escondida do wizard ate vocabulary v2 entregar matriz de compatibilidade scene×light×mood; migrations destrutivas autorizadas (Gustavo unico usuario com dados reais — script cobre os 3 lugares: `cover_library` + `user_profiles.default_brief` + `brief_presets`); validador AVOID block em warning-mode por 1 semana antes de virar hard-fail (evita perda de capas boas por capricho de formato enquanto Claude calibra ao prompt novo). Doc de briefing pra sessao paralela com Claude normal: `docs/sessoes/2026-05-21-engenharia-prompt-capa-ia-estado-atual.md`. Etapa 0 (este commit): so docs + tasks, sem codigo ainda.
 
 - **2026-05-21** — **Sessao gigantesca: capa IA do zero ate producao.** ADR `2026-05-21-geracao-de-capa-prompt-base-claude.md` substitui `2026-05-07-geracao-de-capa-mvp.md` (clusters fixos descartados — Gustavo descobriu que prompt base mestre + brief de 1-2 linhas + Claude gera prompts radicalmente especificos pra qualquer artista, validado em 3 testes Drake/Lil Baby/Carti). **Evolucoes de design durante a sessao**: (1) artista virou TEXTO LIVRE (nao FK rigida — milhares de artistas no mundo, todo dia nasce um); (2) brief unico evoluiu pra MULTI-PRESETS nomeados (free 1 / int 5 / premium ∞), gerenciados via modal "Gerenciar briefs"; (3) onboarding free (primeira capa por user e gratuita) — padrao SaaS sério; (4) tier 'internal' adicionado pra dono/time testar sem limite; (5) skeleton refresh-safe via `cover_library.status` (worker INSERT pending → UPDATE ready/failed) — `optimisticPending` local pra feedback IMEDIATO entre click e Realtime. **Backend entregue**: 8 migrations Supabase (011-018), services `fal_service` + `cover_prompt_builder` (com prompt do Lil Baby como placeholder ate T4.6) + `credits_service` + `presets_service`, worker `cover.py` reescrito, endpoints `/covers/*` e `/covers/briefs/*` + `DELETE /covers/{id}` com cleanup de storage. **Frontend entregue**: aba `/capas` com BriefSelector→ManageBriefsModal (dropdown floating tinha bug de stacking, virou modal direto), `CapasWizard` 3-step com edicao por ID, `CapasGrid` com render por status, `CapaCard` (PendingCard + FailedCard + ReadyCard), `CoverPicker` no upload (tab biblioteca + manual, deselect ao clicar de novo, badge "usada"), `ConfirmDialog` BeatPost-style (substituiu window.confirm), `ConfirmGenerateModal` com onboarding free banner. **Bugs UX corrigidos**: modal "Enviando..." preso → UX assincrona; drag de texto fora do modal fechava → mousedown/mouseup ref; download abria nova aba → fetch blob + URL.createObjectURL; descartar capa dava `permission denied` → endpoint DELETE backend. **Decisoes registradas em memoria**: `feedback_modo_trabalho_guiado` atualizada (modo batelada dentro de bloco aprovado), `feedback_evitar_sql_prematuro` nova, `feedback_usar_frontend_design_skill` nova, `project_capa_ia_arquitetura` nova. **Bloqueador unico restante**: T4.6 prompt base mestre (Gustavo vai trabalhar engenharia de prompt na proxima sessao). Commits: 36bb3af (backend), 9c08ca4 (UI aba), f8c5bbf (empty state ajustado), 4fee597 (wizard T4.13), 7e7477f (fix wizard step 1 reset bug), 6a7b29e (botoes funcionando T4.18), d530f83 (realtime + CoverPicker + endpoint /beats), 930d497 (fix UX modal), f3d2639 (brief presets + skeleton refresh-safe — refactor grande), 43a0741 (tier internal + fix visual), 227b6d0 (dropdown vira modal direto), 61dfd8a (4 fixes pos-teste), 6e3e024 (endpoint DELETE), 437d17d (ConfirmDialog + drag fora nao fecha). 17 commits, ~3500 inserções no total da sessao.
 
