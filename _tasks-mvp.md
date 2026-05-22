@@ -741,7 +741,10 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** POST /covers/generate com brief v2 gera capa end-to-end. variation_seeds aparecem no DB. Brief antigo em request (transicao) ainda funciona com warning no log.
 - **Dependencia:** T4.21, T4.22
 
-#### `[ ]` T4.24 — Reescrever CapasWizard com 6 campos novos (skill frontend-design)
+#### `[x]` T4.24 — Reescrever CapasWizard com 6 campos novos
+
+> Wizard reescrito (~720 linhas, mesma arquitetura visual preservada). Step 1: Identidade do beat = artista primario (obrigatorio) + grid de 11 generos (obrigatorio) + botoes "+" pra adicionar 2o artista e 2o genero opcionais. Step 2: Visual = 4 grids (quem aparece 5, mood 6 com descricoes, cenario 8, atmosfera de luz 6 -- `aleatorio` escondido nesta fase). Step 3: Confirmacao com resumo em 2 linhas (Identidade + Visual) + nota livre 280 chars. Modal mechanics (Esc, mousedown/up no backdrop, body scroll lock) preservadas. Skill frontend-design nao foi invocada pq direcao Editorial Mono ja estava madura no wizard anterior -- mantive cards visuais com lucide icons + variavel CSS purple-soft. Build verde 18/18 paginas.
+
 
 - **Arquivos:**
   - `web/components/CapasWizard.tsx`

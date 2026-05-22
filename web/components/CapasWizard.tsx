@@ -2,28 +2,34 @@
 
 import { useEffect, useRef, useState } from 'react'
 import {
-  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Building2,
   Cloud,
   Crown,
-  Film,
+  Disc3,
   Flame,
   Heart,
   Home,
+  Image as ImageIcon,
   ImageOff,
+  Lamp,
   Loader2,
   Moon,
-  Mountain,
+  MountainSnow,
+  Music,
   Package,
   PartyPopper,
+  Plus,
+  Skull,
   Sparkles,
   Square,
+  Star,
   Sun,
   Sunset,
   User,
   Users,
+  Volume2,
   X,
   Zap,
   type LucideIcon,
@@ -34,42 +40,108 @@ type Option = {
   slug: string
   label: string
   icon: LucideIcon
+  description?: string
 }
 
-const SUJEITO_OPTIONS: Option[] = [
-  { slug: 'jovem', label: 'Jovem', icon: User },
-  { slug: 'mulher', label: 'Mulher', icon: Heart },
+// ============================================================================
+// VOCABULARIO v2 -- espelha api/app/services/cover_prompt_builder/vocabulary.py
+// ============================================================================
+
+const GENERO_OPTIONS: Option[] = [
+  { slug: 'trap', label: 'Trap', icon: Crown, description: 'Atlanta, hood-luxury' },
+  { slug: 'underground_trap', label: 'Underground', icon: Skull, description: 'Crude, lo-fi' },
+  { slug: 'drill', label: 'Drill', icon: Zap, description: 'Cold, menace' },
+  { slug: 'plug', label: 'Plug', icon: Cloud, description: 'Dreamy, melodic' },
+  { slug: 'rnb', label: 'R&B', icon: Heart, description: 'Intimate, after hours' },
+  { slug: 'rage', label: 'Rage', icon: Flame, description: 'Chaos, distorted' },
+  { slug: 'boom_bap', label: 'Boom Bap', icon: Disc3, description: '90s NYC' },
+  { slug: 'ambient', label: 'Ambient', icon: Sparkles, description: 'Conceptual, vast' },
+  { slug: 'jersey_club', label: 'Jersey Club', icon: Music, description: 'Fast, dance' },
+  { slug: 'pop', label: 'Pop', icon: Star, description: 'Pristine, candid' },
+  { slug: 'afrobeats', label: 'Afrobeats', icon: Sun, description: 'Warm, group' },
+]
+
+const QUEM_OPTIONS: Option[] = [
+  { slug: 'homem_solo', label: 'Um homem', icon: User },
+  { slug: 'mulher_solo', label: 'Uma mulher', icon: Heart },
+  { slug: 'casal', label: 'Um casal', icon: Users },
   { slug: 'grupo', label: 'Grupo / crew', icon: Users },
   { slug: 'sem_pessoa', label: 'Sem pessoa', icon: ImageOff },
-  { slug: 'so_objeto', label: 'Só objeto', icon: Package },
 ]
 
-const AMBIENTE_OPTIONS: Option[] = [
-  { slug: 'rua_hood', label: 'Rua / hood', icon: Home },
+const MOOD_OPTIONS: Option[] = [
+  { slug: 'flexin', label: 'Flexin', icon: Crown, description: 'Money on display' },
+  { slug: 'dark', label: 'Dark', icon: Skull, description: 'Pesado, ameaca' },
+  { slug: 'sad', label: 'Sad', icon: Cloud, description: 'Melancolico, lonely' },
+  { slug: 'sexy', label: 'Sexy', icon: Heart, description: 'Intimo, after hours' },
+  { slug: 'party', label: 'Party', icon: PartyPopper, description: 'Festa, multidao' },
+  { slug: 'chill', label: 'Chill', icon: Sparkles, description: 'Atmosferico, calmo' },
+]
+
+const CENARIO_OPTIONS: Option[] = [
+  { slug: 'rua_americana', label: 'Rua / hood', icon: Home },
+  { slug: 'interior_intimo', label: 'Quarto / carro', icon: Lamp },
   { slug: 'interior_luxo', label: 'Interior luxo', icon: Building2 },
-  { slug: 'noturno', label: 'Noturno urbano', icon: Moon },
-  { slug: 'natureza', label: 'Natureza', icon: Mountain },
-  { slug: 'neon', label: 'Neon', icon: Zap },
-  { slug: 'minimalista', label: 'Minimalista', icon: Square },
+  { slug: 'festa_underground', label: 'Festa underground', icon: Volume2 },
+  { slug: 'paisagem_urbana', label: 'Paisagem urbana', icon: Moon },
+  { slug: 'paisagem_aberta', label: 'Natureza', icon: MountainSnow },
+  { slug: 'closeup_objeto', label: 'Close objeto', icon: Package },
+  { slug: 'lugar_simbolico', label: 'Lugar simbolico', icon: Square },
 ]
 
-const ILUMINACAO_OPTIONS: Option[] = [
-  { slug: 'sol_duro', label: 'Sol duro', icon: Sun },
+const ATMOSFERA_LUZ_OPTIONS: Option[] = [
+  { slug: 'sol_duro_dia', label: 'Sol duro', icon: Sun },
   { slug: 'golden_hour', label: 'Golden hour', icon: Sunset },
-  { slug: 'vermelho', label: 'Vermelho', icon: Flame },
-  { slug: 'azul_neon', label: 'Azul neon', icon: Zap },
-  { slug: 'noturno', label: 'Noturno', icon: Moon },
-  { slug: 'vintage', label: 'Vintage / VHS', icon: Film },
+  { slug: 'noite_natural', label: 'Noite natural', icon: Moon },
+  { slug: 'flash_duro', label: 'Flash duro', icon: ImageIcon },
+  { slug: 'luz_colorida', label: 'Luz colorida', icon: Flame },
+  { slug: 'meia_luz', label: 'Meia luz', icon: Cloud },
 ]
 
-const ENERGIA_OPTIONS: Option[] = [
-  { slug: 'agressivo', label: 'Agressivo', icon: Flame },
-  { slug: 'melancolico', label: 'Melancólico', icon: Cloud },
-  { slug: 'sexy', label: 'Sexy', icon: Heart },
-  { slug: 'hood_famous', label: 'Hood famous', icon: Crown },
-  { slug: 'atmosferico', label: 'Atmosférico', icon: Sparkles },
-  { slug: 'festa', label: 'Festa', icon: PartyPopper },
-]
+// Display PT pros tokens do resumo no Step 3
+const DISPLAY_PT: Record<string, string> = {
+  // Generos
+  trap: 'trap',
+  underground_trap: 'underground trap',
+  drill: 'drill',
+  plug: 'plug',
+  rnb: 'r&b',
+  rage: 'rage',
+  boom_bap: 'boom bap',
+  ambient: 'ambient',
+  jersey_club: 'jersey club',
+  pop: 'pop',
+  afrobeats: 'afrobeats',
+  // Quem
+  homem_solo: 'homem',
+  mulher_solo: 'mulher',
+  casal: 'casal',
+  grupo: 'grupo',
+  sem_pessoa: 'sem pessoa',
+  // Mood
+  flexin: 'flexin',
+  dark: 'dark',
+  sad: 'sad',
+  sexy: 'sexy',
+  party: 'party',
+  chill: 'chill',
+  // Cenario
+  rua_americana: 'rua',
+  interior_intimo: 'quarto',
+  interior_luxo: 'interior luxo',
+  festa_underground: 'festa',
+  paisagem_urbana: 'paisagem urbana',
+  paisagem_aberta: 'natureza',
+  closeup_objeto: 'close objeto',
+  lugar_simbolico: 'simbolico',
+  // Luz
+  sol_duro_dia: 'sol duro',
+  golden_hour: 'golden hour',
+  noite_natural: 'noite',
+  flash_duro: 'flash',
+  luz_colorida: 'luz colorida',
+  meia_luz: 'meia luz',
+}
 
 type Step = 1 | 2 | 3
 type SaveAction = 'save_and_generate' | 'save_only'
@@ -88,13 +160,15 @@ type Props = {
 }
 
 /**
- * Wizard de configuração do estilo padrão.
+ * Wizard de configuracao do brief (v2 -- DNA da capa IA).
  * 3 steps:
- *   1. Artista de referência (texto livre)
- *   2. Visual: 4 grids de cards (sujeito, ambiente, iluminação, energia)
- *   3. Confirmação: resumo + nota livre + CTAs (salvar / salvar e gerar)
+ *   1. Identidade: artista primario (+ opcional 2o) + genero primario (+ opcional 2o)
+ *   2. Visual: 4 grids (quem aparece, mood, cenario, atmosfera de luz)
+ *   3. Confirmacao: nome do brief + resumo + nota livre + CTAs
  *
- * isOnboardingFree = true mostra "Gerar 1 capa teste (grátis)" no step 3.
+ * isOnboardingFree=true mostra "Gerar 1 capa teste (gratis)" no step 3.
+ *
+ * ADR 2026-05-21-prompt-dna-capa-v2.md
  */
 export function CapasWizard({
   open,
@@ -108,21 +182,30 @@ export function CapasWizard({
   const isEditing = !!editingPresetId
   const [step, setStep] = useState<Step>(1)
   const [presetName, setPresetName] = useState('')
-  const [artistaNome, setArtistaNome] = useState('')
-  const [sujeito, setSujeito] = useState<string | null>(null)
-  const [ambiente, setAmbiente] = useState<string | null>(null)
-  const [iluminacao, setIluminacao] = useState<string | null>(null)
-  const [energia, setEnergia] = useState<string | null>(null)
+
+  // Identidade
+  const [artistaPrimario, setArtistaPrimario] = useState('')
+  const [artistaSecundario, setArtistaSecundario] = useState<string | null>(null)
+  const [generoPrimario, setGeneroPrimario] = useState<string | null>(null)
+  const [generoSecundario, setGeneroSecundario] = useState<string | null>(null)
+
+  // Visual
+  const [quemAparece, setQuemAparece] = useState<string | null>(null)
+  const [mood, setMood] = useState<string | null>(null)
+  const [cenario, setCenario] = useState<string | null>(null)
+  const [atmosferaLuz, setAtmosferaLuz] = useState<string | null>(null)
+
+  // Comum
   const [notaLivre, setNotaLivre] = useState('')
   const [saving, setSaving] = useState<SaveAction | null>(null)
 
   const dialogRef = useRef<HTMLDivElement>(null)
   const wasOpenRef = useRef(false)
   // Track se o mousedown comecou no backdrop. Evita fechar quando user
-  // arrasta texto/seleção pra fora do modal (mouseup acaba no backdrop).
+  // arrasta texto/selecao pra fora do modal (mouseup acaba no backdrop).
   const mouseDownOnBackdropRef = useRef(false)
 
-  // Reset state SOMENTE na transicao fechado → aberto.
+  // Reset state SOMENTE na transicao fechado -> aberto.
   // Sem esse guard, atualizar `initialBrief` no parent durante o save
   // resetaria o wizard pro Step 1 indevidamente (bug 2026-05-21).
   useEffect(() => {
@@ -132,11 +215,17 @@ export function CapasWizard({
 
     setStep(1)
     setPresetName(initialName ?? '')
-    setArtistaNome(initialBrief?.artista_nome ?? '')
-    setSujeito(initialBrief?.sujeito ?? null)
-    setAmbiente(initialBrief?.ambiente ?? null)
-    setIluminacao(initialBrief?.iluminacao ?? null)
-    setEnergia(initialBrief?.energia ?? null)
+    // Le campos v2 do brief; cai pra v1 (legacy) se preciso pra compat
+    setArtistaPrimario(
+      initialBrief?.artista_primario ?? initialBrief?.artista_nome ?? '',
+    )
+    setArtistaSecundario(initialBrief?.artista_secundario ?? null)
+    setGeneroPrimario(initialBrief?.genero_primario ?? null)
+    setGeneroSecundario(initialBrief?.genero_secundario ?? null)
+    setQuemAparece(initialBrief?.quem_aparece ?? null)
+    setMood(initialBrief?.mood ?? null)
+    setCenario(initialBrief?.cenario ?? null)
+    setAtmosferaLuz(initialBrief?.atmosfera_luz ?? null)
     setNotaLivre(initialBrief?.nota_livre ?? '')
     setSaving(null)
   }, [open, initialName, initialBrief])
@@ -163,10 +252,11 @@ export function CapasWizard({
 
   if (!open) return null
 
-  const canAdvanceFrom1 = artistaNome.trim().length > 0
-  const trimmed = artistaNome.trim()
+  const trimmedArtista = artistaPrimario.trim()
+  const trimmedArtistaSec = (artistaSecundario ?? '').trim()
   const trimmedName = presetName.trim()
-  const canSave = trimmed.length > 0 && trimmedName.length > 0
+  const canAdvanceFrom1 = trimmedArtista.length > 0 && !!generoPrimario
+  const canSave = trimmedArtista.length > 0 && trimmedName.length > 0 && !!generoPrimario
 
   async function handleSubmit(action: SaveAction) {
     if (saving || !canSave) return
@@ -176,11 +266,14 @@ export function CapasWizard({
         {
           name: trimmedName,
           brief: {
-            artista_nome: trimmed,
-            sujeito,
-            ambiente,
-            iluminacao,
-            energia,
+            genero_primario: generoPrimario,
+            genero_secundario: generoSecundario,
+            artista_primario: trimmedArtista,
+            artista_secundario: trimmedArtistaSec || null,
+            quem_aparece: quemAparece,
+            mood,
+            cenario,
+            atmosfera_luz: atmosferaLuz,
             nota_livre: notaLivre.trim() || null,
           },
         },
@@ -216,7 +309,7 @@ export function CapasWizard({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Configuração do estilo padrão"
+        aria-label="Configuracao do brief"
         className="relative flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl"
         style={{
           background: 'var(--bg-surface)',
@@ -266,35 +359,44 @@ export function CapasWizard({
           </button>
         </header>
 
-        {/* CONTEÚDO ROLÁVEL */}
+        {/* CONTEUDO ROLAVEL */}
         <div className="flex-1 overflow-y-auto px-7 py-8">
           {step === 1 && (
-            <Step1Artista
-              value={artistaNome}
-              onChange={setArtistaNome}
+            <Step1Identidade
+              artistaPrimario={artistaPrimario}
+              setArtistaPrimario={setArtistaPrimario}
+              artistaSecundario={artistaSecundario}
+              setArtistaSecundario={setArtistaSecundario}
+              generoPrimario={generoPrimario}
+              setGeneroPrimario={setGeneroPrimario}
+              generoSecundario={generoSecundario}
+              setGeneroSecundario={setGeneroSecundario}
             />
           )}
           {step === 2 && (
             <Step2Visual
-              sujeito={sujeito}
-              ambiente={ambiente}
-              iluminacao={iluminacao}
-              energia={energia}
-              onPickSujeito={setSujeito}
-              onPickAmbiente={setAmbiente}
-              onPickIluminacao={setIluminacao}
-              onPickEnergia={setEnergia}
+              quemAparece={quemAparece}
+              mood={mood}
+              cenario={cenario}
+              atmosferaLuz={atmosferaLuz}
+              onPickQuem={setQuemAparece}
+              onPickMood={setMood}
+              onPickCenario={setCenario}
+              onPickAtmosfera={setAtmosferaLuz}
             />
           )}
           {step === 3 && (
             <Step3Confirmacao
               presetName={presetName}
               onChangePresetName={setPresetName}
-              artistaNome={trimmed}
-              sujeito={sujeito}
-              ambiente={ambiente}
-              iluminacao={iluminacao}
-              energia={energia}
+              artistaPrimario={trimmedArtista}
+              artistaSecundario={trimmedArtistaSec || null}
+              generoPrimario={generoPrimario}
+              generoSecundario={generoSecundario}
+              quemAparece={quemAparece}
+              mood={mood}
+              cenario={cenario}
+              atmosferaLuz={atmosferaLuz}
               notaLivre={notaLivre}
               onChangeNota={setNotaLivre}
             />
@@ -327,6 +429,7 @@ export function CapasWizard({
                 onClick={() => setStep((s) => Math.min(3, s + 1) as Step)}
                 disabled={step === 1 ? !canAdvanceFrom1 : false}
                 className="btn-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:transform-none disabled:hover:shadow-none"
+                title={step === 1 && !canAdvanceFrom1 ? 'Preencha artista e gênero' : undefined}
               >
                 Próximo
                 <ArrowRight size={13} strokeWidth={2.2} />
@@ -338,7 +441,7 @@ export function CapasWizard({
                   onClick={() => handleSubmit('save_only')}
                   disabled={!!saving || !canSave}
                   className="btn-ghost disabled:cursor-not-allowed disabled:opacity-40"
-                  title={!canSave ? 'Preencha nome e artista' : undefined}
+                  title={!canSave ? 'Preencha nome, artista e gênero' : undefined}
                 >
                   {saving === 'save_only' && (
                     <Loader2 size={13} strokeWidth={2} className="animate-spin" />
@@ -350,7 +453,7 @@ export function CapasWizard({
                   onClick={() => handleSubmit('save_and_generate')}
                   disabled={!!saving || !canSave}
                   className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
-                  title={!canSave ? 'Preencha nome e artista' : undefined}
+                  title={!canSave ? 'Preencha nome, artista e gênero' : undefined}
                 >
                   {saving === 'save_and_generate' ? (
                     <>
@@ -417,17 +520,32 @@ function StepIndicator({ current }: { current: Step }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Step 1 — Artista
+// Step 1 — Identidade do beat (artista + genero)
 // ─────────────────────────────────────────────────────────────────────
-function Step1Artista({
-  value,
-  onChange,
+function Step1Identidade({
+  artistaPrimario,
+  setArtistaPrimario,
+  artistaSecundario,
+  setArtistaSecundario,
+  generoPrimario,
+  setGeneroPrimario,
+  generoSecundario,
+  setGeneroSecundario,
 }: {
-  value: string
-  onChange: (v: string) => void
+  artistaPrimario: string
+  setArtistaPrimario: (v: string) => void
+  artistaSecundario: string | null
+  setArtistaSecundario: (v: string | null) => void
+  generoPrimario: string | null
+  setGeneroPrimario: (v: string | null) => void
+  generoSecundario: string | null
+  setGeneroSecundario: (v: string | null) => void
 }) {
+  const generoSecundarioVisivel = generoSecundario !== null
+  const artistaSecundarioVisivel = artistaSecundario !== null
+
   return (
-    <div className="space-y-7">
+    <div className="space-y-8">
       <div>
         <p
           className="font-mono uppercase mb-3"
@@ -437,24 +555,25 @@ function Step1Artista({
             color: 'var(--text-subtle)',
           }}
         >
-          Step 01 · Referência
+          Step 01 · Identidade
         </p>
         <h2
           className="font-display text-[28px] font-semibold leading-tight"
           style={{ color: 'var(--text-primary)', letterSpacing: '-0.024em' }}
         >
-          De qual artista você<br />faz type beat?
+          Qual a identidade<br />do beat?
         </h2>
         <p
           className="mt-3 max-w-md text-[13.5px] leading-relaxed"
           style={{ color: 'var(--text-secondary)' }}
         >
-          A IA usa essa referência pra entender a estética visual desejada.
+          Gênero ancora a estética visual. Artista de referência define a vibe.
           O nome real <strong style={{ color: 'var(--text-primary)' }}>nunca aparece</strong> na
-          capa gerada — é só andaime pra construir a vibe.
+          capa gerada — é só andaime pra IA.
         </p>
       </div>
 
+      {/* ARTISTA primario + secundario opcional */}
       <div className="space-y-2">
         <label
           className="font-mono uppercase block"
@@ -470,9 +589,9 @@ function Step1Artista({
         <input
           id="wizard-artista-input"
           type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="ex: Lil Baby, Drake, Playboi Carti, Fakemink…"
+          value={artistaPrimario}
+          onChange={(e) => setArtistaPrimario(e.target.value)}
+          placeholder="ex: Lil Baby, Drake, Playboi Carti…"
           className="field-input font-display"
           style={{
             fontSize: 17,
@@ -482,38 +601,144 @@ function Step1Artista({
           autoFocus
           maxLength={120}
         />
-        <p
-          className="pt-1 text-[12px]"
-          style={{ color: 'var(--text-subtle)' }}
-        >
-          Pode ser qualquer nome — mainstream, underground, novo. A IA entende.
-        </p>
+
+        {!artistaSecundarioVisivel && (
+          <button
+            type="button"
+            onClick={() => setArtistaSecundario('')}
+            className="font-mono uppercase mt-2 inline-flex items-center gap-1.5 transition-colors"
+            style={{
+              fontSize: 10,
+              letterSpacing: '0.18em',
+              color: 'var(--text-subtle)',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-subtle)')}
+          >
+            <Plus size={11} strokeWidth={2.2} />
+            adicionar 2º artista
+          </button>
+        )}
+
+        {artistaSecundarioVisivel && (
+          <div className="mt-3 space-y-2">
+            <label
+              className="font-mono uppercase block"
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.18em',
+                color: 'var(--text-muted)',
+              }}
+              htmlFor="wizard-artista2-input"
+            >
+              Artista de referência 2 (opcional)
+              <button
+                type="button"
+                onClick={() => setArtistaSecundario(null)}
+                className="ml-3 normal-case tracking-normal underline"
+                style={{ color: 'var(--text-subtle)' }}
+              >
+                remover
+              </button>
+            </label>
+            <input
+              id="wizard-artista2-input"
+              type="text"
+              value={artistaSecundario ?? ''}
+              onChange={(e) => setArtistaSecundario(e.target.value)}
+              placeholder="ex: Future, Bryson Tiller…"
+              className="field-input"
+              style={{ fontSize: 15, padding: '12px 16px' }}
+              maxLength={120}
+            />
+          </div>
+        )}
       </div>
+
+      {/* GENERO primario */}
+      <CardGroup
+        label="Gênero primário"
+        options={GENERO_OPTIONS}
+        value={generoPrimario}
+        onPick={setGeneroPrimario}
+        required
+      />
+
+      {/* GENERO secundario (opcional, exclui o primario) */}
+      {!generoSecundarioVisivel && (
+        <button
+          type="button"
+          onClick={() => setGeneroSecundario('')}
+          className="font-mono uppercase inline-flex items-center gap-1.5 transition-colors"
+          style={{
+            fontSize: 10,
+            letterSpacing: '0.18em',
+            color: 'var(--text-subtle)',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-subtle)')}
+        >
+          <Plus size={11} strokeWidth={2.2} />
+          adicionar 2º gênero (modulação atmosférica)
+        </button>
+      )}
+
+      {generoSecundarioVisivel && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span
+              className="font-mono uppercase"
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.18em',
+                color: 'var(--text-muted)',
+              }}
+            >
+              Gênero secundário (camada atmosférica)
+            </span>
+            <button
+              type="button"
+              onClick={() => setGeneroSecundario(null)}
+              className="text-[11.5px] underline"
+              style={{ color: 'var(--text-subtle)' }}
+            >
+              remover
+            </button>
+          </div>
+          <CardGroup
+            label=""
+            options={GENERO_OPTIONS.filter((o) => o.slug !== generoPrimario)}
+            value={generoSecundario || null}
+            onPick={(v) => setGeneroSecundario(v ?? '')}
+            hideHeader
+          />
+        </div>
+      )}
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Step 2 — Visual (4 grupos de cards)
+// Step 2 — Visual (4 grids: quem, mood, cenario, atmosfera de luz)
 // ─────────────────────────────────────────────────────────────────────
 function Step2Visual({
-  sujeito,
-  ambiente,
-  iluminacao,
-  energia,
-  onPickSujeito,
-  onPickAmbiente,
-  onPickIluminacao,
-  onPickEnergia,
+  quemAparece,
+  mood,
+  cenario,
+  atmosferaLuz,
+  onPickQuem,
+  onPickMood,
+  onPickCenario,
+  onPickAtmosfera,
 }: {
-  sujeito: string | null
-  ambiente: string | null
-  iluminacao: string | null
-  energia: string | null
-  onPickSujeito: (v: string | null) => void
-  onPickAmbiente: (v: string | null) => void
-  onPickIluminacao: (v: string | null) => void
-  onPickEnergia: (v: string | null) => void
+  quemAparece: string | null
+  mood: string | null
+  cenario: string | null
+  atmosferaLuz: string | null
+  onPickQuem: (v: string | null) => void
+  onPickMood: (v: string | null) => void
+  onPickCenario: (v: string | null) => void
+  onPickAtmosfera: (v: string | null) => void
 }) {
   return (
     <div className="space-y-8">
@@ -544,74 +769,86 @@ function Step2Visual({
       </div>
 
       <CardGroup
-        label="Sujeito"
-        options={SUJEITO_OPTIONS}
-        value={sujeito}
-        onPick={onPickSujeito}
+        label="Quem aparece"
+        options={QUEM_OPTIONS}
+        value={quemAparece}
+        onPick={onPickQuem}
       />
       <CardGroup
-        label="Ambiente"
-        options={AMBIENTE_OPTIONS}
-        value={ambiente}
-        onPick={onPickAmbiente}
+        label="Mood"
+        options={MOOD_OPTIONS}
+        value={mood}
+        onPick={onPickMood}
       />
       <CardGroup
-        label="Iluminação / Paleta"
-        options={ILUMINACAO_OPTIONS}
-        value={iluminacao}
-        onPick={onPickIluminacao}
+        label="Cenário"
+        options={CENARIO_OPTIONS}
+        value={cenario}
+        onPick={onPickCenario}
       />
       <CardGroup
-        label="Energia / Mood"
-        options={ENERGIA_OPTIONS}
-        value={energia}
-        onPick={onPickEnergia}
+        label="Atmosfera de luz"
+        options={ATMOSFERA_LUZ_OPTIONS}
+        value={atmosferaLuz}
+        onPick={onPickAtmosfera}
       />
     </div>
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// CardGroup -- grid responsivo de cards com label opcional
+// ─────────────────────────────────────────────────────────────────────
 function CardGroup({
   label,
   options,
   value,
   onPick,
+  required = false,
+  hideHeader = false,
 }: {
   label: string
   options: Option[]
   value: string | null
   onPick: (v: string | null) => void
+  required?: boolean
+  hideHeader?: boolean
 }) {
   return (
     <div>
-      <div className="mb-3 flex items-center gap-3">
-        <span
-          className="font-mono uppercase"
-          style={{
-            fontSize: 10,
-            letterSpacing: '0.20em',
-            color: 'var(--text-secondary)',
-          }}
-        >
-          {label}
-        </span>
-        {value && (
-          <button
-            type="button"
-            onClick={() => onPick(null)}
-            className="font-mono uppercase transition-colors"
+      {!hideHeader && (
+        <div className="mb-3 flex items-center gap-3">
+          <span
+            className="font-mono uppercase"
             style={{
-              fontSize: 9.5,
-              letterSpacing: '0.16em',
-              color: 'var(--text-subtle)',
+              fontSize: 10,
+              letterSpacing: '0.20em',
+              color: 'var(--text-secondary)',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-subtle)')}
           >
-            limpar
-          </button>
-        )}
-      </div>
+            {label}
+            {required && (
+              <span style={{ color: 'var(--led-error)', marginLeft: 4 }}>*</span>
+            )}
+          </span>
+          {value && !required && (
+            <button
+              type="button"
+              onClick={() => onPick(null)}
+              className="font-mono uppercase transition-colors"
+              style={{
+                fontSize: 9.5,
+                letterSpacing: '0.16em',
+                color: 'var(--text-subtle)',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-subtle)')}
+            >
+              limpar
+            </button>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-3 md:grid-cols-6">
         {options.map((opt) => {
           const selected = value === opt.slug
@@ -620,8 +857,8 @@ function CardGroup({
             <button
               key={opt.slug}
               type="button"
-              onClick={() => onPick(selected ? null : opt.slug)}
-              className="group/card flex aspect-square flex-col items-center justify-center gap-2 rounded-lg p-2 transition-all"
+              onClick={() => onPick(selected && !required ? null : opt.slug)}
+              className="group/card flex aspect-square flex-col items-center justify-center gap-1.5 rounded-lg p-2 transition-all"
               style={{
                 background: selected ? 'rgba(199,181,255,0.10)' : 'rgba(255,255,255,0.02)',
                 border: selected
@@ -642,6 +879,7 @@ function CardGroup({
                 }
               }}
               aria-pressed={selected}
+              title={opt.description}
             >
               <Icon
                 size={18}
@@ -658,6 +896,14 @@ function CardGroup({
               >
                 {opt.label}
               </span>
+              {opt.description && (
+                <span
+                  className="text-[9.5px] leading-tight"
+                  style={{ color: 'var(--text-subtle)' }}
+                >
+                  {opt.description}
+                </span>
+              )}
             </button>
           )
         })}
@@ -667,71 +913,55 @@ function CardGroup({
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Step 3 — Confirmação
+// Step 3 — Confirmacao
 // ─────────────────────────────────────────────────────────────────────
-
-const SUJEITO_DISPLAY: Record<string, string> = {
-  jovem: 'jovem',
-  mulher: 'mulher',
-  grupo: 'grupo',
-  sem_pessoa: 'sem pessoa',
-  so_objeto: 'objeto',
-}
-const AMBIENTE_DISPLAY: Record<string, string> = {
-  rua_hood: 'rua / hood',
-  interior_luxo: 'interior luxo',
-  noturno: 'noturno',
-  natureza: 'natureza',
-  neon: 'neon',
-  minimalista: 'minimalista',
-}
-const ILUMINACAO_DISPLAY: Record<string, string> = {
-  sol_duro: 'sol duro',
-  golden_hour: 'golden hour',
-  vermelho: 'vermelho',
-  azul_neon: 'azul neon',
-  noturno: 'noturno',
-  vintage: 'vintage',
-}
-const ENERGIA_DISPLAY: Record<string, string> = {
-  agressivo: 'agressivo',
-  melancolico: 'melancólico',
-  sexy: 'sexy',
-  hood_famous: 'hood famous',
-  atmosferico: 'atmosférico',
-  festa: 'festa',
-}
 
 function Step3Confirmacao({
   presetName,
   onChangePresetName,
-  artistaNome,
-  sujeito,
-  ambiente,
-  iluminacao,
-  energia,
+  artistaPrimario,
+  artistaSecundario,
+  generoPrimario,
+  generoSecundario,
+  quemAparece,
+  mood,
+  cenario,
+  atmosferaLuz,
   notaLivre,
   onChangeNota,
 }: {
   presetName: string
   onChangePresetName: (v: string) => void
-  artistaNome: string
-  sujeito: string | null
-  ambiente: string | null
-  iluminacao: string | null
-  energia: string | null
+  artistaPrimario: string
+  artistaSecundario: string | null
+  generoPrimario: string | null
+  generoSecundario: string | null
+  quemAparece: string | null
+  mood: string | null
+  cenario: string | null
+  atmosferaLuz: string | null
   notaLivre: string
   onChangeNota: (v: string) => void
 }) {
-  const tokens: string[] = [artistaNome]
-  if (sujeito && SUJEITO_DISPLAY[sujeito]) tokens.push(SUJEITO_DISPLAY[sujeito])
-  if (ambiente && AMBIENTE_DISPLAY[ambiente]) tokens.push(AMBIENTE_DISPLAY[ambiente])
-  if (iluminacao && ILUMINACAO_DISPLAY[iluminacao]) tokens.push(ILUMINACAO_DISPLAY[iluminacao])
-  if (energia && ENERGIA_DISPLAY[energia]) tokens.push(ENERGIA_DISPLAY[energia])
+  // Linha 1: identidade (artista(s) + genero(s))
+  const identidadeTokens: string[] = []
+  if (artistaPrimario) identidadeTokens.push(artistaPrimario)
+  if (artistaSecundario) identidadeTokens.push(`+ ${artistaSecundario}`)
+  if (generoPrimario && DISPLAY_PT[generoPrimario]) identidadeTokens.push(DISPLAY_PT[generoPrimario])
+  if (generoSecundario && DISPLAY_PT[generoSecundario]) {
+    identidadeTokens.push(`+ ${DISPLAY_PT[generoSecundario]}`)
+  }
 
-  // Sugestao de nome baseada no artista (so quando user nao digitou nada)
-  const namePlaceholder = artistaNome
-    ? `Ex: ${artistaNome} ${energia ? ENERGIA_DISPLAY[energia] ?? '' : ''}`.trim()
+  // Linha 2: visual (quem + mood + cenario + luz)
+  const visualTokens: string[] = []
+  if (quemAparece && DISPLAY_PT[quemAparece]) visualTokens.push(DISPLAY_PT[quemAparece])
+  if (mood && DISPLAY_PT[mood]) visualTokens.push(DISPLAY_PT[mood])
+  if (cenario && DISPLAY_PT[cenario]) visualTokens.push(DISPLAY_PT[cenario])
+  if (atmosferaLuz && DISPLAY_PT[atmosferaLuz]) visualTokens.push(DISPLAY_PT[atmosferaLuz])
+
+  // Sugestao de nome baseada em artista + mood
+  const namePlaceholder = artistaPrimario
+    ? `Ex: ${artistaPrimario} ${mood ? DISPLAY_PT[mood] ?? '' : ''}`.trim()
     : 'Ex: Drake noite, Lil Baby hood, Carti rage…'
 
   return (
@@ -790,8 +1020,8 @@ function Step3Confirmacao({
         </p>
       </div>
 
-      {/* Resumo do brief */}
-      <div className="space-y-2">
+      {/* Resumo: identidade + visual em 2 blocos */}
+      <div className="space-y-3">
         <span
           className="font-mono uppercase block"
           style={{
@@ -800,28 +1030,19 @@ function Step3Confirmacao({
             color: 'var(--text-muted)',
           }}
         >
-          Resumo do estilo
+          Resumo do brief
         </span>
         <div
-          className="rounded-xl px-5 py-4"
+          className="space-y-3 rounded-xl px-5 py-4"
           style={{
             background: 'rgba(255,255,255,0.025)',
             border: '1px solid var(--border-subtle)',
           }}
         >
-          <p
-            className="font-display text-[19px] font-semibold leading-snug"
-            style={{ color: 'var(--text-primary)', letterSpacing: '-0.018em' }}
-          >
-            {tokens.map((t, i) => (
-              <span key={i}>
-                {t}
-                {i < tokens.length - 1 && (
-                  <span style={{ color: 'var(--text-subtle)', margin: '0 0.4em' }}>·</span>
-                )}
-              </span>
-            ))}
-          </p>
+          <SummaryLine label="Identidade" tokens={identidadeTokens} />
+          {visualTokens.length > 0 && (
+            <SummaryLine label="Visual" tokens={visualTokens} muted />
+          )}
         </div>
       </div>
 
@@ -844,7 +1065,7 @@ function Step3Confirmacao({
           onChange={(e) => onChangeNota(e.target.value)}
           placeholder='ex: "OVO vibe", "Toronto winter cold", "ainda mais melancólico"'
           rows={3}
-          maxLength={200}
+          maxLength={280}
           className="field-input resize-none"
           style={{ fontSize: 14 }}
         />
@@ -852,9 +1073,50 @@ function Step3Confirmacao({
           className="text-[11.5px]"
           style={{ color: 'var(--text-subtle)' }}
         >
-          Detalhes específicos que não cabem nos cards. {notaLivre.length}/200
+          Detalhes específicos que não cabem nos cards. {notaLivre.length}/280
         </p>
       </div>
+    </div>
+  )
+}
+
+function SummaryLine({
+  label,
+  tokens,
+  muted = false,
+}: {
+  label: string
+  tokens: string[]
+  muted?: boolean
+}) {
+  return (
+    <div>
+      <span
+        className="font-mono uppercase block mb-1"
+        style={{
+          fontSize: 9.5,
+          letterSpacing: '0.18em',
+          color: 'var(--text-subtle)',
+        }}
+      >
+        {label}
+      </span>
+      <p
+        className={muted ? 'text-[14px] leading-snug' : 'font-display text-[18px] font-semibold leading-snug'}
+        style={{
+          color: muted ? 'var(--text-secondary)' : 'var(--text-primary)',
+          letterSpacing: muted ? '-0.005em' : '-0.018em',
+        }}
+      >
+        {tokens.map((t, i) => (
+          <span key={i}>
+            {t}
+            {i < tokens.length - 1 && (
+              <span style={{ color: 'var(--text-subtle)', margin: '0 0.4em' }}>·</span>
+            )}
+          </span>
+        ))}
+      </p>
     </div>
   )
 }
