@@ -957,6 +957,20 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
   - **Limite respeitado**: Free atinge 5 manuais e proxima tentativa retorna 402 com mensagem amigavel.
 - **Dependencia:** T4.14 (sistema de creditos -- reusa estrutura de tier do user_profiles)
 
+#### `[x]` T4.36 — Bulk upload de capas manuais + botão Selecionar nas Enviadas
+
+- **Motivacao:** Continuacao direta da T4.35. Faltou (1) botao "Selecionar" no segmento Enviadas pra bulk delete e (2) producer pediu upload em massa pra alimentar o banco rapido. Crop interativo um por um inviabilizava lotes.
+- **Decisoes fechadas:**
+  - **1 botao so**: "+ Upload manual" detecta quantos arquivos foram selecionados. 1 arquivo -> crop interativo (T4.35 original). 2+ arquivos -> bulk com crop AUTOMATICO center-square (pega o menor lado, centraliza, redimensiona pra 1024x1024).
+  - **Quota truncada antecipadamente**: se selecionou 10 e tem 3 slots, sobe os 3 primeiros e mostra "X enviadas, Y ignorados (limite do plano)". Se quota acaba no meio do loop (outra aba subiu), para e marca o resto como "Cancelado por limite".
+  - **Sequencial, nao paralelo**: ordem clara no progress + evita pico de RAM com varios blobs cropados na memoria ao mesmo tempo.
+  - **Trade-off do crop center**: capas quadradas (1080x1080 padrao) = zero perda. Verticais (story 9:16) cortam topo/baixo -- aceitavel pro use case "alimentar banco rapido", producer apaga depois se ficar ruim.
+- **Arquivos:**
+  - `web/components/ManualUploadModal.tsx` (state machine ganha fases `bulk_uploading` + `bulk_done`, helper `fileToCenterSquareBlob`, BulkRow component com check/x/loader por item, progress bar, summary "X enviadas Y falhas")
+  - `web/app/(app)/capas/page.tsx` (botao "Selecionar" no SectionLabel das Enviadas reusa selectionMode + bulk delete ja existentes)
+- **Criterio de pronto:** Selecionar 5 imagens no input do upload manual -> bulk dispara, progress mostra 1/5 -> 5/5, todas viram capas no banco. Selecionar 10 com quota=3 -> sobe 3 + msg "7 ignorados". Botao Selecionar nas Enviadas funciona igual nas Geradas (toolbar floating bulk delete aparece).
+- **Dependencia:** T4.35 (entregue)
+
 ---
 
 ### Fase 5 — YouTube OAuth + postagem (Gustavo executa)

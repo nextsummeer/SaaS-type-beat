@@ -1,21 +1,30 @@
 'use client'
 
 /**
- * Modal de upload de capa manual (T4.35 bloco 2).
+ * Modal de upload de capa manual (T4.35 bloco 2 + T4.36 bulk upload).
  *
- * 3 fases:
- *   1. choose:    drag-and-drop OU click pra escolher arquivo
- *   2. crop:      mostra react-easy-crop pra ajustar area quadrada + zoom
- *   3. uploading: spinner enquanto faz POST /covers/manual_upload
+ * Modos:
+ *   SINGLE (1 arquivo selecionado):
+ *     choose -> crop interativo (react-easy-crop) -> uploading
+ *   BULK (2+ arquivos):
+ *     choose -> bulk_uploading (crop AUTOMATICO center-square, sequencial)
+ *              -> bulk_done (resumo)
+ *
+ * Crop bulk: center-square (pega o menor lado, centraliza). Funciona bem
+ * pra capas ja quadradas. Capas verticais perdem topo/baixo -- aceitavel
+ * pro use case "subir banco em massa", produtor apaga depois se ficar ruim.
  *
  * Output: JPG 1024x1024 (qualidade YouTube), gerado client-side via canvas.
- * Quota cheia (402): mostra mensagem especifica de upgrade em vez de erro generico.
+ *
+ * Quota cheia (402): mostra mensagem amigavel. Em bulk, trunca a lista
+ * pros slots disponiveis ANTES de subir e mostra quantas foram ignoradas.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Cropper, { type Area } from 'react-easy-crop'
 import {
   AlertCircle,
+  Check,
   ImageIcon,
   Loader2,
   Upload,
@@ -35,7 +44,16 @@ const OUTPUT_SIZE = 1024 // 1024x1024 final
 const OUTPUT_QUALITY = 0.92 // JPEG quality
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png']
 
-type Phase = 'choose' | 'crop' | 'uploading'
+type Phase = 'choose' | 'crop' | 'uploading' | 'bulk_uploading' | 'bulk_done'
+
+type BulkItemStatus = 'pending' | 'uploading' | 'success' | 'failed'
+
+interface BulkItem {
+  file: File
+  status: BulkItemStatus
+  error?: string
+  coverId?: string
+}
 
 interface Props {
   open: boolean
@@ -64,6 +82,11 @@ export function ManualUploadModal({ open, limit, onClose, onUploaded }: Props) {
     limit: number
   } | null>(null)
 
+  // T4.36 — bulk upload
+  const [bulkItems, setBulkItems] = useState<BulkItem[]>([])
+  /** Quantos arquivos foram ignorados por excederem a quota antes do loop */
+  const [bulkSkipped, setBulkSkipped] = useState(0)
+
   // Reset quando abre/fecha
   useEffect(() => {
     if (open) {
@@ -74,6 +97,8 @@ export function ManualUploadModal({ open, limit, onClose, onUploaded }: Props) {
       setCroppedAreaPixels(null)
       setErro(null)
       setQuotaExceeded(null)
+      setBulkItems([])
+      setBulkSkipped(0)
     } else {
       // Cleanup object URL na desmontagem
       if (objectUrlRef.current) {
@@ -83,11 +108,13 @@ export function ManualUploadModal({ open, limit, onClose, onUploaded }: Props) {
     }
   }, [open])
 
-  // ESC fecha
+  // ESC fecha (exceto durante upload em progresso)
   useEffect(() => {
     if (!open) return
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && phase !== 'uploading') onClose()
+      if (e.key === 'Escape' && phase !== 'uploading' && phase !== 'bulk_uploading') {
+        onClose()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -97,32 +124,119 @@ export function ManualUploadModal({ open, limit, onClose, onUploaded }: Props) {
     setCroppedAreaPixels(areaPixels)
   }, [])
 
-  function handleFile(file: File | null) {
+  // ─────────────────────────────────────────────────────────────────
+  // Entrada de arquivos -- decide single (crop interativo) ou bulk
+  // ─────────────────────────────────────────────────────────────────
+  function handleFiles(fileList: FileList | null) {
     setErro(null)
-    if (!file) return
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      setErro('Formato inválido. Use JPG ou PNG.')
+    if (!fileList || fileList.length === 0) return
+
+    const valid: File[] = []
+    const invalidNames: string[] = []
+    for (let i = 0; i < fileList.length; i++) {
+      const f = fileList.item(i)
+      if (!f) continue
+      if (!ACCEPTED_TYPES.includes(f.type)) {
+        invalidNames.push(f.name)
+        continue
+      }
+      if (f.size > MAX_BYTES) {
+        invalidNames.push(`${f.name} (>5MB)`)
+        continue
+      }
+      valid.push(f)
+    }
+
+    if (invalidNames.length > 0 && valid.length === 0) {
+      setErro(`Arquivo(s) inválido(s): ${invalidNames.join(', ')}. Use JPG/PNG até 5MB.`)
       return
     }
-    if (file.size > MAX_BYTES) {
-      setErro(`Arquivo muito grande (${Math.round(file.size / 1024)} KB). Limite: 5 MB.`)
+
+    if (valid.length === 1) {
+      // Single: fluxo crop interativo
+      const file = valid[0]
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
+      const url = URL.createObjectURL(file)
+      objectUrlRef.current = url
+      setImageSrc(url)
+      setCrop({ x: 0, y: 0 })
+      setZoom(1)
+      setPhase('crop')
       return
     }
-    // Cleanup URL anterior se houver
-    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
-    const url = URL.createObjectURL(file)
-    objectUrlRef.current = url
-    setImageSrc(url)
-    setCrop({ x: 0, y: 0 })
-    setZoom(1)
-    setPhase('crop')
+
+    // Bulk: trunca pra quota disponivel + crop automatico center-square
+    const remaining = limit?.remaining ?? valid.length
+    const toProcess = valid.slice(0, remaining)
+    const skipped = valid.length - toProcess.length + invalidNames.length
+
+    setBulkItems(
+      toProcess.map((file) => ({ file, status: 'pending' })),
+    )
+    setBulkSkipped(skipped)
+    setPhase('bulk_uploading')
+    void processBulkUpload(toProcess)
   }
 
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault()
-    setDragOver(false)
-    const file = e.dataTransfer.files?.[0] ?? null
-    handleFile(file)
+  async function processBulkUpload(files: File[]) {
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) {
+      setErro('Sessão expirada')
+      setPhase('bulk_done')
+      return
+    }
+
+    // Loop sequencial -- evita pico de RAM (cada imagem cropada vira blob na memoria)
+    // e da feedback visual ordenado no progress.
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      // Marca essa como uploading
+      setBulkItems((prev) =>
+        prev.map((item, idx) =>
+          idx === i ? { ...item, status: 'uploading' } : item,
+        ),
+      )
+
+      try {
+        const blob = await fileToCenterSquareBlob(file)
+        const result = await uploadManualCover(token, blob, file.name)
+        setBulkItems((prev) =>
+          prev.map((item, idx) =>
+            idx === i
+              ? { ...item, status: 'success', coverId: result.id }
+              : item,
+          ),
+        )
+      } catch (err) {
+        // Quota cheia no meio (outra aba subiu, por ex): para o lote
+        if (err instanceof ManualQuotaExceededError) {
+          setBulkItems((prev) =>
+            prev.map((item, idx) =>
+              idx === i
+                ? { ...item, status: 'failed', error: 'Limite atingido' }
+                : idx > i
+                ? { ...item, status: 'failed', error: 'Cancelado por limite' }
+                : item,
+            ),
+          )
+          break
+        }
+        setBulkItems((prev) =>
+          prev.map((item, idx) =>
+            idx === i
+              ? {
+                  ...item,
+                  status: 'failed',
+                  error: err instanceof Error ? err.message : 'Erro',
+                }
+              : item,
+          ),
+        )
+      }
+    }
+
+    setPhase('bulk_done')
   }
 
   async function handleConfirmCrop() {
@@ -149,14 +263,43 @@ export function ManualUploadModal({ open, limit, onClose, onUploaded }: Props) {
     }
   }
 
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    handleFiles(e.dataTransfer.files)
+  }
+
+  function handleBulkDoneClose() {
+    // Mesmo que algumas tenham falhado, caller recarrega tudo via onUploaded
+    const firstSuccess = bulkItems.find((it) => it.status === 'success')
+    if (firstSuccess && firstSuccess.coverId) {
+      onUploaded({ id: firstSuccess.coverId, image_url: '' })
+    } else {
+      onClose()
+    }
+  }
+
   if (!open) return null
+
+  const bulkTotal = bulkItems.length
+  const bulkDone = bulkItems.filter(
+    (it) => it.status === 'success' || it.status === 'failed',
+  ).length
+  const bulkSuccess = bulkItems.filter((it) => it.status === 'success').length
+  const bulkFailed = bulkItems.filter((it) => it.status === 'failed').length
 
   return (
     <div
       className="fixed inset-0 z-[85] flex items-center justify-center px-4 py-6 sm:px-6 sm:py-10"
       style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(10px)' }}
       onClick={(e) => {
-        if (e.target === e.currentTarget && phase !== 'uploading') onClose()
+        if (
+          e.target === e.currentTarget &&
+          phase !== 'uploading' &&
+          phase !== 'bulk_uploading'
+        ) {
+          onClose()
+        }
       }}
     >
       <div
@@ -186,7 +329,9 @@ export function ManualUploadModal({ open, limit, onClose, onUploaded }: Props) {
                 color: 'var(--text-secondary)',
               }}
             >
-              Upload manual
+              {phase === 'bulk_uploading' || phase === 'bulk_done'
+                ? 'Upload em massa'
+                : 'Upload manual'}
             </span>
             {limit && (
               <span
@@ -203,13 +348,20 @@ export function ManualUploadModal({ open, limit, onClose, onUploaded }: Props) {
           </div>
           <button
             type="button"
-            onClick={() => phase !== 'uploading' && onClose()}
-            disabled={phase === 'uploading'}
+            onClick={() => {
+              if (phase === 'uploading' || phase === 'bulk_uploading') return
+              if (phase === 'bulk_done') {
+                handleBulkDoneClose()
+                return
+              }
+              onClose()
+            }}
+            disabled={phase === 'uploading' || phase === 'bulk_uploading'}
             aria-label="Fechar"
             className="flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             style={{ color: 'var(--text-muted)' }}
             onMouseEnter={(e) => {
-              if (phase !== 'uploading') {
+              if (phase !== 'uploading' && phase !== 'bulk_uploading') {
                 e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
                 e.currentTarget.style.color = 'var(--text-primary)'
               }
@@ -260,13 +412,22 @@ export function ManualUploadModal({ open, limit, onClose, onUploaded }: Props) {
                       color: 'var(--text-primary)',
                     }}
                   >
-                    {dragOver ? 'Solte aqui' : 'Arraste ou clique para escolher'}
+                    {dragOver
+                      ? 'Solte aqui'
+                      : 'Arraste ou clique para escolher'}
                   </p>
                   <p
                     className="text-[12px]"
                     style={{ color: 'var(--text-muted)' }}
                   >
-                    JPG ou PNG · até 5 MB · será cortado em quadrado
+                    1 arquivo: você ajusta o corte · 2+ arquivos: corte
+                    automático em quadrado
+                  </p>
+                  <p
+                    className="text-[11px]"
+                    style={{ color: 'var(--text-subtle)' }}
+                  >
+                    JPG ou PNG · até 5 MB cada
                   </p>
                 </div>
               </button>
@@ -387,16 +548,187 @@ export function ManualUploadModal({ open, limit, onClose, onUploaded }: Props) {
               </p>
             </div>
           )}
+
+          {(phase === 'bulk_uploading' || phase === 'bulk_done') && (
+            <div className="space-y-4 px-5 py-5">
+              {/* Progress header */}
+              <div className="space-y-2">
+                <div className="flex items-baseline justify-between">
+                  <span
+                    className="font-mono uppercase"
+                    style={{
+                      fontSize: 10.5,
+                      letterSpacing: '0.22em',
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
+                    {phase === 'bulk_done' ? 'Concluído' : 'Enviando'}
+                  </span>
+                  <span
+                    className="font-mono tabular"
+                    style={{
+                      fontSize: 13,
+                      color: 'var(--text-primary)',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {bulkDone}/{bulkTotal}
+                  </span>
+                </div>
+                {/* Progress bar */}
+                <div
+                  className="h-1 w-full overflow-hidden rounded-full"
+                  style={{ background: 'rgba(255,255,255,0.06)' }}
+                >
+                  <div
+                    className="h-full transition-all duration-300"
+                    style={{
+                      width: `${bulkTotal > 0 ? (bulkDone / bulkTotal) * 100 : 0}%`,
+                      background: 'var(--purple-light)',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {bulkSkipped > 0 && phase === 'bulk_done' && (
+                <div
+                  className="rounded-md px-3 py-2.5 text-[12px]"
+                  style={{
+                    background: 'rgba(245,158,11,0.06)',
+                    border: '1px solid rgba(245,158,11,0.25)',
+                    color: '#FCD34D',
+                  }}
+                >
+                  <strong>{bulkSkipped}</strong> arquivo
+                  {bulkSkipped === 1 ? '' : 's'} ignorado
+                  {bulkSkipped === 1 ? '' : 's'} (limite do plano ou formato
+                  inválido).
+                </div>
+              )}
+
+              {/* Lista compacta dos itens */}
+              <div
+                className="space-y-1 overflow-y-auto"
+                style={{ maxHeight: 'min(50vh, 360px)' }}
+              >
+                {bulkItems.map((item, idx) => (
+                  <BulkRow key={idx} item={item} />
+                ))}
+              </div>
+
+              {phase === 'bulk_done' && (
+                <div
+                  className="flex items-center justify-between gap-3 border-t pt-4"
+                  style={{ borderColor: 'var(--border-subtle)' }}
+                >
+                  <div
+                    className="text-[12px]"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    <span style={{ color: 'var(--led-success)', fontWeight: 500 }}>
+                      {bulkSuccess}
+                    </span>{' '}
+                    enviada{bulkSuccess === 1 ? '' : 's'}
+                    {bulkFailed > 0 && (
+                      <>
+                        {' · '}
+                        <span style={{ color: 'var(--led-error)', fontWeight: 500 }}>
+                          {bulkFailed}
+                        </span>{' '}
+                        falha{bulkFailed === 1 ? '' : 's'}
+                      </>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleBulkDoneClose}
+                    className="btn-primary"
+                  >
+                    <Check size={13} strokeWidth={2.4} />
+                    Fechar
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <input
           ref={fileInputRef}
           type="file"
           accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+          multiple
           className="hidden"
-          onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+          onChange={(e) => handleFiles(e.target.files)}
         />
       </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Sub-componentes
+// ─────────────────────────────────────────────────────────────────────
+
+function BulkRow({ item }: { item: BulkItem }) {
+  const isSuccess = item.status === 'success'
+  const isFailed = item.status === 'failed'
+  const isUploading = item.status === 'uploading'
+
+  return (
+    <div
+      className="flex items-center gap-3 rounded-md px-3 py-2"
+      style={{
+        background: isSuccess
+          ? 'rgba(74,222,128,0.04)'
+          : isFailed
+          ? 'rgba(248,113,113,0.04)'
+          : 'rgba(255,255,255,0.02)',
+        border: '1px solid',
+        borderColor: isSuccess
+          ? 'rgba(74,222,128,0.20)'
+          : isFailed
+          ? 'rgba(248,113,113,0.20)'
+          : 'var(--border-subtle)',
+      }}
+    >
+      <div className="flex h-5 w-5 shrink-0 items-center justify-center">
+        {isUploading && (
+          <Loader2
+            size={13}
+            className="animate-spin"
+            style={{ color: 'var(--purple-light)' }}
+          />
+        )}
+        {isSuccess && (
+          <Check size={13} strokeWidth={2.6} style={{ color: 'var(--led-success)' }} />
+        )}
+        {isFailed && (
+          <X size={13} strokeWidth={2.6} style={{ color: 'var(--led-error)' }} />
+        )}
+        {item.status === 'pending' && (
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ background: 'var(--text-subtle)' }}
+          />
+        )}
+      </div>
+      <span
+        className="flex-1 truncate text-[12px]"
+        style={{
+          color: isFailed ? 'var(--text-muted)' : 'var(--text-primary)',
+        }}
+      >
+        {item.file.name}
+      </span>
+      {isFailed && item.error && (
+        <span
+          className="shrink-0 text-[11px]"
+          style={{ color: 'var(--led-error)' }}
+        >
+          {item.error}
+        </span>
+      )}
     </div>
   )
 }
@@ -448,7 +780,7 @@ function QuotaExceeded({ used, limit }: { used: number; limit: number }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Helper: gera Blob JPEG 1024x1024 a partir da area cropada
+// Helpers de canvas (single + bulk reusam getCroppedJpegBlob)
 // ─────────────────────────────────────────────────────────────────────
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -494,4 +826,24 @@ async function getCroppedJpegBlob(
       OUTPUT_QUALITY,
     )
   })
+}
+
+/** T4.36 — crop automático center-square pra bulk upload.
+ *  Pega o menor lado, centraliza, e o getCroppedJpegBlob redimensiona pra 1024.
+ *  Capa quadrada original: zero perda. Capa retangular: corta as bordas. */
+async function fileToCenterSquareBlob(file: File): Promise<Blob> {
+  const url = URL.createObjectURL(file)
+  try {
+    const image = await loadImage(url)
+    const size = Math.min(image.naturalWidth, image.naturalHeight)
+    const area: Area = {
+      x: (image.naturalWidth - size) / 2,
+      y: (image.naturalHeight - size) / 2,
+      width: size,
+      height: size,
+    }
+    return await getCroppedJpegBlob(url, area)
+  } finally {
+    URL.revokeObjectURL(url)
+  }
 }
