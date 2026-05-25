@@ -94,7 +94,11 @@ export function CoverPickerExpanded({
           background: 'var(--bg-surface)',
           border: '1px solid var(--border-medium, var(--border-subtle))',
           boxShadow: 'var(--shadow-lg, 0 24px 64px rgba(0,0,0,0.5))',
-          maxHeight: 'calc(100vh - 5rem)',
+          // ALTURA FIXA -- evita layout shift quando grid encolhe apos
+          // filtrar (modal continuaria centralizado verticalmente e
+          // "afundaria" pra cima). Min() garante que viewport pequena
+          // nao quebra.
+          height: 'min(720px, calc(100vh - 5rem))',
         }}
         onMouseDown={(e) => e.stopPropagation()}
       >
