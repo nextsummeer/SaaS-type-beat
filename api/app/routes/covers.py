@@ -3,13 +3,19 @@
 ADR 2026-05-21-geracao-de-capa-prompt-base-claude.md
 """
 import logging
+import uuid as uuid_mod
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, File, Header, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from app.services import credits_service
 from app.services.supabase_service import get_admin_client, validate_token
 from app.workers.cover import generate_covers
+
+# Constantes do upload manual (T4.35)
+MANUAL_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
+MANUAL_ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png"}
+MANUAL_SIGNED_URL_EXPIRY = 31_536_000  # 1 ano (mesmo da geracao IA)
 
 router = APIRouter(prefix="/covers", tags=["covers"])
 logger = logging.getLogger(__name__)
@@ -248,3 +254,136 @@ def generate(body: GenerateCoverRequest, authorization: str = Header(...)):
             })
 
     return result
+
+
+# ─────────────────────────────────────────────────────────────────────
+# T4.35 — Banco de capas manuais (upload pelo produtor, sem IA)
+# ─────────────────────────────────────────────────────────────────────
+
+@router.get("/manual_limit")
+def get_manual_limit(authorization: str = Header(...)):
+    """Estado da quota de capas manuais do user (total acumulado).
+
+    Returns:
+        {tier, limit, used, remaining}
+    """
+    user = _authenticate(authorization)
+    return credits_service.get_manual_quota(str(user.id))
+
+
+@router.post("/manual_upload")
+async def manual_upload(
+    file: UploadFile = File(...),
+    authorization: str = Header(...),
+):
+    """Recebe imagem cropada quadrada pelo client, valida, sobe no Storage
+    e cria row em cover_library com source='manual_upload'.
+
+    Validacoes:
+        - content_type: image/jpeg ou image/png
+        - tamanho: <= 5 MB
+        - quota nao excedida (MANUAL_LIMITS por tier)
+
+    O crop pra quadrada e feito no client (react-easy-crop). Aqui assumimos
+    que ja vem 1024x1024 -- nao revalidamos dimensoes pra evitar dependencia
+    de PIL no caminho quente.
+
+    Returns:
+        {ok, id, image_url} — id e image_url pra UI atualizar e
+        opcionalmente associar ao beat na hora.
+    """
+    user = _authenticate(authorization)
+    user_id = str(user.id)
+
+    # 1. Valida tipo de arquivo
+    if file.content_type not in MANUAL_ALLOWED_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Formato invalido ({file.content_type}). Use JPG ou PNG.",
+        )
+
+    # 2. Le e valida tamanho
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=422, detail="Arquivo vazio.")
+    if len(content) > MANUAL_MAX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Arquivo muito grande ({len(content) // 1024} KB). Limite: 5 MB.",
+        )
+
+    # 3. Checa quota antes de subir
+    quota = credits_service.get_manual_quota(user_id)
+    if quota["remaining"] <= 0:
+        raise HTTPException(status_code=402, detail={
+            "code": "manual_quota_exceeded",
+            "tier": quota["tier"],
+            "used": quota["used"],
+            "limit": quota["limit"],
+        })
+
+    client = get_admin_client()
+
+    # 4. Upload pra Storage (covers/{user_id}/manual/{uuid}.{ext})
+    cover_id = str(uuid_mod.uuid4())
+    ext = "jpg" if file.content_type == "image/jpeg" else "png"
+    storage_path = f"{user_id}/manual/{cover_id}.{ext}"
+
+    try:
+        client.storage.from_("covers").upload(
+            path=storage_path,
+            file=content,
+            file_options={
+                "content-type": file.content_type,
+                "upsert": "false",
+            },
+        )
+    except Exception as exc:
+        logger.error("manual_upload: storage falhou user=%s: %s", user_id, exc)
+        raise HTTPException(status_code=500, detail="Falha ao subir arquivo.")
+
+    # 5. Signed URL (1 ano, mesmo padrao da IA)
+    image_url = None
+    try:
+        signed = client.storage.from_("covers").create_signed_url(
+            storage_path, MANUAL_SIGNED_URL_EXPIRY,
+        )
+        if signed:
+            image_url = signed.get("signedURL") or signed.get("signed_url")
+    except Exception as exc:
+        logger.error("manual_upload: signed URL falhou user=%s: %s", user_id, exc)
+
+    if not image_url:
+        # Cleanup pra nao deixar lixo orfao no Storage
+        try:
+            client.storage.from_("covers").remove([storage_path])
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail="Falha ao gerar URL.")
+
+    # 6. INSERT em cover_library — source='manual_upload', sem brief/prompt
+    try:
+        client.table("cover_library").insert({
+            "id": cover_id,
+            "user_id": user_id,
+            "image_url": image_url,
+            "storage_path": storage_path,
+            "source": "manual_upload",
+            "status": "ready",
+            "cost_usd": 0,
+        }).execute()
+    except Exception as exc:
+        logger.error("manual_upload: insert DB falhou user=%s: %s", user_id, exc)
+        try:
+            client.storage.from_("covers").remove([storage_path])
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail="Falha ao registrar capa.")
+
+    logger.info(
+        "manual_upload: ok user=%s cover_id=%s size=%dKB tier=%s used=%d/%d",
+        user_id, cover_id, len(content) // 1024,
+        quota["tier"], quota["used"] + 1, quota["limit"],
+    )
+
+    return {"ok": True, "id": cover_id, "image_url": image_url}

@@ -919,6 +919,44 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Produtor abre /configuracoes, escolhe Opcao 2, salva. Sobe um beat novo. Titulo gerado sai exatamente no formato `[free] artista + artista2 type beat - "beat name"` (verificavel no /review do beat). Trocar pra Opcao 1 e gerar outro beat -> titulo volta pro formato classico. Producer existente sem coluna preenchida = Opcao 1 (default).
 - **Dependencia:** — (nenhuma; T4.1 ja entrega o service generate_metadata)
 
+#### `[ ]` T4.35 — Banco de capas manuais (upload dedicado, separado de capas IA)
+
+- **Motivacao:** Nem todo produtor usa IA pra capa -- muitos tem suas capas proprias e querem so um banco visual reusavel. Hoje o upload manual no /upload e one-shot (vai pro beat e some). Esta task adiciona um banco persistente reusavel, espelhado em UX a biblioteca IA, mas mais simples (sem brief, sem artista).
+- **Decisoes fechadas (sessao 2026-05-25):**
+  - **/capas vira 2 espacos via segmented tabs no header**: "Geradas" (capas IA atuais) e "Enviadas" (manuais novas). Trocam o espaco inteiro, nao filtro.
+  - **Capa manual NAO tem brief nem artista** -- espaco visual puro. Filtros: Usada/Nao usada + Data.
+  - **Crop client-side via react-easy-crop** (~10kb gz, MIT). Produtor escolhe a area quadrada antes do upload. Resolucao final: 1024x1024 (qualidade YouTube).
+  - **Limite por tier (total acumulado, NAO mensal)**: free=5, intermediate=25, premium=100, internal=999. Manual nao custa $ pra gerar, so ocupa Storage -- por isso e limite acumulado, nao mensal (excedeu? apaga uma pra subir outra).
+  - **Em /upload (CoverPicker)**: tab "Biblioteca" ganha sub-segmented "IA / Manual". Tab "Upload agora" ganha checkbox "Salvar no meu banco manual" (default ON) -- assim a capa enviada one-shot ja vira reusavel sem o produtor pensar.
+  - **Nomes**: "GERADAS" / "ENVIADAS" no segmented switch principal. "IA" / "Manual" no sub-switch do /upload.
+- **Arquivos:**
+  - **Bloco 1 (Backend):**
+    - `api/app/services/credits_service.py` (novo `MANUAL_LIMITS` dict + funcoes `get_manual_usage`, `check_manual_quota`)
+    - `api/app/routes/covers.py` (novo POST `/covers/manual_upload` + GET `/covers/manual_limit`)
+    - `web/lib/api.ts` (funcoes `uploadManualCover`, `fetchManualLimit`)
+  - **Bloco 2 (/capas):**
+    - `web/app/(app)/capas/page.tsx` (segmented switch Geradas/Enviadas no header, alterna espaco)
+    - `web/components/EnviadasGrid.tsx` (novo: grid de capas manuais + filtros Usada/Data, reusa CapaCard)
+    - `web/components/ManualUploadModal.tsx` (novo: drag-and-drop -> crop quadrado -> preview -> POST)
+    - `web/package.json` (adicionar `react-easy-crop`)
+  - **Bloco 3 (/upload):**
+    - `web/components/CoverPicker.tsx` (sub-segmented IA/Manual dentro da tab Biblioteca)
+    - `web/components/CoverPickerExpanded.tsx` (filtro tipo IA/Manual)
+    - Logica do ManualTab no CoverPicker: ao confirmar com checkbox=true, POST /covers/manual_upload + usa o ID retornado em vez de manualFile
+- **O que fazer (ordem):**
+  - **Bloco 1**: backend primeiro (sem isso nada roda). Adiciona MANUAL_LIMITS, endpoints validam tipo (JPG/PNG), peso (<5MB), quota por tier. Sobe pra `covers/{user_id}/manual/{uuid}.jpg` e cria row em cover_library com source='manual_upload', brief_used=null, prompt_final=null, cost_usd=0.
+  - **Bloco 2**: UI da /capas. Skill `frontend-design` invocado pra manter Editorial Mono. Segmented switch principal substitui ou complementa o titulo. Botao "+ Upload manual" simetrico ao "+ Gerar capa" quando em "Enviadas".
+  - **Bloco 3**: integra os dois. Sub-switch IA/Manual no CoverPicker. Checkbox "Salvar no banco manual" no ManualTab que, quando true, faz upload antes de associar ao beat.
+- **Pontos cegos a tratar:**
+  - CapaCard/CapaModal atual usam brief_used pra renderizar -- precisam de estado vazio "Capa enviada manualmente, sem brief associado" quando source='manual_upload'.
+  - 402 (quota cheia) precisa de UX clara: "Voce atingiu o limite do seu plano (X/Y). Apague uma capa ou faca upgrade."
+- **Criterio de pronto:**
+  - **Bloco 1**: POST /covers/manual_upload com imagem 1024x1024 quadrada cria row em cover_library com source='manual_upload'. GET /covers/manual_limit retorna {used, limit, remaining}. Quota cheia retorna 402.
+  - **Bloco 2**: Em /capas, switch "Geradas" / "Enviadas" alterna o espaco. Em "Enviadas", produtor faz upload de uma capa retangular, croppa pra quadrada no modal, envia, e ela aparece no grid. Filtros Usada/Data funcionam.
+  - **Bloco 3**: Em /upload, sub-switch IA/Manual mostra biblioteca correta. Checkbox "Salvar no banco" no upload agora persiste a capa ao mesmo tempo que ela vai pro beat.
+  - **Limite respeitado**: Free atinge 5 manuais e proxima tentativa retorna 402 com mensagem amigavel.
+- **Dependencia:** T4.14 (sistema de creditos -- reusa estrutura de tier do user_profiles)
+
 ---
 
 ### Fase 5 — YouTube OAuth + postagem (Gustavo executa)

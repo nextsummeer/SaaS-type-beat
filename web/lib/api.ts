@@ -537,6 +537,91 @@ export async function rateCover(
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// T4.35 — Banco de capas manuais
+// ─────────────────────────────────────────────────────────────────────
+
+/** Quota de capas manuais (total acumulado, nao mensal). */
+export interface ManualLimitState {
+  tier: UserTier
+  limit: number
+  used: number
+  remaining: number
+}
+
+/** Resultado de POST /covers/manual_upload. */
+export interface ManualUploadResult {
+  ok: boolean
+  id: string
+  image_url: string
+}
+
+/** Erro especifico de quota cheia (HTTP 402). UI usa pra mostrar
+ *  mensagem de upgrade em vez do erro generico. */
+export class ManualQuotaExceededError extends Error {
+  tier: UserTier
+  used: number
+  limit: number
+  constructor(detail: { tier: UserTier; used: number; limit: number }) {
+    super(`Limite de capas manuais atingido (${detail.used}/${detail.limit})`)
+    this.name = 'ManualQuotaExceededError'
+    this.tier = detail.tier
+    this.used = detail.used
+    this.limit = detail.limit
+  }
+}
+
+/** Estado da quota de capas manuais do user. */
+export async function fetchManualLimit(token: string): Promise<ManualLimitState> {
+  const res = await fetch(`${API_URL}/covers/manual_limit`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao buscar limite de capas manuais`)
+  }
+  return res.json()
+}
+
+/** Sobe uma capa manual ja cropada quadrada (1024x1024 JPG/PNG).
+ *  Lanca ManualQuotaExceededError quando o tier atingiu o limite. */
+export async function uploadManualCover(
+  token: string,
+  blob: Blob,
+  filename = 'cover.jpg',
+): Promise<ManualUploadResult> {
+  const form = new FormData()
+  form.append('file', blob, filename)
+
+  const res = await fetch(`${API_URL}/covers/manual_upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    const detail = body.detail
+    if (
+      res.status === 402 &&
+      detail &&
+      typeof detail === 'object' &&
+      detail.code === 'manual_quota_exceeded'
+    ) {
+      throw new ManualQuotaExceededError({
+        tier: detail.tier,
+        used: detail.used,
+        limit: detail.limit,
+      })
+    }
+    const msg = typeof detail === 'string' ? detail : `Erro ${res.status} ao subir capa`
+    throw new Error(msg)
+  }
+
+  return res.json()
+}
+
 /** Deleta uma capa da biblioteca + remove arquivo do storage. */
 export async function deleteCover(token: string, id: string): Promise<void> {
   const res = await fetch(`${API_URL}/covers/${id}`, {

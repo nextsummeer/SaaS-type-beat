@@ -23,6 +23,16 @@ PLAN_LIMITS: dict[str, int] = {
     "internal": 999999,  # Tier interno (dono/time) — pratico-ilimitado
 }
 
+# Limites de capas MANUAIS (upload do produtor) -- TOTAL ACUMULADO, nao mensal.
+# Manuais nao custam $ pra gerar (so ocupam Storage), entao a regra e:
+# atingiu o limite? Apaga uma pra subir outra. Edita aqui sem migration.
+MANUAL_LIMITS: dict[str, int] = {
+    "free": 5,
+    "intermediate": 25,
+    "premium": 100,
+    "internal": 999,
+}
+
 
 def _parse_pg_timestamp(ts: str) -> datetime:
     """Converte timestamp ISO do Postgres pra datetime timezone-aware."""
@@ -148,4 +158,50 @@ def consume(user_id: str, n: int = 1) -> dict:
     return {
         "ok": True,
         "remaining": new_remaining,
+    }
+
+
+def get_manual_quota(user_id: str) -> dict:
+    """Estado da quota de capas MANUAIS do user (total acumulado).
+
+    Diferente de get_remaining (IA): nao tem ciclo de reset porque manual
+    nao consome creditos -- e limite de quantidade ARMAZENADA. Para subir
+    mais quando estiver cheio, o produtor precisa apagar uma existente.
+
+    Returns:
+        dict com:
+            tier: 'free' | 'intermediate' | 'premium' | 'internal'
+            limit: total maximo de capas manuais que pode ter
+            used: quantas tem hoje
+            remaining: limit - used
+    """
+    client = get_admin_client()
+
+    # 1. Tier do produtor
+    resp = client.table("user_profiles").select("tier").eq(
+        "user_id", user_id
+    ).maybe_single().execute()
+
+    if not resp or not resp.data:
+        logger.error("credits_service: user_profile nao encontrado user=%s", user_id)
+        return {"tier": "free", "limit": 0, "used": 0, "remaining": 0}
+
+    tier = resp.data["tier"]
+    limit = MANUAL_LIMITS.get(tier, 0)
+
+    # 2. Count das capas manuais existentes
+    count_resp = (
+        client.table("cover_library")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .eq("source", "manual_upload")
+        .execute()
+    )
+    used = count_resp.count or 0
+
+    return {
+        "tier": tier,
+        "limit": limit,
+        "used": used,
+        "remaining": max(0, limit - used),
     }
