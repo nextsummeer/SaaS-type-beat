@@ -40,22 +40,37 @@ Every BeatPost cover simulates a frame from a low-resolution video that someone 
    - **HAIR RULES (apply in this order):**
      1. **GENRE-LEVEL DEFAULTS** (these override Sonnet's default tendencies):
         - **`underground_trap`** (primary OR secondary genre) + ANY female subject (mulher_solo, casal, grupo with women) = the woman MUST have **bleached/peroxide platinum blonde hair, long, messy, falling across the eyes, NO dark roots showing -- clean blonde**. This is the indie sleaze underground aesthetic, non-negotiable. Apply this even if the artist name suggests another visual world.
-        - In `nettspend`-style crews (underground + grupo): hair varies wildly across the crew -- at LEAST 1-2 figures with bleached/platinum blonde, rest mixing dyed colors (pink, lavender) and natural tones. NEVER all the same hair color, NEVER all dark hair.
+        - In underground crews (underground + grupo): hair varies wildly across the crew -- at LEAST 1-2 figures with bleached/platinum blonde, rest mixing dyed colors (pink, lavender) and natural tones. NEVER all the same hair color, NEVER all dark hair.
      2. **ARTIST-SPECIFIC** (when UNIVERSE PACK provides `hair_directives`): follow it literally.
      3. **FALLBACK** (artist not in dict + no genre-level rule): infer hair from artist name + genre context (Sonnet uses cultural knowledge of the artist).
-   - Face partially obscured via rotating methods: hair across eyes / low-brim cap / hand covering part of face / motion blur from head turn / backlit silhouette / dark sunglasses at night / hood up
-   - Real skin: visible pores, natural oil, slight imperfection, not airbrushed
+   - **FACE OBSCURING -- NON-NEGOTIABLE RULE:** The face MUST be partially or fully obscured. Output the OBSCURING METHODS AS AN OR-LIST in the prompt (let the image model pick), do NOT pick one and describe it in detail. Use this EXACT structure (adapt the hair color to match HAIR RULES above):
+     > "face partially obscured -- [hair color/type] hair falling chaotic across the eyes, OR head tilted down with hair curtain covering the upper face, OR hand half-covering the face, OR motion blur from a slight turn of the head, OR backlit by a small light source so features go almost black"
+
+     ❌ FORBIDDEN: describing the face in detail like "her face is half-visible through the curtain of hair, one eye catching the light" / "her gaze drifts somewhere in the middle distance" / "eyes carry smudged black makeup" / "subtle smirk" / "lips parted slightly". ANY specific face description forces the model to render a fully visible face -- this BREAKS the entire BeatPost aesthetic.
+
+     ✓ ALLOWED: "skin with visible pores, natural oil, slight imperfection, real warmth" (texture, NOT features/expression).
+
+   - **NO EXPRESSION DESCRIPTION.** Do NOT describe gaze direction, mouth shape, eye contact, smiling, makeup detail, lip color, eyebrow shape. The face is OBSCURED -- there is nothing to describe.
    - Hands: "Hands are mostly down, holding drinks or each other or nothing -- no gang signs, no peace signs, no devil horns" (when crew)
 5. PUNCH PHRASE: 2-4 words on their own line (use input's punch_phrase)
-6. WARDROBE paragraph:
-   - Pull from the WARDROBE POOL of the universe
-   - Each person in a crew dressed differently (no shared uniform)
-   - End with the wardrobe_anchor_phrase from the universe input
-7. SETTING paragraph:
-   - Use the SUB-LOCATION provided in input as the seed
-   - Expand it into 4-6 descriptive sentences with 2-3 culturally iconic objects from the artist's universe, 1 sensory detail (smell, temperature, implied sound), 1 short atmospheric sentence
-   - Do NOT use OR-lists, focus on ONE specific scene
-   - When the universe has city_anchor, include it inline naturally
+6. WARDROBE paragraph -- USE OR-LIST STRUCTURE, NOT LINEAR ENUMERATION:
+   - **OUTPUT THE WARDROBE AS AN OR-LIST**, listing 5-7 items separated by commas with explicit "OR" before the last few. The image model picks 2-3 items from the list -- it does NOT use all of them.
+   - ✓ CORRECT structure:
+     > "a vintage band tee stretched at the neckline, OR Hedi Slimane-era skinny black jeans low on the hips, OR an oversized hoodie worn open over thin layers, OR mesh top under a stained white tank, OR a slip dress that's seen better days, layered with thin silver chains stacked OR a single cross pendant OR two cheap rings on the index finger, smudged black eye makeup, chipped black nail polish, blurry stick-and-poke tattoo on the forearm or hand"
+   - ❌ FORBIDDEN: linear enumeration that lists everything as if the figure wears ALL of it at once. This becomes a "recipe" that the model replicates every generation = every cover becomes a wardrobe clone.
+     - Wrong: "She wears a hoodie and a tee underneath and skinny jeans and chains around her neck and chipped polish and tattoos and sneakers"
+   - Each person in a crew dressed differently (no shared uniform) -- explicitly state "each figure dressed differently, no shared uniform"
+   - Pull source material from the WARDROBE POOL of the universe (when present) or from the GENRE VOCABULARY pool (when universe is empty/fallback)
+   - End with the wardrobe_anchor_phrase from the universe input (or a similar 1-line anchor like "Not posing -- caught mid-thought.")
+7. SETTING paragraph -- CULTURALLY DENSE, NOT GENERIC:
+   - Use the SUB-LOCATION provided in input as the seed (or infer one from artist+genre+mood when sub_location_chosen is empty)
+   - Expand it into 4-6 descriptive sentences with **3-5 culturally iconic objects** specific to the artist/genre universe + 1 sensory detail (smell, temperature, implied sound) + 1 short atmospheric sentence
+   - **CULTURAL OBJECT RULE -- this is what gives BeatPost identity:** Objects in the scene are NOT decoration, they are CULTURAL SIGNALING. They MUST be specific to the genre/artist's world.
+     - ✓ CORRECT for underground bedroom: "posters of underground rappers and shoegaze bands (Lil B, Bladee, Drain Gang, Yeat, Carti, Playboi Carti's WLR-era art, Slowthai, Deftones, My Bloody Valentine) peeling off the walls, tangled cables, an unmade bed with crumpled sheets, a half-eaten ramen cup on the bedside table, a laptop open and glowing on the floor, a stack of burned CD-Rs with marker scribbles"
+     - ✓ CORRECT for trap luxury interior: "a half-empty glass of dark amber liquor on marble, a champagne bottle held by the neck not the body, layered gold cuban links on the table, an OVO owl etched somewhere subtle, a stack of unmarked cards on a side table, the glow of a TV playing playoffs on mute"
+     - ❌ FORBIDDEN GENERIC: "empty energy drink cans on the floor near the baseboard, a small bluetooth speaker, a dead succulent in a cracked ceramic pot, charger cables, Blu-Tack ghosts on walls". These objects could belong to ANY young person -- they don't signal the artist's cultural world. Avoid abstract or generic decoration.
+   - Do NOT use OR-lists in the setting -- focus on ONE specific scene, but pack it with culturally specific objects.
+   - When the universe has city_anchor, include it inline naturally (skyline visible, neighborhood named, etc.)
 8. LIGHTING paragraph (paste from LIGHTING SETUP input + 1-2 lines of further specificity tied to the setting)
 9. GUARD-RAIL paragraph (paste literally from input -- includes the mood-specific closer at the end)
 10. COLOR PALETTE: list 8-12 specific colors named, end with a phrase like "Cold dominates. Warmth is a punctuation mark." (or the inverse depending on mood)
