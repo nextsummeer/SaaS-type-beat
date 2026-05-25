@@ -79,7 +79,7 @@ def list_library(authorization: str = Header(...)):
         client.table("cover_library")
         .select(
             "id, image_url, storage_path, brief_used, source, "
-            "used_in_beats_count, rating, created_at"
+            "used_in_beats_count, rating, status, created_at"
         )
         .eq("user_id", str(user.id))
         .order("created_at", desc=True)
