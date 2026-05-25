@@ -147,15 +147,9 @@ ARTIST_UNIVERSE: dict[str, dict] = {
     # FAKEMINK -- Underground/Indie sleaze/Bedroom
     # ========================================================================
     "fakemink": {
-        "hair_directives": (
-            "Bleached or peroxide platinum blonde hair is the DEFAULT for "
-            "this universe (indie sleaze revival aesthetic) -- long, messy, "
-            "chaotic, falling across the eyes, often with grown-out dark "
-            "roots showing. Use blonde in roughly 70% of generations. "
-            "Occasionally jet black with chunky bangs, OR dyed pink/lavender/"
-            "platinum-silver, but bleached blonde dominates the look. "
-            "NEVER default to natural dark hair for this artist."
-        ),
+        # hair_directives REMOVIDO -- agora vive como regra do GENERO
+        # underground no system_prompt v3 (qualquer artista + underground +
+        # mulher = bleached/peroxide blonde DEFAULT, sem raiz escura).
         "thematic_sentence": (
             "Late-2020s underground internet rap aesthetic meets indie sleaze "
             "revival, terminally online bedroom culture caught on film."
@@ -217,14 +211,8 @@ ARTIST_UNIVERSE: dict[str, dict] = {
     # NETTSPEND -- Underground/Digicore/Function
     # ========================================================================
     "nettspend": {
-        "hair_directives": (
-            "Hair varies WILDLY across the crew -- explicit mix of platinum "
-            "bleach, peroxide blonde, dyed pink, dyed lavender, jet black "
-            "with chunky bangs, natural brown, dark with bleached front "
-            "streaks. Each person different hair color. In a crew of 5-7, "
-            "at least 1-2 figures have bleached/platinum hair. NEVER all "
-            "the same hair color, NEVER all dark hair."
-        ),
+        # hair_directives REMOVIDO -- agora vive como regra do GENERO
+        # underground no system_prompt v3.
         "thematic_sentence": (
             "Mid-2020s underground internet rap aesthetic, digicore meets DIY "
             "function, terminally online crew in a room together."

@@ -37,7 +37,12 @@ Every BeatPost cover simulates a frame from a low-resolution video that someone 
 4. SUBJECT paragraph:
    - Declare ethnicity inline (Black, light-brown, olive, brown, white, mixed-race) -- NEVER default to white, NEVER use asiatic unless brief explicitly justifies
    - When crew: "mixed-gender group with multiple women and multiple men" + explicit skin tones across the group
-   - **HAIR: when the input provides "Hair directives" in the UNIVERSE PACK, follow them LITERALLY. If they say "bleached blonde DEFAULT 70%", you MUST output bleached/peroxide blonde hair in this generation -- do not default to dark hair just because the figure is "underground rapper / young woman". Underground sleaze aesthetic relies heavily on bleached/peroxide blonde.**
+   - **HAIR RULES (apply in this order):**
+     1. **GENRE-LEVEL DEFAULTS** (these override Sonnet's default tendencies):
+        - **`underground_trap`** (primary OR secondary genre) + ANY female subject (mulher_solo, casal, grupo with women) = the woman MUST have **bleached/peroxide platinum blonde hair, long, messy, falling across the eyes, NO dark roots showing -- clean blonde**. This is the indie sleaze underground aesthetic, non-negotiable. Apply this even if the artist name suggests another visual world.
+        - In `nettspend`-style crews (underground + grupo): hair varies wildly across the crew -- at LEAST 1-2 figures with bleached/platinum blonde, rest mixing dyed colors (pink, lavender) and natural tones. NEVER all the same hair color, NEVER all dark hair.
+     2. **ARTIST-SPECIFIC** (when UNIVERSE PACK provides `hair_directives`): follow it literally.
+     3. **FALLBACK** (artist not in dict + no genre-level rule): infer hair from artist name + genre context (Sonnet uses cultural knowledge of the artist).
    - Face partially obscured via rotating methods: hair across eyes / low-brim cap / hand covering part of face / motion blur from head turn / backlit silhouette / dark sunglasses at night / hood up
    - Real skin: visible pores, natural oil, slight imperfection, not airbrushed
    - Hands: "Hands are mostly down, holding drinks or each other or nothing -- no gang signs, no peace signs, no devil horns" (when crew)
