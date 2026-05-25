@@ -103,18 +103,22 @@ ARTIST_UNIVERSE: dict[str, dict] = {
             "a vintage hotel room with red wallpaper and amber lamp",
         ],
         "wardrobe_pool": [
+            # Calibrado em 2026-05-25 pra evitar content_policy_violation do
+            # OpenAI gpt-image-2. Removidos: "sheer top + delicate lingerie
+            # underneath", "fitted bodysuit" (disparam filtro de moderacao
+            # quando combinados com luz vermelha + hotel suite + mulher solo).
             "minimal and expensive slip dress",
-            "fitted bodysuit",
-            "sheer top with delicate lingerie underneath",
+            "fitted silk or satin top",
             "oversized luxury jacket worn off the shoulder",
+            "tailored long coat over a simple base layer",
             "layered gold chains",
             "delicate cross pendant",
             "hoop earrings",
             "single statement ring",
         ],
         "wardrobe_anchor_phrase": (
-            "Magnetic, anonymous, untouchable -- the kind of styling that "
-            "reads expensive even when undone."
+            "Magnetic, untouchable -- the kind of styling that reads "
+            "expensive without trying."
         ),
         "references": [
             "leaked behind-the-scenes footage from after-hours R&B music videos",

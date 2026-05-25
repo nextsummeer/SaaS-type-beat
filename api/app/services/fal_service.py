@@ -103,5 +103,22 @@ def generate_cover(
         }
 
     except Exception as exc:
-        logger.error("fal_service: erro ao gerar capa: %s", exc)
+        # Detecta content policy violation do OpenAI gpt-image-2 e loga
+        # mensagem curta em vez de jogar o exc enorme (que inclui o prompt
+        # inteiro -- polui log + esconde a causa real).
+        exc_str = str(exc)
+        if "content_policy_violation" in exc_str or "content checker" in exc_str:
+            logger.error(
+                "fal_service: content_policy_violation do OpenAI -- prompt "
+                "rejeitado pelo moderador da gpt-image-2. Comum quando brief "
+                "tem mood sexy + luz vermelha + termos como sheer/lingerie. "
+                "Tente outro brief ou aguarde proxima variacao."
+            )
+        elif "Exhausted balance" in exc_str or "User is locked" in exc_str:
+            logger.error(
+                "fal_service: SALDO ZERADO em fal.ai. Adicione credito em "
+                "fal.ai/dashboard/billing antes de gerar mais capas."
+            )
+        else:
+            logger.error("fal_service: erro ao gerar capa: %s", exc)
         return None
