@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowUpRight, Sparkles } from 'lucide-react'
+import { ArrowUpRight, Sparkles, Upload as UploadIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
   fetchCovers,
   fetchCoverCredits,
+  fetchManualLimit,
   deleteCover,
   fetchBriefs,
   createBrief,
@@ -18,6 +19,7 @@ import {
   type CoverCreditsState,
   type CoverBrief,
   type BriefPreset,
+  type ManualLimitState,
 } from '@/lib/api'
 import { CapasHeader } from '@/components/CapasHeader'
 import { CapasGrid } from '@/components/CapasGrid'
@@ -32,6 +34,16 @@ import {
 import { ConfirmGenerateModal } from '@/components/ConfirmGenerateModal'
 import { ManageBriefsModal } from '@/components/ManageBriefsModal'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { ManualUploadModal } from '@/components/ManualUploadModal'
+
+/** T4.35 — segmented switch principal: dois espacos independentes
+ *  dentro de /capas. */
+type CoverSpace = 'geradas' | 'enviadas'
+
+/** Filtro simples das capas manuais (substitui CoverFilterBar -- manuais
+ *  nao tem artista/rating, so usada e data) */
+type ManualUsageFilter = 'all' | 'used' | 'unused'
+type ManualDateOrder = 'recent' | 'oldest'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
 
@@ -60,9 +72,18 @@ export default function CapasPage() {
   const [state, setState] = useState<PageState>({ kind: 'loading' })
   const [covers, setCovers] = useState<CoverLibraryItem[]>([])
   const [credits, setCredits] = useState<CoverCreditsState | null>(null)
+  const [manualLimit, setManualLimit] = useState<ManualLimitState | null>(null)
   const [presets, setPresets] = useState<BriefPreset[]>([])
   const [presetLimit, setPresetLimit] = useState<number>(1)
   const [hasGeneratedFirstCover, setHasGeneratedFirstCover] = useState<boolean>(false)
+
+  /** Espaco ativo: capas IA (geradas) ou capas manuais (enviadas) */
+  const [space, setSpace] = useState<CoverSpace>('geradas')
+  /** Modal de upload manual aberto */
+  const [manualUploadOpen, setManualUploadOpen] = useState(false)
+  /** Filtros das capas manuais */
+  const [manualUsageFilter, setManualUsageFilter] = useState<ManualUsageFilter>('all')
+  const [manualDateOrder, setManualDateOrder] = useState<ManualDateOrder>('recent')
 
   const [wizardOpen, setWizardOpen] = useState(false)
   const [wizardEditingId, setWizardEditingId] = useState<string | null>(null)
@@ -97,15 +118,34 @@ export default function CapasPage() {
 
   const activeBrief = presets.find((p) => p.is_active) ?? null
 
-  // Capas filtradas pelos pills (artista/status/rating/data) + paginadas
-  // pelo "Carregar mais". Pending/failed NAO sao filtraveis pelo usuario
-  // -- aparecem sempre no topo (pra dar feedback de gerando/falhou).
-  const readyCovers = covers.filter((c) => c.status === 'ready')
-  const pendingFailedCovers = covers.filter((c) => c.status !== 'ready')
+  // ─────────────────────────────────────────────────────────────────
+  // CAPAS — separadas por source (geradas IA vs enviadas manuais)
+  // T4.35: dois espacos independentes via segmented switch
+  // ─────────────────────────────────────────────────────────────────
+
+  // GERADAS (capas IA): pendentes/failed ficam topo, ready filtradas + paginadas
+  const generatedCovers = covers.filter((c) => c.source === 'ai_generated')
+  const readyCovers = generatedCovers.filter((c) => c.status === 'ready')
+  const pendingFailedCovers = generatedCovers.filter((c) => c.status !== 'ready')
   const filteredReady = applyCoverFilters(readyCovers, filters)
   const visibleReady = filteredReady.slice(0, visibleCount)
   const visibleCovers = [...pendingFailedCovers, ...visibleReady]
   const hasMoreReady = visibleReady.length < filteredReady.length
+
+  // ENVIADAS (manuais): nao tem pending (upload e sincrono). Filtro simples:
+  // Usada/Nao usada + ordenacao Data (recentes/antigas).
+  const manualCovers = covers.filter((c) => c.source === 'manual_upload')
+  const filteredManual = manualCovers
+    .filter((c) => {
+      if (manualUsageFilter === 'used') return c.used_in_beats_count > 0
+      if (manualUsageFilter === 'unused') return c.used_in_beats_count === 0
+      return true
+    })
+    .sort((a, b) => {
+      const aTime = new Date(a.created_at).getTime()
+      const bTime = new Date(b.created_at).getTime()
+      return manualDateOrder === 'recent' ? bTime - aTime : aTime - bTime
+    })
 
   // ─────────────────────────────────────────────────────────────────
   // CARREGAMENTO INICIAL
@@ -126,16 +166,18 @@ export default function CapasPage() {
         .single()
       setHasGeneratedFirstCover(Boolean(profile?.has_generated_first_cover))
 
-      // Em paralelo: créditos + biblioteca + briefs
-      const [creditsRes, coversRes, briefsRes] = await Promise.all([
+      // Em paralelo: créditos IA + biblioteca + briefs + limite manual
+      const [creditsRes, coversRes, briefsRes, manualLimitRes] = await Promise.all([
         fetchCoverCredits(token),
         fetchCovers(token),
         fetchBriefs(token),
+        fetchManualLimit(token),
       ])
       setCredits(creditsRes)
       setCovers(coversRes)
       setPresets(briefsRes.items)
       setPresetLimit(briefsRes.limit)
+      setManualLimit(manualLimitRes)
       setState({ kind: 'ready' })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao carregar capas'
@@ -500,19 +542,39 @@ export default function CapasPage() {
   // RENDER
   // ─────────────────────────────────────────────────────────────────
   const isLoading = state.kind === 'loading'
-  const showEmptyNoBrief = state.kind === 'ready' && presets.length === 0
   const isOnboardingFree = !hasGeneratedFirstCover
+
+  // Empty "sem brief" so se aplica ao espaco GERADAS (manuais nao tem brief)
+  const showGeradasEmpty = state.kind === 'ready' && space === 'geradas' && presets.length === 0
 
   const editingPreset = wizardEditingId ? presets.find((p) => p.id === wizardEditingId) ?? null : null
 
   let pageContent: React.ReactNode
   if (state.kind === 'error') {
     pageContent = <PageError message={state.message} onRetry={loadData} />
-  } else if (showEmptyNoBrief) {
-    pageContent = <EmptyNoBrief onConfigure={handleOpenWizardNew} />
   } else {
     pageContent = (
       <div className="space-y-10">
+        {/* T4.35 — Segmented switch principal: GERADAS / ENVIADAS */}
+        <SpaceSwitch
+          space={space}
+          onChange={(next) => {
+            setSpace(next)
+            // Sai do modo selecao ao trocar de espaco pra evitar
+            // confusao entre ids selecionados em listas diferentes.
+            if (selectionMode) handleCancelSelection()
+          }}
+          generatedCount={generatedCovers.length}
+          manualUsed={manualLimit?.used ?? manualCovers.length}
+          manualLimit={manualLimit?.limit ?? 0}
+        />
+
+        {showGeradasEmpty && (
+          <EmptyNoBrief onConfigure={handleOpenWizardNew} />
+        )}
+
+        {space === 'geradas' && !showGeradasEmpty && (
+          <>
         <header className="rise rise-1">
           <SectionLabel num="01" label="Sua biblioteca de capas" />
           <CapasHeader
@@ -641,6 +703,81 @@ export default function CapasPage() {
             </div>
           )}
         </section>
+          </>
+        )}
+
+        {space === 'enviadas' && (
+          <section className="rise rise-2">
+            <SectionLabel
+              num="01"
+              label="Banco de capas enviadas"
+              action={
+                <div className="flex items-center gap-2">
+                  {manualLimit && (
+                    <span
+                      className="font-mono tabular hidden sm:inline-flex items-center"
+                      style={{
+                        fontSize: 10.5,
+                        color: 'var(--text-muted)',
+                        letterSpacing: '0.16em',
+                      }}
+                    >
+                      {manualLimit.used}/{manualLimit.limit}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setManualUploadOpen(true)}
+                    disabled={
+                      !!manualLimit && manualLimit.remaining <= 0
+                    }
+                    className="btn-primary"
+                    title={
+                      manualLimit && manualLimit.remaining <= 0
+                        ? `Limite atingido (${manualLimit.used}/${manualLimit.limit})`
+                        : undefined
+                    }
+                  >
+                    <UploadIcon size={13} strokeWidth={2.2} />
+                    Upload manual
+                  </button>
+                </div>
+              }
+            />
+
+            {manualCovers.length === 0 ? (
+              <EmptyManuais
+                limit={manualLimit?.limit ?? 0}
+                onUpload={() => setManualUploadOpen(true)}
+              />
+            ) : (
+              <>
+                {/* Filtros simples: Usada/Nao usada + Data */}
+                <ManualFilterBar
+                  totalCount={manualCovers.length}
+                  filteredCount={filteredManual.length}
+                  usageFilter={manualUsageFilter}
+                  dateOrder={manualDateOrder}
+                  onUsageChange={setManualUsageFilter}
+                  onDateOrderChange={setManualDateOrder}
+                />
+
+                <CapasGrid
+                  covers={filteredManual}
+                  ghostPendingCount={0}
+                  loading={isLoading}
+                  onDownload={handleDownload}
+                  onUseInBeat={handleUseInBeat}
+                  onDiscard={handleDiscard}
+                  onExpand={handleOpenExpanded}
+                  selectionMode={selectionMode}
+                  selectedIds={selectedIds}
+                  onToggleSelect={handleToggleSelect}
+                />
+              </>
+            )}
+          </section>
+        )}
       </div>
     )
   }
@@ -693,6 +830,16 @@ export default function CapasPage() {
         onUseInBeat={handleUseInBeat}
         onDiscard={handleDiscard}
         onRate={handleRate}
+      />
+
+      <ManualUploadModal
+        open={manualUploadOpen}
+        limit={manualLimit}
+        onClose={() => setManualUploadOpen(false)}
+        onUploaded={() => {
+          setManualUploadOpen(false)
+          loadData()
+        }}
       />
 
       <ConfirmDialog
@@ -860,6 +1007,279 @@ function EmptyNoBrief({ onConfigure }: { onConfigure: () => void }) {
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// T4.35 — Sub-componentes do segmented switch e do espaco "Enviadas"
+// ─────────────────────────────────────────────────────────────────────
+
+function SpaceSwitch({
+  space,
+  onChange,
+  generatedCount,
+  manualUsed,
+  manualLimit,
+}: {
+  space: CoverSpace
+  onChange: (next: CoverSpace) => void
+  generatedCount: number
+  manualUsed: number
+  manualLimit: number
+}) {
+  return (
+    <div
+      className="rise rise-1 inline-flex w-full items-stretch overflow-hidden rounded-xl sm:w-auto"
+      role="tablist"
+      aria-label="Tipo de capa"
+      style={{
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border-subtle)',
+        padding: 4,
+      }}
+    >
+      <SpaceTab
+        active={space === 'geradas'}
+        onClick={() => onChange('geradas')}
+        label="Geradas"
+        sub="capas por IA"
+        count={generatedCount}
+      />
+      <SpaceTab
+        active={space === 'enviadas'}
+        onClick={() => onChange('enviadas')}
+        label="Enviadas"
+        sub="banco manual"
+        count={manualUsed}
+        max={manualLimit}
+      />
+    </div>
+  )
+}
+
+function SpaceTab({
+  active,
+  onClick,
+  label,
+  sub,
+  count,
+  max,
+}: {
+  active: boolean
+  onClick: () => void
+  label: string
+  sub: string
+  count: number
+  max?: number
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className="flex flex-1 flex-col items-start gap-0.5 rounded-lg px-5 py-3 text-left transition-all"
+      style={{
+        background: active ? 'rgba(199,181,255,0.08)' : 'transparent',
+        border: active
+          ? '1px solid var(--border-purple)'
+          : '1px solid transparent',
+        minWidth: 180,
+      }}
+      onMouseEnter={(e) => {
+        if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+      }}
+      onMouseLeave={(e) => {
+        if (!active) e.currentTarget.style.background = 'transparent'
+      }}
+    >
+      <div className="flex w-full items-center justify-between gap-3">
+        <span
+          className="font-display"
+          style={{
+            fontSize: 16,
+            fontWeight: 600,
+            letterSpacing: '-0.012em',
+            color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+          }}
+        >
+          {label}
+        </span>
+        <span
+          className="font-mono tabular"
+          style={{
+            fontSize: 10.5,
+            color: active ? 'var(--purple-light)' : 'var(--text-subtle)',
+            letterSpacing: '0.12em',
+          }}
+        >
+          {max !== undefined && max > 0 ? `${count}/${max}` : count}
+        </span>
+      </div>
+      <span
+        className="font-mono uppercase"
+        style={{
+          fontSize: 9.5,
+          letterSpacing: '0.20em',
+          color: active ? 'var(--text-muted)' : 'var(--text-subtle)',
+        }}
+      >
+        {sub}
+      </span>
+    </button>
+  )
+}
+
+function ManualFilterBar({
+  totalCount,
+  filteredCount,
+  usageFilter,
+  dateOrder,
+  onUsageChange,
+  onDateOrderChange,
+}: {
+  totalCount: number
+  filteredCount: number
+  usageFilter: ManualUsageFilter
+  dateOrder: ManualDateOrder
+  onUsageChange: (next: ManualUsageFilter) => void
+  onDateOrderChange: (next: ManualDateOrder) => void
+}) {
+  const showCount = filteredCount !== totalCount
+  return (
+    <div className="mb-5 flex flex-wrap items-center gap-2">
+      <FilterDropdown
+        label="Status"
+        value={usageFilter}
+        options={[
+          { value: 'all', label: 'Todas' },
+          { value: 'unused', label: 'Não usadas' },
+          { value: 'used', label: 'Já usadas' },
+        ]}
+        onChange={(v) => onUsageChange(v as ManualUsageFilter)}
+      />
+      <FilterDropdown
+        label="Data"
+        value={dateOrder}
+        options={[
+          { value: 'recent', label: 'Mais recentes' },
+          { value: 'oldest', label: 'Mais antigas' },
+        ]}
+        onChange={(v) => onDateOrderChange(v as ManualDateOrder)}
+      />
+      {showCount && (
+        <span
+          className="ml-1 font-mono tabular"
+          style={{
+            fontSize: 10.5,
+            color: 'var(--text-muted)',
+            letterSpacing: '0.12em',
+          }}
+        >
+          {filteredCount} de {totalCount}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function FilterDropdown({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: string
+  options: { value: string; label: string }[]
+  onChange: (value: string) => void
+}) {
+  return (
+    <label
+      className="inline-flex items-center gap-2 rounded-md px-3 py-1.5 transition-colors"
+      style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid var(--border-subtle)',
+      }}
+    >
+      <span
+        className="font-mono uppercase"
+        style={{
+          fontSize: 9.5,
+          letterSpacing: '0.18em',
+          color: 'var(--text-subtle)',
+        }}
+      >
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="bg-transparent outline-none"
+        style={{
+          fontSize: 12,
+          color: 'var(--text-primary)',
+          fontWeight: 500,
+        }}
+      >
+        {options.map((opt) => (
+          <option
+            key={opt.value}
+            value={opt.value}
+            style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)' }}
+          >
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function EmptyManuais({
+  limit,
+  onUpload,
+}: {
+  limit: number
+  onUpload: () => void
+}) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center gap-4 rounded-xl px-6 py-16 text-center"
+      style={{
+        background: 'var(--bg-surface)',
+        border: '1px dashed var(--border-medium)',
+      }}
+    >
+      <UploadIcon size={28} strokeWidth={1.5} style={{ color: 'var(--text-muted)' }} />
+      <div>
+        <p
+          className="font-display"
+          style={{
+            fontSize: 18,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            letterSpacing: '-0.012em',
+          }}
+        >
+          Seu banco de capas está vazio
+        </p>
+        <p
+          className="mx-auto mt-2 max-w-sm text-[13px] leading-relaxed"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          Suba suas próprias capas pra reusar em vários beats. O upload corta
+          automaticamente em quadrado.
+          {limit > 0 && (
+            <> Seu plano permite até <strong>{limit}</strong> capas no banco.</>
+          )}
+        </p>
+      </div>
+      <button type="button" onClick={onUpload} className="btn-primary">
+        <UploadIcon size={13} strokeWidth={2.2} />
+        Subir minha primeira capa
+      </button>
     </div>
   )
 }
