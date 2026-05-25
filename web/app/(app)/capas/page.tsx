@@ -506,31 +506,43 @@ export default function CapasPage() {
             num="02"
             label="Capas geradas"
             action={
-              covers.filter((c) => c.status === 'ready').length > 0 && (
+              covers.filter((c) => c.status === 'ready').length > 0 ? (
                 <button
                   type="button"
                   onClick={
                     selectionMode ? handleCancelSelection : handleEnterSelectionMode
                   }
-                  className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono uppercase transition-colors"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono uppercase transition-colors"
                   style={{
-                    fontSize: 10,
+                    fontSize: 10.5,
                     letterSpacing: '0.18em',
                     color: selectionMode
                       ? 'var(--text-primary)'
-                      : 'var(--text-secondary)',
+                      : 'var(--text-primary)',
                     border: '1px solid',
                     borderColor: selectionMode
                       ? 'var(--border-purple)'
-                      : 'var(--border-subtle)',
+                      : 'var(--border-medium, var(--border-subtle))',
                     background: selectionMode
-                      ? 'rgba(199,181,255,0.06)'
-                      : 'transparent',
+                      ? 'rgba(199,181,255,0.08)'
+                      : 'rgba(255,255,255,0.03)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!selectionMode) {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                      e.currentTarget.style.borderColor = 'var(--border-purple)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!selectionMode) {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                      e.currentTarget.style.borderColor = 'var(--border-medium, var(--border-subtle))'
+                    }
                   }}
                 >
                   {selectionMode ? 'Cancelar' : 'Selecionar'}
                 </button>
-              )
+              ) : null
             }
           />
           <CapasGrid
