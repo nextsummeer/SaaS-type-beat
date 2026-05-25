@@ -23,6 +23,10 @@ ARTIST_UNIVERSE: dict[str, dict] = {
     # DRAKE -- Trap/Toronto/OVO
     # ========================================================================
     "drake": {
+        "hair_directives": (
+            "Short black natural hair, low fade, occasional cornrows or "
+            "braids tied back. Conservative grooming, expensive cuts."
+        ),
         "thematic_sentence": (
             "Mid-2010s Toronto OVO documentary energy meets candid private "
             "moment with a cold edge."
@@ -83,6 +87,11 @@ ARTIST_UNIVERSE: dict[str, dict] = {
     # THE WEEKND -- R&B/After-hours/Red lighting
     # ========================================================================
     "the weeknd": {
+        "hair_directives": (
+            "Long dark hair partially covering face -- natural waves or "
+            "straightened, often falling forward to obscure one eye. "
+            "Disheveled, end-of-night quality, never freshly done."
+        ),
         "thematic_sentence": (
             "Late-night R&B after-hours aesthetic, hotel suite intimacy "
             "bathed in red light, caught on tape when nobody was paying "
@@ -138,6 +147,15 @@ ARTIST_UNIVERSE: dict[str, dict] = {
     # FAKEMINK -- Underground/Indie sleaze/Bedroom
     # ========================================================================
     "fakemink": {
+        "hair_directives": (
+            "Bleached or peroxide platinum blonde hair is the DEFAULT for "
+            "this universe (indie sleaze revival aesthetic) -- long, messy, "
+            "chaotic, falling across the eyes, often with grown-out dark "
+            "roots showing. Use blonde in roughly 70% of generations. "
+            "Occasionally jet black with chunky bangs, OR dyed pink/lavender/"
+            "platinum-silver, but bleached blonde dominates the look. "
+            "NEVER default to natural dark hair for this artist."
+        ),
         "thematic_sentence": (
             "Late-2020s underground internet rap aesthetic meets indie sleaze "
             "revival, terminally online bedroom culture caught on film."
@@ -199,6 +217,14 @@ ARTIST_UNIVERSE: dict[str, dict] = {
     # NETTSPEND -- Underground/Digicore/Function
     # ========================================================================
     "nettspend": {
+        "hair_directives": (
+            "Hair varies WILDLY across the crew -- explicit mix of platinum "
+            "bleach, peroxide blonde, dyed pink, dyed lavender, jet black "
+            "with chunky bangs, natural brown, dark with bleached front "
+            "streaks. Each person different hair color. In a crew of 5-7, "
+            "at least 1-2 figures have bleached/platinum hair. NEVER all "
+            "the same hair color, NEVER all dark hair."
+        ),
         "thematic_sentence": (
             "Mid-2020s underground internet rap aesthetic, digicore meets DIY "
             "function, terminally online crew in a room together."
@@ -262,6 +288,11 @@ ARTIST_UNIVERSE: dict[str, dict] = {
     # TRAVIS SCOTT -- Cactus Jack/Desert-noir/Anti-hero
     # ========================================================================
     "travis scott": {
+        "hair_directives": (
+            "Short braided hair tied back OR shaved sides with longer top "
+            "OR loose curly natural hair caught by slight breeze. Always "
+            "natural texture, never bleached, never straightened."
+        ),
         "thematic_sentence": (
             "Cactus Jack desert-noir aesthetic, psychedelic trap meets "
             "western anti-hero mythology, larger-than-life solitary energy "
@@ -328,6 +359,7 @@ ARTIST_UNIVERSE: dict[str, dict] = {
 # ============================================================================
 
 GENERIC_FALLBACK: dict = {
+    "hair_directives": None,  # builder deixa Claude inferir do brief/genero
     "thematic_sentence": None,  # builder usa do genre_dna
     "masterphrase": (
         "The image feels less like a photograph and more like a candid clip "

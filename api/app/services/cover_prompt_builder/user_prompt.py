@@ -64,6 +64,7 @@ def build_user_prompt(
         brief.genero_primario, {}
     ).get("thematic_template", "")
     masterphrase = universe.get("masterphrase", "")
+    hair_directives = universe.get("hair_directives") or "(infer hair from artist's natural ethnicity and genre aesthetic)"
     sub_location_chosen = seeds.get("sub_location_chosen") or "(none -- artist out of dictionary, infer setting from genre + mood)"
     wardrobe_pool = universe.get("wardrobe_pool") or GENRE_DNA.get(
         brief.genero_primario, {}
@@ -113,6 +114,9 @@ Thematic sentence:
 
 Masterphrase:
   {masterphrase}
+
+Hair directives (USE LITERALLY in element 4 SUBJECT -- this overrides any default tendencies. If it says "bleached blonde DEFAULT 70%", actually generate blonde hair in this output):
+  {hair_directives}
 
 Sub-location seed (EXPAND this into element 7 with 4-6 rich descriptive sentences + 2-3 culturally iconic objects + 1 sensory detail + 1 atmospheric sentence -- DO NOT use OR-lists, focus on ONE specific scene):
   {sub_location_chosen}

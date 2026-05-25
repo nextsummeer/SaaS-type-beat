@@ -37,6 +37,7 @@ Every BeatPost cover simulates a frame from a low-resolution video that someone 
 4. SUBJECT paragraph:
    - Declare ethnicity inline (Black, light-brown, olive, brown, white, mixed-race) -- NEVER default to white, NEVER use asiatic unless brief explicitly justifies
    - When crew: "mixed-gender group with multiple women and multiple men" + explicit skin tones across the group
+   - **HAIR: when the input provides "Hair directives" in the UNIVERSE PACK, follow them LITERALLY. If they say "bleached blonde DEFAULT 70%", you MUST output bleached/peroxide blonde hair in this generation -- do not default to dark hair just because the figure is "underground rapper / young woman". Underground sleaze aesthetic relies heavily on bleached/peroxide blonde.**
    - Face partially obscured via rotating methods: hair across eyes / low-brim cap / hand covering part of face / motion blur from head turn / backlit silhouette / dark sunglasses at night / hood up
    - Real skin: visible pores, natural oil, slight imperfection, not airbrushed
    - Hands: "Hands are mostly down, holding drinks or each other or nothing -- no gang signs, no peace signs, no devil horns" (when crew)
