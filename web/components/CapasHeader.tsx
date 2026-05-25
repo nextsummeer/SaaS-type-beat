@@ -62,22 +62,9 @@ export function CapasHeader({
     <div className="space-y-7">
       {/* Linha 1: BriefSelector (esquerda) + créditos (direita) */}
       <div className="flex flex-col gap-7 md:flex-row md:items-start md:justify-between">
-        {/* BriefSelector */}
+        {/* BriefSelector — card editorial auto-explicativo, eyebrow interno
+            ("/ Brief em uso") substituiu o label externo que ficava apagado. */}
         <div className="min-w-0 flex-1">
-          <div className="mb-3 flex items-center gap-2.5">
-            <span
-              className="font-mono uppercase"
-              style={{
-                fontSize: 10,
-                fontWeight: 500,
-                letterSpacing: '0.22em',
-                color: 'var(--text-subtle)',
-              }}
-            >
-              Brief ativo
-            </span>
-          </div>
-
           <BriefSelector
             presets={presets}
             activeId={activeBriefId}
