@@ -63,6 +63,12 @@ export default function CapasPage() {
   /** Capa pendente de confirmacao de delete (modal ConfirmDialog) */
   const [confirmDiscard, setConfirmDiscard] = useState<CoverLibraryItem | null>(null)
   const [discardLoading, setDiscardLoading] = useState(false)
+  /** Modo de selecao multipla: cards viram checkbox-clicaveis e toolbar
+   * footer aparece com acao "Apagar selecionadas". */
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false)
   /**
    * Skeletons "fantasma" que aparecem instantaneamente ao clicar Gerar,
    * antes do INSERT pending real chegar via Realtime. Some assim que o
@@ -366,6 +372,54 @@ export default function CapasPage() {
   }, [confirmDiscard, supabase, loadData])
 
   // ─────────────────────────────────────────────────────────────────
+  // SELECAO MULTIPLA / BULK DELETE
+  // ─────────────────────────────────────────────────────────────────
+  const handleEnterSelectionMode = useCallback(() => {
+    setSelectionMode(true)
+    setSelectedIds(new Set())
+  }, [])
+
+  const handleCancelSelection = useCallback(() => {
+    setSelectionMode(false)
+    setSelectedIds(new Set())
+  }, [])
+
+  const handleToggleSelect = useCallback((cover: CoverLibraryItem) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(cover.id)) next.delete(cover.id)
+      else next.add(cover.id)
+      return next
+    })
+  }, [])
+
+  const handleBulkDeleteConfirm = useCallback(async () => {
+    if (selectedIds.size === 0) return
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) {
+      setConfirmBulkDelete(false)
+      return
+    }
+    setBulkDeleteLoading(true)
+    try {
+      // Deletes em paralelo. Se uma falhar, as outras continuam.
+      await Promise.allSettled(
+        Array.from(selectedIds).map((id) => deleteCover(token, id)),
+      )
+      await loadData()
+      setSelectionMode(false)
+      setSelectedIds(new Set())
+      setConfirmBulkDelete(false)
+    } catch (err) {
+      console.error('Falha em bulk delete:', err)
+      setConfirmBulkDelete(false)
+    } finally {
+      setBulkDeleteLoading(false)
+    }
+  }, [selectedIds, supabase, loadData])
+
+  // ─────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────
   const isLoading = state.kind === 'loading'
@@ -395,7 +449,37 @@ export default function CapasPage() {
         </header>
 
         <section className="rise rise-2">
-          <SectionLabel num="02" label="Capas geradas" />
+          <SectionLabel
+            num="02"
+            label="Capas geradas"
+            action={
+              covers.filter((c) => c.status === 'ready').length > 0 && (
+                <button
+                  type="button"
+                  onClick={
+                    selectionMode ? handleCancelSelection : handleEnterSelectionMode
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono uppercase transition-colors"
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: '0.18em',
+                    color: selectionMode
+                      ? 'var(--text-primary)'
+                      : 'var(--text-secondary)',
+                    border: '1px solid',
+                    borderColor: selectionMode
+                      ? 'var(--border-purple)'
+                      : 'var(--border-subtle)',
+                    background: selectionMode
+                      ? 'rgba(199,181,255,0.06)'
+                      : 'transparent',
+                  }}
+                >
+                  {selectionMode ? 'Cancelar' : 'Selecionar'}
+                </button>
+              )
+            }
+          />
           <CapasGrid
             covers={covers}
             ghostPendingCount={Math.max(
@@ -406,6 +490,9 @@ export default function CapasPage() {
             onDownload={handleDownload}
             onUseInBeat={handleUseInBeat}
             onDiscard={handleDiscard}
+            selectionMode={selectionMode}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
           />
         </section>
       </div>
@@ -462,6 +549,67 @@ export default function CapasPage() {
         onCancel={() => !discardLoading && setConfirmDiscard(null)}
         onConfirm={confirmDiscardAction}
       />
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title={`Apagar ${selectedIds.size} ${selectedIds.size === 1 ? 'capa' : 'capas'}?`}
+        description="As capas selecionadas serão removidas da biblioteca e os arquivos apagados. Essa ação não pode ser desfeita."
+        confirmLabel={`Apagar ${selectedIds.size}`}
+        cancelLabel="Cancelar"
+        danger
+        loading={bulkDeleteLoading}
+        onCancel={() => !bulkDeleteLoading && setConfirmBulkDelete(false)}
+        onConfirm={handleBulkDeleteConfirm}
+      />
+
+      {/* Toolbar floating do modo selecao -- aparece quando ha capas selecionadas */}
+      {selectionMode && selectedIds.size > 0 && (
+        <div
+          className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl px-4 py-3 rise"
+          style={{
+            background: 'rgba(15,15,17,0.95)',
+            backdropFilter: 'blur(14px)',
+            border: '1px solid var(--border-purple)',
+            boxShadow: '0 12px 40px rgba(65,0,255,0.20), 0 4px 16px rgba(0,0,0,0.4)',
+          }}
+        >
+          <span
+            className="font-mono uppercase"
+            style={{
+              fontSize: 10.5,
+              letterSpacing: '0.22em',
+              color: 'var(--text-secondary)',
+            }}
+          >
+            {selectedIds.size} {selectedIds.size === 1 ? 'selecionada' : 'selecionadas'}
+          </span>
+          <span aria-hidden style={{ width: 1, height: 16, background: 'var(--border-subtle)' }} />
+          <button
+            type="button"
+            onClick={() => setConfirmBulkDelete(true)}
+            className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors"
+            style={{
+              color: 'var(--led-error)',
+              background: 'rgba(248,113,113,0.10)',
+              border: '1px solid rgba(248,113,113,0.30)',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(248,113,113,0.18)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(248,113,113,0.10)')}
+          >
+            Apagar {selectedIds.size}
+          </button>
+          <button
+            type="button"
+            onClick={handleCancelSelection}
+            className="rounded-md px-2 py-1.5 text-[12px] transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
     </>
   )
 }
@@ -470,7 +618,15 @@ export default function CapasPage() {
 // Sub-componentes locais
 // ─────────────────────────────────────────────────────────────────────
 
-function SectionLabel({ num, label }: { num: string; label: string }) {
+function SectionLabel({
+  num,
+  label,
+  action,
+}: {
+  num: string
+  label: string
+  action?: React.ReactNode
+}) {
   return (
     <div className="mb-5 flex items-center gap-4">
       <span
@@ -495,6 +651,7 @@ function SectionLabel({ num, label }: { num: string; label: string }) {
         {label}
       </span>
       <span aria-hidden className="flex-1 hairline" />
+      {action}
     </div>
   )
 }

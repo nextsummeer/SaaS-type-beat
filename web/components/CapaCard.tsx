@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
-import { Sparkles, MoreHorizontal, Download, Music, Trash2, Image as ImageIcon, AlertCircle } from 'lucide-react'
+import { Sparkles, MoreHorizontal, Download, Music, Trash2, Image as ImageIcon, AlertCircle, Check } from 'lucide-react'
 import type { CoverLibraryItem } from '@/lib/api'
 
 type Props = {
@@ -11,6 +11,10 @@ type Props = {
   onDownload: (cover: CoverLibraryItem) => void
   onUseInBeat: (cover: CoverLibraryItem) => void
   onDiscard: (cover: CoverLibraryItem) => void
+  /** Modo selecao multipla: cards viram checkbox-clicaveis. */
+  selectionMode?: boolean
+  selected?: boolean
+  onToggleSelect?: (cover: CoverLibraryItem) => void
 }
 
 /**
@@ -49,7 +53,73 @@ function PendingCard({ index }: { index: number }) {
           background: 'radial-gradient(circle at 50% 50%, rgba(65,0,255,0.18), transparent 60%)',
         }}
       />
-      {/* Label "Gerando" destacada (igual ao GhostPendingCard) */}
+
+      {/* Mini orb central -- versao escalada do orb principal de /beats/[id]
+       * pra reforcar identidade visual da plataforma durante a geracao */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative h-[44%] w-[44%] flex items-center justify-center">
+          {/* Halo externo roxo */}
+          <div
+            aria-hidden
+            className="absolute inset-0 animate-pulse-slow"
+            style={{
+              background: 'radial-gradient(circle, rgba(65,0,255,0.55), transparent 62%)',
+              filter: 'blur(10px)',
+            }}
+          />
+          {/* Halo magenta deslocado */}
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              background: 'radial-gradient(circle at 68% 38%, rgba(255,26,190,0.45), transparent 58%)',
+              filter: 'blur(14px)',
+              animation: 'pulse-slow 3.4s ease-in-out infinite',
+              animationDelay: '-1.2s',
+            }}
+          />
+          {/* Anel orbital externo */}
+          <span
+            aria-hidden
+            className="absolute"
+            style={{
+              width: '92%',
+              height: '92%',
+              borderRadius: '50%',
+              border: '1px dashed rgba(199, 181, 255, 0.28)',
+              animation: 'rotate-slow 14s linear infinite',
+            }}
+          />
+          {/* Orb principal pequeno */}
+          <div
+            className="relative h-[58%] w-[58%] animate-orb-morph"
+            style={{
+              background:
+                'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.55) 0%, transparent 28%), linear-gradient(135deg, #4100FF 0%, #FF1ABE 100%)',
+              boxShadow:
+                '0 0 24px rgba(65,0,255,0.55), 0 0 40px rgba(255,26,190,0.32), inset 0 0 14px rgba(255,255,255,0.20), inset -8px -12px 22px rgba(0,0,0,0.34)',
+              borderRadius: '50%',
+            }}
+          >
+            {/* Reflexo branco */}
+            <span
+              aria-hidden
+              className="absolute"
+              style={{
+                top: '18%',
+                left: '22%',
+                width: '24%',
+                height: '24%',
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.75)',
+                filter: 'blur(4px)',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Label "Gerando" destacada (canto superior esquerdo) */}
       <div
         className="absolute left-2.5 top-2.5 z-10 inline-flex items-center gap-1.5 rounded-sm px-1.5 py-1"
         style={{
@@ -150,10 +220,23 @@ function FailedCard({
 // ─────────────────────────────────────────────────────────────────────
 // READY — card normal (lógica original)
 // ─────────────────────────────────────────────────────────────────────
-function ReadyCard({ cover, index, onDownload, onUseInBeat, onDiscard }: Props) {
+function ReadyCard({
+  cover,
+  index,
+  onDownload,
+  onUseInBeat,
+  onDiscard,
+  selectionMode = false,
+  selected = false,
+  onToggleSelect,
+}: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const handleCardClick = () => {
+    if (selectionMode && onToggleSelect) onToggleSelect(cover)
+  }
 
   useEffect(() => {
     if (!menuOpen) return
@@ -172,13 +255,50 @@ function ReadyCard({ cover, index, onDownload, onUseInBeat, onDiscard }: Props) 
 
   return (
     <article
-      className="group relative overflow-hidden rounded-lg"
+      className="group relative overflow-hidden rounded-lg transition-all"
+      onClick={selectionMode ? handleCardClick : undefined}
       style={{
         background: 'var(--bg-surface)',
-        border: '1px solid var(--border-subtle)',
+        border: selected
+          ? '1.5px solid var(--purple-light)'
+          : '1px solid var(--border-subtle)',
         aspectRatio: '1 / 1',
+        cursor: selectionMode ? 'pointer' : 'default',
+        boxShadow: selected
+          ? '0 0 0 3px rgba(199,181,255,0.20), 0 4px 16px rgba(65,0,255,0.15)'
+          : 'none',
       }}
     >
+      {/* Checkbox de selecao (so visivel em selectionMode) */}
+      {selectionMode && (
+        <div
+          className="absolute right-2.5 top-2.5 z-20 flex h-6 w-6 items-center justify-center rounded-md transition-all"
+          style={{
+            background: selected
+              ? 'var(--purple-light)'
+              : 'rgba(0,0,0,0.55)',
+            backdropFilter: 'blur(6px)',
+            border: '1.5px solid',
+            borderColor: selected
+              ? 'var(--purple-light)'
+              : 'rgba(255,255,255,0.35)',
+          }}
+        >
+          {selected && (
+            <Check size={14} strokeWidth={3} style={{ color: '#0A0A0C' }} />
+          )}
+        </div>
+      )}
+
+      {/* Overlay sutil quando selecionado (escurece levemente) */}
+      {selectionMode && selected && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-10"
+          style={{ background: 'rgba(65,0,255,0.08)' }}
+        />
+      )}
+
       {cover.image_url && (
         <Image
           src={cover.image_url}
@@ -276,10 +396,15 @@ function ReadyCard({ cover, index, onDownload, onUseInBeat, onDiscard }: Props) 
         }}
       />
 
+      {/* Menu "..." escondido em selectionMode pra nao poluir visualmente */}
       <div
         ref={menuRef}
         className={`absolute bottom-2 right-2 z-20 transition-opacity duration-200 ${
-          menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          selectionMode
+            ? 'pointer-events-none opacity-0'
+            : menuOpen
+              ? 'opacity-100'
+              : 'opacity-0 group-hover:opacity-100'
         }`}
       >
         <button

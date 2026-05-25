@@ -12,6 +12,10 @@ type Props = {
   onDownload: (cover: CoverLibraryItem) => void
   onUseInBeat: (cover: CoverLibraryItem) => void
   onDiscard: (cover: CoverLibraryItem) => void
+  /** Modo selecao multipla: cards viram checkbox-clicaveis. */
+  selectionMode?: boolean
+  selectedIds?: Set<string>
+  onToggleSelect?: (cover: CoverLibraryItem) => void
 }
 
 /**
@@ -27,6 +31,9 @@ export function CapasGrid({
   onDownload,
   onUseInBeat,
   onDiscard,
+  selectionMode = false,
+  selectedIds,
+  onToggleSelect,
 }: Props) {
   // Estado inicial: loading (sem dados ainda)
   if (loading && covers.length === 0 && ghostPendingCount === 0) {
@@ -63,6 +70,9 @@ export function CapasGrid({
             onDownload={onDownload}
             onUseInBeat={onUseInBeat}
             onDiscard={onDiscard}
+            selectionMode={selectionMode}
+            selected={selectedIds?.has(cover.id) ?? false}
+            onToggleSelect={onToggleSelect}
           />
         </div>
       ))}
@@ -91,6 +101,66 @@ function GhostPendingCard({ index }: { index: number }) {
           background: 'radial-gradient(circle at 50% 50%, rgba(65,0,255,0.18), transparent 60%)',
         }}
       />
+
+      {/* Mini orb central -- mesma versao escalada do PendingCard real */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative h-[44%] w-[44%] flex items-center justify-center">
+          <div
+            aria-hidden
+            className="absolute inset-0 animate-pulse-slow"
+            style={{
+              background: 'radial-gradient(circle, rgba(65,0,255,0.55), transparent 62%)',
+              filter: 'blur(10px)',
+            }}
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              background: 'radial-gradient(circle at 68% 38%, rgba(255,26,190,0.45), transparent 58%)',
+              filter: 'blur(14px)',
+              animation: 'pulse-slow 3.4s ease-in-out infinite',
+              animationDelay: '-1.2s',
+            }}
+          />
+          <span
+            aria-hidden
+            className="absolute"
+            style={{
+              width: '92%',
+              height: '92%',
+              borderRadius: '50%',
+              border: '1px dashed rgba(199, 181, 255, 0.28)',
+              animation: 'rotate-slow 14s linear infinite',
+            }}
+          />
+          <div
+            className="relative h-[58%] w-[58%] animate-orb-morph"
+            style={{
+              background:
+                'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.55) 0%, transparent 28%), linear-gradient(135deg, #4100FF 0%, #FF1ABE 100%)',
+              boxShadow:
+                '0 0 24px rgba(65,0,255,0.55), 0 0 40px rgba(255,26,190,0.32), inset 0 0 14px rgba(255,255,255,0.20), inset -8px -12px 22px rgba(0,0,0,0.34)',
+              borderRadius: '50%',
+            }}
+          >
+            <span
+              aria-hidden
+              className="absolute"
+              style={{
+                top: '18%',
+                left: '22%',
+                width: '24%',
+                height: '24%',
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.75)',
+                filter: 'blur(4px)',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Label "Gerando" mais visivel */}
       <div
         className="absolute left-2.5 top-2.5 z-10 inline-flex items-center gap-1.5 rounded-sm px-1.5 py-1"
