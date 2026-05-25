@@ -73,6 +73,10 @@ function ConfiguracoesContent() {
   const [instagram, setInstagram] = useState('')
   const [emailContato, setEmailContato] = useState('')
   const [titleStyle, setTitleStyle] = useState<TitleStyle>('default')
+  const [titleStyleSalvo, setTitleStyleSalvo] = useState<TitleStyle>('default')
+  const [savingStyle, setSavingStyle] = useState(false)
+  const [styleSavedOk, setStyleSavedOk] = useState(false)
+  const [styleError, setStyleError] = useState<string | null>(null)
   const [loadingPerfil, setLoadingPerfil] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savedOk, setSavedOk] = useState(false)
@@ -116,7 +120,9 @@ function ConfiguracoesContent() {
           setNome(data.nome ?? '')
           setInstagram(sanitizeInstagramHandle(data.instagram ?? ''))
           setEmailContato(data.email_contato ?? '')
-          setTitleStyle((data.title_style as TitleStyle) ?? 'default')
+          const styleFromDb = (data.title_style as TitleStyle) ?? 'default'
+          setTitleStyle(styleFromDb)
+          setTitleStyleSalvo(styleFromDb)
         }
       } catch (e) {
         if (!cancelado) setPerfilError(e instanceof Error ? e.message : 'Erro ao carregar perfil')
@@ -155,7 +161,6 @@ function ConfiguracoesContent() {
             nome: nome.trim() || null,
             instagram: sanitizeInstagramHandle(instagram) || null,
             email_contato: emailContato.trim() || null,
-            title_style: titleStyle,
           },
           { onConflict: 'user_id' },
         )
@@ -167,6 +172,33 @@ function ConfiguracoesContent() {
       setPerfilError(e instanceof Error ? e.message : 'Erro ao salvar')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleSaveTitleStyle() {
+    setSavingStyle(true)
+    setStyleError(null)
+    setStyleSavedOk(false)
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Sessão expirada')
+
+      const { error: upsertError } = await supabase
+        .from('user_profiles')
+        .upsert(
+          { user_id: user.id, title_style: titleStyle },
+          { onConflict: 'user_id' },
+        )
+
+      if (upsertError) throw new Error(upsertError.message)
+      setTitleStyleSalvo(titleStyle)
+      setStyleSavedOk(true)
+      setTimeout(() => setStyleSavedOk(false), 2500)
+    } catch (e) {
+      setStyleError(e instanceof Error ? e.message : 'Erro ao salvar')
+    } finally {
+      setSavingStyle(false)
     }
   }
 
@@ -391,6 +423,38 @@ function ConfiguracoesContent() {
           <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>
             A descrição do vídeo mantém o formato padrão (com BPM, tom, contato) — só o título muda.
           </p>
+
+          {styleError && (
+            <div className="rounded-lg border px-4 py-3 text-sm" style={{ borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.05)', color: '#f87171' }}>
+              {styleError}
+            </div>
+          )}
+
+          {!loadingPerfil && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSaveTitleStyle}
+                disabled={savingStyle || titleStyle === titleStyleSalvo}
+                className="flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-40"
+                style={{ background: styleSavedOk ? '#16a34a' : 'var(--accent)' }}
+              >
+                {styleSavedOk ? (
+                  <><CheckCircle2 className="h-4 w-4" />Salvo!</>
+                ) : savingStyle ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" />Salvando...</>
+                ) : (
+                  <><Save className="h-4 w-4" />Salvar escolha</>
+                )}
+              </button>
+
+              {titleStyle !== titleStyleSalvo && !styleSavedOk && (
+                <span className="text-xs" style={{ color: 'var(--text-subtle)' }}>
+                  Alteração não salva
+                </span>
+              )}
+            </div>
+          )}
         </section>
 
         {/* Seção Canal YouTube */}
