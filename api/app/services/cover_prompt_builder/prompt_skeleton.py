@@ -108,15 +108,17 @@ MOOD_CLOSERS: dict[str, str] = {
 # ============================================================================
 
 BANNED_WORDS: list[str] = [
-    "music video",
+    # REMOVIDAS em 2026-05-25 por aparecerem nos prompts validados em
+    # contexto LEGITIMO (referencias culturais), causando falsos positivos:
+    # - "music video": Drake/Travis usam ("low-budget music video", "Toronto-shot music videos")
+    # - "cinematic": Lil Baby usa ("code-of-the-streets cinematic")
+    # - "behind-the-scenes": Drake usa ("leaked behind-the-scenes clips")
     "b-roll",
-    "cinematic",
     "film still",
     "scene from",
     "movie ending",
     "director",
     "bts",
-    "behind-the-scenes",
     "frame from a movie",
 ]
 
