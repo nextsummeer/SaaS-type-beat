@@ -59,9 +59,10 @@ def generate_beat(beat_id: str):
         user_id = beat["user_id"]
 
         # Busca perfil do produtor — sem .maybe_single() (bug do postgrest-py com 204 No Content)
-        profile_result = client.table("user_profiles").select("nome, instagram, email_contato").eq("user_id", user_id).execute()
+        profile_result = client.table("user_profiles").select("nome, instagram, email_contato, title_style").eq("user_id", user_id).execute()
         profile = profile_result.data[0] if profile_result.data else {}
         producer_email = profile.get("email_contato")
+        title_style = profile.get("title_style") or "default"
 
         # 1+2. Spotify (usa só o primeiro — top_tracks combinados confundem o BEAT_NAME)
         #      + Gemini (usa nome composto — Google entende "A x B type beat")
@@ -93,6 +94,7 @@ def generate_beat(beat_id: str):
             store_link=beat.get("store_link"),
             user_id=user_id,
             beat_id=beat_id,
+            title_style=title_style,
         )
 
         # 4. Insere 1 post (variacao='A')

@@ -6,6 +6,7 @@ import {
   Loader2,
   Save,
   CheckCircle2,
+  Check,
   Tv2,
   AlertCircle,
   LinkIcon,
@@ -13,6 +14,8 @@ import {
   Calendar,
   BarChart3,
 } from 'lucide-react'
+
+type TitleStyle = 'default' | 'lowercase'
 import { createClient } from '@/lib/supabase/client'
 import {
   fetchYoutubeAccount,
@@ -69,6 +72,7 @@ function ConfiguracoesContent() {
   const [nome, setNome] = useState('')
   const [instagram, setInstagram] = useState('')
   const [emailContato, setEmailContato] = useState('')
+  const [titleStyle, setTitleStyle] = useState<TitleStyle>('default')
   const [loadingPerfil, setLoadingPerfil] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savedOk, setSavedOk] = useState(false)
@@ -104,7 +108,7 @@ function ConfiguracoesContent() {
       try {
         const { data } = await supabase
           .from('user_profiles')
-          .select('nome, instagram, email_contato')
+          .select('nome, instagram, email_contato, title_style')
           .eq('user_id', session.user.id)
           .maybeSingle()
 
@@ -112,6 +116,7 @@ function ConfiguracoesContent() {
           setNome(data.nome ?? '')
           setInstagram(sanitizeInstagramHandle(data.instagram ?? ''))
           setEmailContato(data.email_contato ?? '')
+          setTitleStyle((data.title_style as TitleStyle) ?? 'default')
         }
       } catch (e) {
         if (!cancelado) setPerfilError(e instanceof Error ? e.message : 'Erro ao carregar perfil')
@@ -145,7 +150,13 @@ function ConfiguracoesContent() {
       const { error: upsertError } = await supabase
         .from('user_profiles')
         .upsert(
-          { user_id: user.id, nome: nome.trim() || null, instagram: sanitizeInstagramHandle(instagram) || null, email_contato: emailContato.trim() || null },
+          {
+            user_id: user.id,
+            nome: nome.trim() || null,
+            instagram: sanitizeInstagramHandle(instagram) || null,
+            email_contato: emailContato.trim() || null,
+            title_style: titleStyle,
+          },
           { onConflict: 'user_id' },
         )
 
@@ -296,6 +307,90 @@ function ConfiguracoesContent() {
               </button>
             </form>
           )}
+        </section>
+
+        {/* Seção Estilo dos títulos */}
+        <section
+          className="rounded-xl border p-6 space-y-5"
+          style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+        >
+          <div className="pb-1" style={{ borderBottom: '1px solid var(--border-muted)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>
+              Estilo dos títulos
+            </p>
+            <p className="mt-0.5 text-sm" style={{ color: 'var(--text-muted)' }}>
+              A IA vai gerar os títulos dos seus beats neste formato. Você pode trocar a qualquer momento.
+            </p>
+          </div>
+
+          {loadingPerfil ? (
+            <div className="flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm">Carregando preferência...</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {([
+                { value: 'default' as TitleStyle, label: 'Opção 1', exemplo: '[FREE] Slayr x Nettspend type beat "GHOST LOAD"' },
+                { value: 'lowercase' as TitleStyle, label: 'Opção 2', exemplo: '[free] untiljapan + nosaint type beat - "eye to eye"' },
+              ]).map(({ value, label, exemplo }) => {
+                const selecionado = titleStyle === value
+                return (
+                  <label
+                    key={value}
+                    className="group relative flex cursor-pointer flex-col gap-3 rounded-xl border p-4 transition hover:border-white/20"
+                    style={{
+                      background: 'var(--bg-elevated)',
+                      borderColor: selecionado ? 'var(--accent)' : 'var(--border)',
+                      boxShadow: selecionado ? '0 0 0 1px var(--accent)' : 'none',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="title-style"
+                      value={value}
+                      checked={selecionado}
+                      onChange={() => setTitleStyle(value)}
+                      className="sr-only"
+                    />
+
+                    <div className="flex items-center justify-between">
+                      <span
+                        className="text-[11px] font-semibold uppercase tracking-widest"
+                        style={{ color: selecionado ? 'var(--text-primary)' : 'var(--text-subtle)' }}
+                      >
+                        {label}
+                      </span>
+                      <span
+                        className="flex h-5 w-5 items-center justify-center rounded-full border transition"
+                        style={{
+                          borderColor: selecionado ? 'var(--accent)' : 'var(--border)',
+                          background: selecionado ? 'var(--accent)' : 'transparent',
+                        }}
+                      >
+                        {selecionado && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                      </span>
+                    </div>
+
+                    <div
+                      className="rounded-md border px-3 py-2.5 font-mono text-[11px] leading-relaxed break-words"
+                      style={{
+                        background: 'var(--bg-base)',
+                        borderColor: 'var(--border-muted)',
+                        color: selecionado ? 'var(--text-primary)' : 'var(--text-muted)',
+                      }}
+                    >
+                      {exemplo}
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+          )}
+
+          <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>
+            A descrição do vídeo mantém o formato padrão (com BPM, tom, contato) — só o título muda.
+          </p>
         </section>
 
         {/* Seção Canal YouTube */}

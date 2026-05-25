@@ -11,6 +11,34 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 MODEL = "claude-sonnet-4-6"
 
 
+def _apply_title_style(titulo: str, style: str) -> str:
+    """
+    Forca o formato do titulo de acordo com a preferencia do produtor,
+    mesmo se o Claude tiver errado uma das regras.
+
+    'default'   -> passa direto, sem modificacao.
+    'lowercase' -> [free] a + b type beat - "beat name"
+                   (caixa baixa, ' + ' entre artistas, ' - ' antes das aspas).
+    """
+    if style != "lowercase":
+        return titulo
+
+    titulo = titulo.lower()
+
+    # Quebra na primeira aspas pra processar so a parte ANTES (nome do beat
+    # fica intacto, so vira lowercase pelo .lower() acima).
+    if '"' in titulo:
+        idx = titulo.index('"')
+        antes = titulo[:idx].rstrip()
+        depois = titulo[idx:]
+        antes = antes.replace(" x ", " + ")
+        if not antes.endswith("-"):
+            antes = antes + " -"
+        return antes + " " + depois
+
+    return titulo.replace(" x ", " + ")
+
+
 def generate_metadata(
     artistas: list[str],
     bpm: int | None,
@@ -23,6 +51,7 @@ def generate_metadata(
     store_link: str | None = None,
     user_id: str | None = None,
     beat_id: str | None = None,
+    title_style: str = "default",
 ) -> dict:
     """
     Usa Claude para gerar:
@@ -74,6 +103,29 @@ def generate_metadata(
         if eh_colab else ""
     )
 
+    # Camada 1 do estilo do titulo: instrucao explicita pro Claude.
+    # Camada 2 (defensiva): _apply_title_style abaixo, garante o formato
+    # mesmo se o Claude ignorar a instrucao.
+    if title_style == "lowercase":
+        artista_nome_titulo = artista_nome.lower().replace(" x ", " + ")
+        titulo_instrucao = (
+            f'Monte o título do vídeo neste formato EXATO (estilo lowercase, estética gen z):\n'
+            f'   [free] {artista_nome_titulo} type beat - "beat_name"\n'
+            f'   (substitua beat_name pelo nome que você criou, EM MINÚSCULAS)\n'
+            f'   REGRAS OBRIGATÓRIAS:\n'
+            f'   - "[free]" tudo em minúsculas, nunca "[FREE]"\n'
+            f'   - " + " entre artistas (espaço-mais-espaço), nunca " x "\n'
+            f'   - " - " (espaço-traço-espaço) ANTES das aspas do nome do beat\n'
+            f'   - Nome do beat DENTRO das aspas em minúsculas: "ghost load", não "GHOST LOAD"\n'
+            f'   - TUDO no título em minúsculas, sem exceção'
+        )
+    else:
+        titulo_instrucao = (
+            f'Monte o título do vídeo neste formato exato:\n'
+            f'   [FREE] {artista_nome} type beat "BEAT_NAME"\n'
+            f'   (substitua BEAT_NAME pelo nome que você criou)'
+        )
+
     prompt = f"""Você é um especialista em SEO para type beats no YouTube. Preciso que você gere o conteúdo completo para um vídeo de type beat.
 
 DADOS DO BEAT:
@@ -93,9 +145,7 @@ INSTRUÇÕES:
 
 1. BEAT_NAME: Crie um nome criativo e curto (1-3 palavras, MAIÚSCULAS) no estilo lexical do artista PRINCIPAL ({artista_principal}), INSPIRADO (não cópia exata) nos títulos das músicas dele. Ex para Drake: "GOD MODE", "FEELINGS", "WORTH IT". Ex para Nettspend: "COLD NIGHTS", "SPIN THE BLOCK", "OK OK".
 
-2. TITULO: Monte o título do vídeo neste formato exato:
-   [FREE] {artista_nome} type beat "BEAT_NAME"
-   (substitua BEAT_NAME pelo nome que você criou)
+2. TITULO: {titulo_instrucao}
 
 3. DESCRICAO: Monte a descrição EXATAMENTE neste template (substituindo os campos entre chaves):
 
@@ -189,8 +239,18 @@ Responda APENAS com JSON válido neste formato exato:
         if key not in data:
             raise ValueError(f"Claude não retornou campo obrigatório: {key}")
 
+    # Camada 2 (defensiva): forca o formato do titulo mesmo se Claude
+    # tiver escapado de alguma regra do prompt acima. Descricao nao muda.
+    titulo_antes = data["titulo"]
+    data["titulo"] = _apply_title_style(data["titulo"], title_style)
+    if titulo_antes != data["titulo"]:
+        logger.info(
+            "Pos-processamento ajustou titulo (style=%s): '%s' -> '%s'",
+            title_style, titulo_antes, data["titulo"],
+        )
+
     logger.info(
-        "Claude gerou beat_name='%s' com %d tags para artistas=%s",
-        data["beat_name"], len(data["tags"]), artistas_clean,
+        "Claude gerou beat_name='%s' com %d tags para artistas=%s (title_style=%s)",
+        data["beat_name"], len(data["tags"]), artistas_clean, title_style,
     )
     return data
