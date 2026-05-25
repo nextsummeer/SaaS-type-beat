@@ -14,8 +14,13 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { fetchCovers, type CoverLibraryItem } from '@/lib/api'
+import { CoverPickerExpanded } from './CoverPickerExpanded'
 
 type Tab = 'library' | 'manual'
+
+/** Quantas capas mostrar na tab Biblioteca antes do botao "Ver mais"
+ * abrir o picker expandido com filtros. */
+const LIBRARY_PREVIEW_SIZE = 10
 
 type Props = {
   /** Arquivo de capa manual selecionado (modo manual) */
@@ -64,6 +69,8 @@ export function CoverPicker({
 
   // Capa "usada" que está em modo "confirmar usar de novo"
   const [confirmReuseId, setConfirmReuseId] = useState<string | null>(null)
+  // Modal expansivel pra ver TODA a biblioteca com filtros
+  const [showExpanded, setShowExpanded] = useState(false)
 
   // Carrega a biblioteca ao montar
   useEffect(() => {
@@ -209,6 +216,7 @@ export function CoverPicker({
           disabled={disabled}
           onPick={handlePickLibraryCover}
           onCancelConfirm={() => setConfirmReuseId(null)}
+          onSeeMore={() => setShowExpanded(true)}
         />
       ) : (
         <ManualTab
@@ -247,6 +255,16 @@ export function CoverPicker({
           {aviso}
         </div>
       )}
+
+      {/* Modal expansivel com TODAS as capas + filtros (artista/status/
+        * rating/data). Aberto via botao "Ver mais" do LibraryTab. */}
+      <CoverPickerExpanded
+        open={showExpanded}
+        covers={library}
+        selectedCoverId={selectedCoverId}
+        onSelect={(cover) => handlePickLibraryCover(cover)}
+        onClose={() => setShowExpanded(false)}
+      />
     </div>
   )
 }
@@ -304,6 +322,7 @@ function LibraryTab({
   disabled,
   onPick,
   onCancelConfirm,
+  onSeeMore,
 }: {
   library: CoverLibraryItem[]
   loading: boolean
@@ -313,6 +332,7 @@ function LibraryTab({
   disabled: boolean
   onPick: (cover: CoverLibraryItem) => void
   onCancelConfirm: () => void
+  onSeeMore: () => void
 }) {
   if (loading) {
     return (
@@ -374,25 +394,75 @@ function LibraryTab({
     )
   }
 
+  // Mostra preview limitado pra nao poluir o /upload (era o gargalo --
+  // dezenas de capas pequenas viravam parede ilegivel). Quando ha mais
+  // que LIBRARY_PREVIEW_SIZE, botao "Ver mais" abre o modal expansivel
+  // com filtros (artista/status/rating/data).
+  const previewLibrary = library.slice(0, LIBRARY_PREVIEW_SIZE)
+  const hasMore = library.length > LIBRARY_PREVIEW_SIZE
+
   return (
-    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-      {library.map((cover) => {
-        const selected = selectedCoverId === cover.id
-        const used = cover.used_in_beats_count > 0
-        const confirming = confirmReuseId === cover.id
-        return (
-          <LibraryCoverThumb
-            key={cover.id}
-            cover={cover}
-            selected={selected}
-            used={used}
-            confirming={confirming}
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+        {previewLibrary.map((cover) => {
+          const selected = selectedCoverId === cover.id
+          const used = cover.used_in_beats_count > 0
+          const confirming = confirmReuseId === cover.id
+          return (
+            <LibraryCoverThumb
+              key={cover.id}
+              cover={cover}
+              selected={selected}
+              used={used}
+              confirming={confirming}
+              disabled={disabled}
+              onClick={() => onPick(cover)}
+              onCancelConfirm={onCancelConfirm}
+            />
+          )
+        })}
+      </div>
+
+      {hasMore && (
+        <div className="flex justify-center pt-1">
+          <button
+            type="button"
+            onClick={onSeeMore}
             disabled={disabled}
-            onClick={() => onPick(cover)}
-            onCancelConfirm={onCancelConfirm}
-          />
-        )
-      })}
+            className="inline-flex items-center gap-2 rounded-md px-3.5 py-2 font-mono uppercase transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              fontSize: 10.5,
+              letterSpacing: '0.20em',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-medium, var(--border-subtle))',
+              background: 'rgba(255,255,255,0.03)',
+            }}
+            onMouseEnter={(e) => {
+              if (!disabled) {
+                e.currentTarget.style.background = 'rgba(199,181,255,0.06)'
+                e.currentTarget.style.borderColor = 'var(--border-purple)'
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+              e.currentTarget.style.borderColor =
+                'var(--border-medium, var(--border-subtle))'
+            }}
+          >
+            Ver todas
+            <span
+              className="tabular"
+              style={{
+                fontSize: 10,
+                color: 'var(--text-muted)',
+                letterSpacing: '0.10em',
+              }}
+            >
+              · {library.length}
+            </span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }

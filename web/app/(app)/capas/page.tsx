@@ -23,7 +23,12 @@ import { CapasHeader } from '@/components/CapasHeader'
 import { CapasGrid } from '@/components/CapasGrid'
 import { CapasWizard } from '@/components/CapasWizard'
 import { CapaModal } from '@/components/CapaModal'
-import { CapasFullLibrary } from '@/components/CapasFullLibrary'
+import {
+  CoverFilterBar,
+  EMPTY_COVER_FILTERS,
+  applyCoverFilters,
+  type CoverFilters,
+} from '@/components/CoverFilterBar'
 import { ConfirmGenerateModal } from '@/components/ConfirmGenerateModal'
 import { ManageBriefsModal } from '@/components/ManageBriefsModal'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -79,8 +84,10 @@ export default function CapasPage() {
   /** Modal expandido aberto ao clicar numa capa (em modo normal). */
   const [expandedCover, setExpandedCover] = useState<CoverLibraryItem | null>(null)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
-  /** Modal fullscreen com biblioteca completa + filtros. */
-  const [showFullLibrary, setShowFullLibrary] = useState(false)
+  /** Filtros aplicados sobre a biblioteca (artista/status/rating/data). */
+  const [filters, setFilters] = useState<CoverFilters>(EMPTY_COVER_FILTERS)
+  /** Pagincao "Carregar mais" -- quantas capas visiveis no grid. */
+  const [visibleCount, setVisibleCount] = useState(GRID_PAGE_SIZE)
   /**
    * Skeletons "fantasma" que aparecem instantaneamente ao clicar Gerar,
    * antes do INSERT pending real chegar via Realtime. Some assim que o
@@ -89,6 +96,16 @@ export default function CapasPage() {
   const [optimisticPending, setOptimisticPending] = useState(0)
 
   const activeBrief = presets.find((p) => p.is_active) ?? null
+
+  // Capas filtradas pelos pills (artista/status/rating/data) + paginadas
+  // pelo "Carregar mais". Pending/failed NAO sao filtraveis pelo usuario
+  // -- aparecem sempre no topo (pra dar feedback de gerando/falhou).
+  const readyCovers = covers.filter((c) => c.status === 'ready')
+  const pendingFailedCovers = covers.filter((c) => c.status !== 'ready')
+  const filteredReady = applyCoverFilters(readyCovers, filters)
+  const visibleReady = filteredReady.slice(0, visibleCount)
+  const visibleCovers = [...pendingFailedCovers, ...visibleReady]
+  const hasMoreReady = visibleReady.length < filteredReady.length
 
   // ─────────────────────────────────────────────────────────────────
   // CARREGAMENTO INICIAL
@@ -552,8 +569,24 @@ export default function CapasPage() {
               ) : null
             }
           />
+          {/* Filtros inline (artista/status/rating/data) -- so aparecem
+            * quando ha >= 2 capas ready (sem 1 capa nao tem o que filtrar). */}
+          {readyCovers.length >= 2 && (
+            <div className="mb-5">
+              <CoverFilterBar
+                covers={readyCovers}
+                filters={filters}
+                onChange={(next) => {
+                  setFilters(next)
+                  // Reseta paginacao quando filtro muda
+                  setVisibleCount(GRID_PAGE_SIZE)
+                }}
+              />
+            </div>
+          )}
+
           <CapasGrid
-            covers={covers.slice(0, GRID_PAGE_SIZE)}
+            covers={visibleCovers}
             ghostPendingCount={Math.max(
               0,
               optimisticPending - covers.filter((c) => c.status === 'pending').length,
@@ -568,12 +601,13 @@ export default function CapasPage() {
             onToggleSelect={handleToggleSelect}
           />
 
-          {/* Botao "Ver mais" -- abre biblioteca completa fullscreen com filtros. */}
-          {covers.length > GRID_PAGE_SIZE && (
+          {/* Pagincao "Carregar mais N" -- so aparece se tem mais ready
+            * filtradas alem das ja visiveis. */}
+          {hasMoreReady && (
             <div className="mt-7 flex justify-center">
               <button
                 type="button"
-                onClick={() => setShowFullLibrary(true)}
+                onClick={() => setVisibleCount((c) => c + GRID_PAGE_SIZE)}
                 className="inline-flex items-center gap-2 rounded-md px-4 py-2.5 font-mono uppercase transition-colors"
                 style={{
                   fontSize: 11,
@@ -592,7 +626,7 @@ export default function CapasPage() {
                     'var(--border-medium, var(--border-subtle))'
                 }}
               >
-                Ver mais
+                Carregar mais
                 <span
                   className="tabular"
                   style={{
@@ -601,8 +635,7 @@ export default function CapasPage() {
                     letterSpacing: '0.10em',
                   }}
                 >
-                  · {covers.length - GRID_PAGE_SIZE} capa
-                  {covers.length - GRID_PAGE_SIZE === 1 ? '' : 's'}
+                  · +{Math.min(GRID_PAGE_SIZE, filteredReady.length - visibleReady.length)}
                 </span>
               </button>
             </div>
@@ -651,21 +684,6 @@ export default function CapasPage() {
         onConfirm={confirmGenerateAction}
       />
 
-      <CapasFullLibrary
-        open={showFullLibrary}
-        covers={covers}
-        onClose={() => setShowFullLibrary(false)}
-        onDownload={handleDownload}
-        onUseInBeat={handleUseInBeat}
-        onDiscard={handleDiscard}
-        onExpand={handleOpenExpanded}
-        selectionMode={selectionMode}
-        selectedIds={selectedIds}
-        onToggleSelect={handleToggleSelect}
-        onEnterSelectionMode={handleEnterSelectionMode}
-        onCancelSelection={handleCancelSelection}
-      />
-
       <CapaModal
         open={expandedCover !== null}
         cover={expandedCover}
@@ -702,7 +720,7 @@ export default function CapasPage() {
       />
 
       {/* Toolbar floating do modo selecao -- aparece quando ha capas selecionadas.
-       * z-[75] acima do CapasFullLibrary (z-70) e abaixo do CapaModal (z-80) */}
+       * z-[75] acima do CoverPickerExpanded (z-70) e abaixo do CapaModal (z-80) */}
       {selectionMode && selectedIds.size > 0 && (
         <div
           className="fixed bottom-6 left-1/2 z-[75] flex -translate-x-1/2 items-center gap-3 rounded-xl px-4 py-3 rise"
