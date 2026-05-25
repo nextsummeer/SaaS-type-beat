@@ -23,11 +23,16 @@ import { CapasHeader } from '@/components/CapasHeader'
 import { CapasGrid } from '@/components/CapasGrid'
 import { CapasWizard } from '@/components/CapasWizard'
 import { CapaModal } from '@/components/CapaModal'
+import { CapasFullLibrary } from '@/components/CapasFullLibrary'
 import { ConfirmGenerateModal } from '@/components/ConfirmGenerateModal'
 import { ManageBriefsModal } from '@/components/ManageBriefsModal'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
+
+/** Quantas capas o grid principal mostra antes do botao "Ver mais"
+ * abrir a biblioteca fullscreen com filtros. */
+const GRID_PAGE_SIZE = 12
 
 type PageState =
   | { kind: 'loading' }
@@ -74,6 +79,8 @@ export default function CapasPage() {
   /** Modal expandido aberto ao clicar numa capa (em modo normal). */
   const [expandedCover, setExpandedCover] = useState<CoverLibraryItem | null>(null)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
+  /** Modal fullscreen com biblioteca completa + filtros. */
+  const [showFullLibrary, setShowFullLibrary] = useState(false)
   /**
    * Skeletons "fantasma" que aparecem instantaneamente ao clicar Gerar,
    * antes do INSERT pending real chegar via Realtime. Some assim que o
@@ -546,7 +553,7 @@ export default function CapasPage() {
             }
           />
           <CapasGrid
-            covers={covers}
+            covers={covers.slice(0, GRID_PAGE_SIZE)}
             ghostPendingCount={Math.max(
               0,
               optimisticPending - covers.filter((c) => c.status === 'pending').length,
@@ -560,6 +567,46 @@ export default function CapasPage() {
             selectedIds={selectedIds}
             onToggleSelect={handleToggleSelect}
           />
+
+          {/* Botao "Ver mais" -- abre biblioteca completa fullscreen com filtros. */}
+          {covers.length > GRID_PAGE_SIZE && (
+            <div className="mt-7 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setShowFullLibrary(true)}
+                className="inline-flex items-center gap-2 rounded-md px-4 py-2.5 font-mono uppercase transition-colors"
+                style={{
+                  fontSize: 11,
+                  letterSpacing: '0.20em',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-medium, var(--border-subtle))',
+                  background: 'rgba(255,255,255,0.03)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(199,181,255,0.06)'
+                  e.currentTarget.style.borderColor = 'var(--border-purple)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                  e.currentTarget.style.borderColor =
+                    'var(--border-medium, var(--border-subtle))'
+                }}
+              >
+                Ver mais
+                <span
+                  className="tabular"
+                  style={{
+                    fontSize: 10.5,
+                    color: 'var(--text-muted)',
+                    letterSpacing: '0.10em',
+                  }}
+                >
+                  · {covers.length - GRID_PAGE_SIZE} capa
+                  {covers.length - GRID_PAGE_SIZE === 1 ? '' : 's'}
+                </span>
+              </button>
+            </div>
+          )}
         </section>
       </div>
     )
@@ -604,6 +651,21 @@ export default function CapasPage() {
         onConfirm={confirmGenerateAction}
       />
 
+      <CapasFullLibrary
+        open={showFullLibrary}
+        covers={covers}
+        onClose={() => setShowFullLibrary(false)}
+        onDownload={handleDownload}
+        onUseInBeat={handleUseInBeat}
+        onDiscard={handleDiscard}
+        onExpand={handleOpenExpanded}
+        selectionMode={selectionMode}
+        selectedIds={selectedIds}
+        onToggleSelect={handleToggleSelect}
+        onEnterSelectionMode={handleEnterSelectionMode}
+        onCancelSelection={handleCancelSelection}
+      />
+
       <CapaModal
         open={expandedCover !== null}
         cover={expandedCover}
@@ -639,10 +701,11 @@ export default function CapasPage() {
         onConfirm={handleBulkDeleteConfirm}
       />
 
-      {/* Toolbar floating do modo selecao -- aparece quando ha capas selecionadas */}
+      {/* Toolbar floating do modo selecao -- aparece quando ha capas selecionadas.
+       * z-[75] acima do CapasFullLibrary (z-70) e abaixo do CapaModal (z-80) */}
       {selectionMode && selectedIds.size > 0 && (
         <div
-          className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl px-4 py-3 rise"
+          className="fixed bottom-6 left-1/2 z-[75] flex -translate-x-1/2 items-center gap-3 rounded-xl px-4 py-3 rise"
           style={{
             background: 'rgba(15,15,17,0.95)',
             backdropFilter: 'blur(14px)',
