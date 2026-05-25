@@ -398,7 +398,20 @@ function LibraryTab({
   // dezenas de capas pequenas viravam parede ilegivel). Quando ha mais
   // que LIBRARY_PREVIEW_SIZE, botao "Ver mais" abre o modal expansivel
   // com filtros (artista/status/rating/data).
-  const previewLibrary = library.slice(0, LIBRARY_PREVIEW_SIZE)
+  //
+  // Garantia: a capa selecionada SEMPRE aparece no preview. Quando o user
+  // chega via /capas?cover_id=X "Usar em beat", a capa pode estar na posicao
+  // 11+, somindo do preview e dando impressao que nao foi selecionada.
+  // Se ela nao esta no slice padrao, movemos pra primeira posicao.
+  const previewLibrary = (() => {
+    const baseSlice = library.slice(0, LIBRARY_PREVIEW_SIZE)
+    if (!selectedCoverId) return baseSlice
+    const jaEstaNoSlice = baseSlice.some((c) => c.id === selectedCoverId)
+    if (jaEstaNoSlice) return baseSlice
+    const selecionada = library.find((c) => c.id === selectedCoverId)
+    if (!selecionada) return baseSlice
+    return [selecionada, ...baseSlice.slice(0, LIBRARY_PREVIEW_SIZE - 1)]
+  })()
   const hasMore = library.length > LIBRARY_PREVIEW_SIZE
 
   return (
