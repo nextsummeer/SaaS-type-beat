@@ -919,7 +919,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Produtor abre /configuracoes, escolhe Opcao 2, salva. Sobe um beat novo. Titulo gerado sai exatamente no formato `[free] artista + artista2 type beat - "beat name"` (verificavel no /review do beat). Trocar pra Opcao 1 e gerar outro beat -> titulo volta pro formato classico. Producer existente sem coluna preenchida = Opcao 1 (default).
 - **Dependencia:** — (nenhuma; T4.1 ja entrega o service generate_metadata)
 
-#### `[ ]` T4.35 — Banco de capas manuais (upload dedicado, separado de capas IA)
+#### `[x]` T4.35 — Banco de capas manuais (upload dedicado, separado de capas IA)
 
 - **Motivacao:** Nem todo produtor usa IA pra capa -- muitos tem suas capas proprias e querem so um banco visual reusavel. Hoje o upload manual no /upload e one-shot (vai pro beat e some). Esta task adiciona um banco persistente reusavel, espelhado em UX a biblioteca IA, mas mais simples (sem brief, sem artista).
 - **Decisoes fechadas (sessao 2026-05-25):**

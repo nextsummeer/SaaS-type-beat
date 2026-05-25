@@ -13,10 +13,18 @@ import {
   Loader2,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { fetchCovers, type CoverLibraryItem } from '@/lib/api'
+import {
+  fetchCovers,
+  uploadManualCover,
+  ManualQuotaExceededError,
+  type CoverLibraryItem,
+} from '@/lib/api'
 import { CoverPickerExpanded } from './CoverPickerExpanded'
 
 type Tab = 'library' | 'manual'
+
+/** T4.35 — sub-filtro de origem dentro da tab Biblioteca. */
+type LibrarySource = 'all' | 'ai_generated' | 'manual_upload'
 
 /** Quantas capas mostrar na tab Biblioteca antes do botao "Ver mais"
  * abrir o picker expandido com filtros. */
@@ -66,6 +74,17 @@ export function CoverPicker({
   const [libraryError, setLibraryError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [aviso, setAviso] = useState<string | null>(null)
+
+  // T4.35 — sub-filtro de origem dentro da tab Biblioteca.
+  // Default 'all' pra mostrar tudo. Produtor filtra quando quiser.
+  const [librarySource, setLibrarySource] = useState<LibrarySource>('all')
+  // T4.35 — checkbox "Salvar no banco manual" no upload one-shot.
+  // Default ON: capa enviada via /upload ja vira reusavel no banco
+  // sem o produtor pensar. Pode desligar pra upload privado.
+  const [saveToBank, setSaveToBank] = useState(true)
+  // T4.35 — estado durante o upload imediato pro banco (quando saveToBank=true)
+  const [uploadingToBank, setUploadingToBank] = useState(false)
+  const [uploadBankError, setUploadBankError] = useState<string | null>(null)
 
   // Capa "usada" que está em modo "confirmar usar de novo"
   const [confirmReuseId, setConfirmReuseId] = useState<string | null>(null)
@@ -133,7 +152,8 @@ export function CoverPicker({
     if (novaTab === 'manual') onPickLibrary(null)
   }
 
-  function handleFile(file: File | null) {
+  async function handleFile(file: File | null) {
+    setUploadBankError(null)
     if (!file) {
       onPickFile(null)
       return
@@ -146,6 +166,46 @@ export function CoverPicker({
       exibirAviso('Capa precisa ser JPG ou PNG.')
       return
     }
+
+    // T4.35: se checkbox "Salvar no meu banco" está ON, sobe pro banco AGORA
+    // e usa o cover_id retornado (em vez de manter file local). Assim a capa
+    // ja vira reusavel em outros beats sem o produtor pensar nisso.
+    if (saveToBank) {
+      setUploadingToBank(true)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        if (!token) throw new Error('Sessão expirada')
+        const result = await uploadManualCover(token, file, file.name)
+        // Recarrega biblioteca pra mostrar a nova capa no grid + seleciona-la
+        const refreshed = await fetchCovers(token)
+        const readyOnly = refreshed.filter(
+          (it) => !!it.image_url && it.status !== 'pending' && it.status !== 'failed',
+        )
+        setLibrary(readyOnly)
+        onPickFile(null)
+        onPickLibrary(result.id)
+        // Troca pra tab Biblioteca > Manual pra produtor VER que foi salva
+        setTab('library')
+        setLibrarySource('manual_upload')
+      } catch (err) {
+        if (err instanceof ManualQuotaExceededError) {
+          setUploadBankError(
+            `Limite do seu plano (${err.used}/${err.limit}). Apague uma capa no banco ou faça upgrade.`,
+          )
+        } else {
+          setUploadBankError(err instanceof Error ? err.message : 'Erro ao salvar no banco')
+        }
+        // Mantem o file local como fallback (one-shot) pra nao perder a escolha
+        onPickLibrary(null)
+        onPickFile(file)
+      } finally {
+        setUploadingToBank(false)
+      }
+      return
+    }
+
+    // Comportamento one-shot (saveToBank=false): vai pro beat sem persistir
     onPickLibrary(null)
     onPickFile(file)
   }
@@ -209,6 +269,8 @@ export function CoverPicker({
       {tab === 'library' ? (
         <LibraryTab
           library={library}
+          librarySource={librarySource}
+          onLibrarySourceChange={setLibrarySource}
           loading={loadingLibrary}
           error={libraryError}
           selectedCoverId={selectedCoverId}
@@ -222,7 +284,11 @@ export function CoverPicker({
         <ManualTab
           file={manualFile}
           dragOver={dragOver}
-          disabled={disabled}
+          disabled={disabled || uploadingToBank}
+          saveToBank={saveToBank}
+          onSaveToBankChange={setSaveToBank}
+          uploadingToBank={uploadingToBank}
+          uploadBankError={uploadBankError}
           onPickClick={() => fileInputRef.current?.click()}
           onDragOver={(e) => {
             e.preventDefault()
@@ -256,11 +322,12 @@ export function CoverPicker({
         </div>
       )}
 
-      {/* Modal expansivel com TODAS as capas + filtros (artista/status/
-        * rating/data). Aberto via botao "Ver mais" do LibraryTab. */}
+      {/* Modal expansivel com capas + filtros (artista/status/rating/data).
+        * Respeita o sub-filtro IA/Manual selecionado no LibraryTab -- passa
+        * lib ja filtrada por source. */}
       <CoverPickerExpanded
         open={showExpanded}
-        covers={library}
+        covers={applyLibrarySource(library, librarySource)}
         selectedCoverId={selectedCoverId}
         onSelect={(cover) => handlePickLibraryCover(cover)}
         onClose={() => setShowExpanded(false)}
@@ -311,10 +378,23 @@ function TabButton({
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Helper: filtra biblioteca por origem (T4.35)
+// ─────────────────────────────────────────────────────────────────────
+function applyLibrarySource(
+  library: CoverLibraryItem[],
+  source: LibrarySource,
+): CoverLibraryItem[] {
+  if (source === 'all') return library
+  return library.filter((c) => c.source === source)
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Library tab
 // ─────────────────────────────────────────────────────────────────────
 function LibraryTab({
   library,
+  librarySource,
+  onLibrarySourceChange,
   loading,
   error,
   selectedCoverId,
@@ -325,6 +405,8 @@ function LibraryTab({
   onSeeMore,
 }: {
   library: CoverLibraryItem[]
+  librarySource: LibrarySource
+  onLibrarySourceChange: (next: LibrarySource) => void
   loading: boolean
   error: string | null
   selectedCoverId: string | null
@@ -394,6 +476,11 @@ function LibraryTab({
     )
   }
 
+  // Contadores totais por origem (pra mostrar no sub-switch IA/Manual)
+  const totalAI = library.filter((c) => c.source === 'ai_generated').length
+  const totalManual = library.filter((c) => c.source === 'manual_upload').length
+  const filteredLibrary = applyLibrarySource(library, librarySource)
+
   // Mostra preview limitado pra nao poluir o /upload (era o gargalo --
   // dezenas de capas pequenas viravam parede ilegivel). Quando ha mais
   // que LIBRARY_PREVIEW_SIZE, botao "Ver mais" abre o modal expansivel
@@ -403,79 +490,188 @@ function LibraryTab({
   // chega via /capas?cover_id=X "Usar em beat", a capa pode estar na posicao
   // 11+, somindo do preview e dando impressao que nao foi selecionada.
   // Se ela nao esta no slice padrao, movemos pra primeira posicao.
+  // OBS: a capa selecionada so e movida pro topo se respeitar o filtro
+  // atual de source (senao mostrar uma IA quando esta filtrando Manual e vice-versa).
   const previewLibrary = (() => {
-    const baseSlice = library.slice(0, LIBRARY_PREVIEW_SIZE)
+    const baseSlice = filteredLibrary.slice(0, LIBRARY_PREVIEW_SIZE)
     if (!selectedCoverId) return baseSlice
     const jaEstaNoSlice = baseSlice.some((c) => c.id === selectedCoverId)
     if (jaEstaNoSlice) return baseSlice
-    const selecionada = library.find((c) => c.id === selectedCoverId)
+    const selecionada = filteredLibrary.find((c) => c.id === selectedCoverId)
     if (!selecionada) return baseSlice
     return [selecionada, ...baseSlice.slice(0, LIBRARY_PREVIEW_SIZE - 1)]
   })()
-  const hasMore = library.length > LIBRARY_PREVIEW_SIZE
+  const hasMore = filteredLibrary.length > LIBRARY_PREVIEW_SIZE
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-        {previewLibrary.map((cover) => {
-          const selected = selectedCoverId === cover.id
-          const used = cover.used_in_beats_count > 0
-          const confirming = confirmReuseId === cover.id
-          return (
-            <LibraryCoverThumb
-              key={cover.id}
-              cover={cover}
-              selected={selected}
-              used={used}
-              confirming={confirming}
-              disabled={disabled}
-              onClick={() => onPick(cover)}
-              onCancelConfirm={onCancelConfirm}
-            />
-          )
-        })}
-      </div>
+      {/* T4.35 — sub-segmented IA/Manual dentro da Biblioteca.
+        * Aparece sempre que tem pelo menos uma capa de algum tipo
+        * (didatico mesmo se zero do outro). */}
+      <LibrarySourceSwitch
+        librarySource={librarySource}
+        onChange={onLibrarySourceChange}
+        totalAll={library.length}
+        totalAI={totalAI}
+        totalManual={totalManual}
+        disabled={disabled}
+      />
 
-      {hasMore && (
-        <div className="flex justify-center pt-1">
+      {filteredLibrary.length === 0 ? (
+        <LibraryEmptyForSource source={librarySource} />
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+            {previewLibrary.map((cover) => {
+              const selected = selectedCoverId === cover.id
+              const used = cover.used_in_beats_count > 0
+              const confirming = confirmReuseId === cover.id
+              return (
+                <LibraryCoverThumb
+                  key={cover.id}
+                  cover={cover}
+                  selected={selected}
+                  used={used}
+                  confirming={confirming}
+                  disabled={disabled}
+                  onClick={() => onPick(cover)}
+                  onCancelConfirm={onCancelConfirm}
+                />
+              )
+            })}
+          </div>
+
+          {hasMore && (
+            <div className="flex justify-center pt-1">
+              <button
+                type="button"
+                onClick={onSeeMore}
+                disabled={disabled}
+                className="inline-flex items-center gap-2 rounded-md px-3.5 py-2 font-mono uppercase transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{
+                  fontSize: 10.5,
+                  letterSpacing: '0.20em',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-medium, var(--border-subtle))',
+                  background: 'rgba(255,255,255,0.03)',
+                }}
+                onMouseEnter={(e) => {
+                  if (!disabled) {
+                    e.currentTarget.style.background = 'rgba(199,181,255,0.06)'
+                    e.currentTarget.style.borderColor = 'var(--border-purple)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                  e.currentTarget.style.borderColor =
+                    'var(--border-medium, var(--border-subtle))'
+                }}
+              >
+                Ver todas
+                <span
+                  className="tabular"
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--text-muted)',
+                    letterSpacing: '0.10em',
+                  }}
+                >
+                  · {filteredLibrary.length}
+                </span>
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// T4.35 — sub-segmented "Todas / IA / Manual" dentro do LibraryTab
+function LibrarySourceSwitch({
+  librarySource,
+  onChange,
+  totalAll,
+  totalAI,
+  totalManual,
+  disabled,
+}: {
+  librarySource: LibrarySource
+  onChange: (next: LibrarySource) => void
+  totalAll: number
+  totalAI: number
+  totalManual: number
+  disabled: boolean
+}) {
+  const opts: { value: LibrarySource; label: string; count: number }[] = [
+    { value: 'all', label: 'Todas', count: totalAll },
+    { value: 'ai_generated', label: 'IA', count: totalAI },
+    { value: 'manual_upload', label: 'Manuais', count: totalManual },
+  ]
+  return (
+    <div
+      className="inline-flex items-center gap-0.5 rounded-md p-0.5"
+      role="tablist"
+      aria-label="Origem da capa"
+      style={{
+        background: 'rgba(255,255,255,0.025)',
+        border: '1px solid var(--border-subtle)',
+      }}
+    >
+      {opts.map((opt) => {
+        const active = librarySource === opt.value
+        return (
           <button
+            key={opt.value}
             type="button"
-            onClick={onSeeMore}
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(opt.value)}
             disabled={disabled}
-            className="inline-flex items-center gap-2 rounded-md px-3.5 py-2 font-mono uppercase transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             style={{
-              fontSize: 10.5,
-              letterSpacing: '0.20em',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-medium, var(--border-subtle))',
-              background: 'rgba(255,255,255,0.03)',
-            }}
-            onMouseEnter={(e) => {
-              if (!disabled) {
-                e.currentTarget.style.background = 'rgba(199,181,255,0.06)'
-                e.currentTarget.style.borderColor = 'var(--border-purple)'
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
-              e.currentTarget.style.borderColor =
-                'var(--border-medium, var(--border-subtle))'
+              fontSize: 11.5,
+              fontWeight: 500,
+              color: active ? 'var(--text-primary)' : 'var(--text-muted)',
+              background: active ? 'rgba(255,255,255,0.06)' : 'transparent',
             }}
           >
-            Ver todas
+            {opt.label}
             <span
-              className="tabular"
+              className="font-mono tabular"
               style={{
-                fontSize: 10,
-                color: 'var(--text-muted)',
+                fontSize: 9.5,
+                color: active ? 'var(--purple-light)' : 'var(--text-subtle)',
                 letterSpacing: '0.10em',
               }}
             >
-              · {library.length}
+              {opt.count}
             </span>
           </button>
-        </div>
-      )}
+        )
+      })}
+    </div>
+  )
+}
+
+function LibraryEmptyForSource({ source }: { source: LibrarySource }) {
+  const msg =
+    source === 'ai_generated'
+      ? 'Nenhuma capa gerada por IA ainda. Crie uma na aba Capas.'
+      : source === 'manual_upload'
+      ? 'Nenhuma capa enviada manualmente. Use a aba Manual pra subir uma.'
+      : 'Nenhuma capa na biblioteca.'
+  return (
+    <div
+      className="flex items-center justify-center rounded-xl px-6 py-8 text-center"
+      style={{
+        background: 'var(--bg-surface)',
+        border: '1px dashed var(--border-subtle)',
+      }}
+    >
+      <p className="text-[12.5px]" style={{ color: 'var(--text-muted)' }}>
+        {msg}
+      </p>
     </div>
   )
 }
@@ -642,6 +838,10 @@ function ManualTab({
   file,
   dragOver,
   disabled,
+  saveToBank,
+  onSaveToBankChange,
+  uploadingToBank,
+  uploadBankError,
   onPickClick,
   onDragOver,
   onDragLeave,
@@ -650,74 +850,145 @@ function ManualTab({
   file: File | null
   dragOver: boolean
   disabled: boolean
+  saveToBank: boolean
+  onSaveToBankChange: (next: boolean) => void
+  uploadingToBank: boolean
+  uploadBankError: string | null
   onPickClick: () => void
   onDragOver: (e: React.DragEvent) => void
   onDragLeave: () => void
   onDrop: (e: React.DragEvent) => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onPickClick}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      disabled={disabled}
-      className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-5 text-center transition-all disabled:cursor-not-allowed disabled:opacity-50"
-      style={{
-        borderColor: dragOver
-          ? '#FFFFFF'
-          : file
-          ? 'var(--border-strong)'
-          : 'var(--border-medium)',
-        background: dragOver
-          ? 'rgba(255,255,255,0.04)'
-          : file
-          ? 'var(--bg-surface)'
-          : 'var(--bg-base)',
-      }}
-    >
-      {dragOver ? (
-        <>
-          <span
-            className="led led-pulse"
-            style={{ color: '#FFFFFF', width: 8, height: 8 }}
-          />
-          <p
-            className="font-mono uppercase"
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              letterSpacing: '0.18em',
-              color: 'var(--text-primary)',
-            }}
-          >
-            Solte a capa aqui
-          </p>
-        </>
-      ) : file ? (
-        <>
-          <ImageIcon className="h-6 w-6" style={{ color: 'var(--text-primary)' }} />
-          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{file.name}</p>
-        </>
-      ) : (
-        <>
-          <ImageIcon className="h-6 w-6" style={{ color: 'var(--text-muted)' }} />
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Arraste ou{' '}
-            <span
+    <div className="space-y-3">
+      <button
+        type="button"
+        onClick={onPickClick}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        disabled={disabled}
+        className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-5 text-center transition-all disabled:cursor-not-allowed disabled:opacity-50"
+        style={{
+          borderColor: dragOver
+            ? '#FFFFFF'
+            : file
+            ? 'var(--border-strong)'
+            : 'var(--border-medium)',
+          background: dragOver
+            ? 'rgba(255,255,255,0.04)'
+            : file
+            ? 'var(--bg-surface)'
+            : 'var(--bg-base)',
+        }}
+      >
+        {uploadingToBank ? (
+          <>
+            <Loader2
+              className="h-6 w-6 animate-spin"
+              style={{ color: 'var(--purple-light)' }}
+            />
+            <p
+              className="font-mono uppercase"
               style={{
-                color: 'var(--text-primary)',
-                textDecoration: 'underline',
-                textUnderlineOffset: 2,
+                fontSize: 11,
+                letterSpacing: '0.22em',
+                color: 'var(--text-muted)',
               }}
             >
-              clique para adicionar
-            </span>{' '}
-            (JPG ou PNG)
+              Salvando no banco...
+            </p>
+          </>
+        ) : dragOver ? (
+          <>
+            <span
+              className="led led-pulse"
+              style={{ color: '#FFFFFF', width: 8, height: 8 }}
+            />
+            <p
+              className="font-mono uppercase"
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                letterSpacing: '0.18em',
+                color: 'var(--text-primary)',
+              }}
+            >
+              Solte a capa aqui
+            </p>
+          </>
+        ) : file ? (
+          <>
+            <ImageIcon className="h-6 w-6" style={{ color: 'var(--text-primary)' }} />
+            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{file.name}</p>
+          </>
+        ) : (
+          <>
+            <ImageIcon className="h-6 w-6" style={{ color: 'var(--text-muted)' }} />
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              Arraste ou{' '}
+              <span
+                style={{
+                  color: 'var(--text-primary)',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: 2,
+                }}
+              >
+                clique para adicionar
+              </span>{' '}
+              (JPG ou PNG)
+            </p>
+          </>
+        )}
+      </button>
+
+      {/* T4.35 — checkbox "Salvar no meu banco manual" */}
+      <label
+        className="flex cursor-pointer items-start gap-2.5 rounded-md px-3 py-2.5 transition-colors"
+        style={{
+          background: saveToBank ? 'rgba(199,181,255,0.04)' : 'rgba(255,255,255,0.02)',
+          border: '1px solid',
+          borderColor: saveToBank ? 'var(--border-purple)' : 'var(--border-subtle)',
+          opacity: disabled ? 0.5 : 1,
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={saveToBank}
+          onChange={(e) => onSaveToBankChange(e.target.checked)}
+          disabled={disabled}
+          className="mt-0.5 h-3.5 w-3.5 cursor-pointer accent-purple-400 disabled:cursor-not-allowed"
+        />
+        <div className="flex-1">
+          <p
+            className="text-[12.5px] font-medium leading-tight"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            Salvar no meu banco manual
           </p>
-        </>
+          <p
+            className="mt-0.5 text-[11px] leading-snug"
+            style={{ color: 'var(--text-subtle)' }}
+          >
+            Pra reusar essa capa em outros beats sem subir de novo. Conta no
+            limite do seu plano.
+          </p>
+        </div>
+      </label>
+
+      {uploadBankError && (
+        <div
+          className="flex items-start gap-2 rounded-md px-3 py-2 text-[11.5px]"
+          style={{
+            background: 'rgba(245,158,11,0.06)',
+            border: '1px solid rgba(245,158,11,0.25)',
+            color: '#FCD34D',
+          }}
+        >
+          <AlertCircle size={12} className="mt-0.5 shrink-0" />
+          <span>{uploadBankError}</span>
+        </div>
       )}
-    </button>
+    </div>
   )
 }
