@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ArrowUpRight, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -42,6 +43,7 @@ type PageState =
  */
 export default function CapasPage() {
   const supabase = createClient()
+  const router = useRouter()
 
   const [state, setState] = useState<PageState>({ kind: 'loading' })
   const [covers, setCovers] = useState<CoverLibraryItem[]>([])
@@ -240,6 +242,21 @@ export default function CapasPage() {
         })
       }
 
+      // Se acabou de editar um brief NAO-ativo e pediu pra gerar capa com
+      // ele, ATIVA esse brief tambem (do contrario o header continua
+      // mostrando o anterior como ativo, mesmo que a capa nova use este).
+      if (
+        action === 'save_and_generate' &&
+        wizardEditingId &&
+        !savedPreset.is_active
+      ) {
+        try {
+          await activateBrief(token, savedPreset.id)
+        } catch (err) {
+          console.warn('Falha ao ativar brief apos save_and_generate:', err)
+        }
+      }
+
       setWizardOpen(false)
       await loadData()
 
@@ -313,7 +330,9 @@ export default function CapasPage() {
     }
   }
   const handleUseInBeat = (cover: CoverLibraryItem) => {
-    console.log('TODO: redirecionar pra /upload com cover_id', cover.id)
+    // Redireciona pro upload com a capa ja selecionada via query param.
+    // UploadForm le `?cover_id` e seta selectedCoverId inicial.
+    router.push(`/upload?cover_id=${cover.id}`)
   }
   // Click no menu "Descartar" abre o modal de confirmação
   const handleDiscard = useCallback((cover: CoverLibraryItem) => {

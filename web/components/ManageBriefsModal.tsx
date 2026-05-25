@@ -219,22 +219,54 @@ export function ManageBriefsModal({
                 p.brief.atmosfera_luz ?? p.brief.iluminacao,
               ].filter(Boolean).join(' · ')
 
+              // Linha inteira clicavel pra ativar o brief (exceto quando em
+              // estado de edicao de nome ou confirmacao de delete). Botoes
+              // internos (renomear, gerar, deletar) usam e.stopPropagation().
+              const rowClickable =
+                !p.is_active && !isEditingName && !isConfirmingDelete && !isActivating
+              const handleRowClick = () => {
+                if (rowClickable) handleActivate(p.id)
+              }
+
               return (
                 <div
                   key={p.id}
+                  onClick={handleRowClick}
+                  role={rowClickable ? 'button' : undefined}
+                  tabIndex={rowClickable ? 0 : undefined}
+                  onKeyDown={(e) => {
+                    if (rowClickable && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault()
+                      handleRowClick()
+                    }
+                  }}
                   className="rounded-lg px-3 py-2.5 transition-colors"
                   style={{
                     background: p.is_active ? 'rgba(199,181,255,0.05)' : 'transparent',
                     border: '1px solid',
                     borderColor: p.is_active ? 'var(--border-purple)' : 'transparent',
                     marginBottom: 4,
+                    cursor: rowClickable ? 'pointer' : 'default',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (rowClickable) {
+                      e.currentTarget.style.background = 'rgba(199,181,255,0.04)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (rowClickable) {
+                      e.currentTarget.style.background = 'transparent'
+                    }
                   }}
                 >
                   <div className="flex items-center gap-2">
-                    {/* Radio de ativo */}
+                    {/* Radio de ativo (decorativo + acessivel pra screen readers) */}
                     <button
                       type="button"
-                      onClick={() => !p.is_active && handleActivate(p.id)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (!p.is_active) handleActivate(p.id)
+                      }}
                       disabled={isActivating || p.is_active}
                       aria-label={p.is_active ? 'Brief ativo' : 'Ativar este brief'}
                       className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full disabled:cursor-default"
@@ -261,8 +293,10 @@ export function ManageBriefsModal({
                         type="text"
                         value={draftName}
                         autoFocus
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) => setDraftName(e.target.value)}
                         onKeyDown={(e) => {
+                          e.stopPropagation()
                           if (e.key === 'Enter') confirmRename()
                           if (e.key === 'Escape') {
                             setEditingNameId(null)
@@ -310,7 +344,10 @@ export function ManageBriefsModal({
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
-                          onClick={confirmRename}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            confirmRename()
+                          }}
                           disabled={isSavingName}
                           aria-label="Salvar nome"
                           className="flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:opacity-40"
@@ -330,7 +367,8 @@ export function ManageBriefsModal({
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation()
                             setEditingNameId(null)
                             setErrorMsg(null)
                           }}
@@ -351,7 +389,10 @@ export function ManageBriefsModal({
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
-                          onClick={() => handleConfirmDelete(p.id)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleConfirmDelete(p.id)
+                          }}
                           disabled={isDeleting}
                           className="rounded-md px-2 py-1 text-[11px] font-medium transition-colors disabled:opacity-40"
                           style={{
@@ -364,7 +405,10 @@ export function ManageBriefsModal({
                         </button>
                         <button
                           type="button"
-                          onClick={() => setConfirmDeleteId(null)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setConfirmDeleteId(null)
+                          }}
                           disabled={isDeleting}
                           className="rounded-md px-2 py-1 text-[11px] transition-colors"
                           style={{ color: 'var(--text-muted)' }}
@@ -378,7 +422,10 @@ export function ManageBriefsModal({
                       <div className="flex items-center gap-0.5">
                         <button
                           type="button"
-                          onClick={() => startRename(p)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            startRename(p)
+                          }}
                           aria-label="Renomear"
                           className="flex h-7 w-7 items-center justify-center rounded-md transition-colors"
                           style={{ color: 'var(--text-muted)' }}
@@ -396,7 +443,10 @@ export function ManageBriefsModal({
                         </button>
                         <button
                           type="button"
-                          onClick={() => onEditFull(p.id)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onEditFull(p.id)
+                          }}
                           aria-label="Editar conteúdo do brief"
                           className="flex h-7 w-7 items-center justify-center rounded-md transition-colors"
                           style={{ color: 'var(--text-muted)' }}
@@ -414,7 +464,10 @@ export function ManageBriefsModal({
                         </button>
                         <button
                           type="button"
-                          onClick={() => setConfirmDeleteId(p.id)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setConfirmDeleteId(p.id)
+                          }}
                           aria-label="Deletar"
                           className="flex h-7 w-7 items-center justify-center rounded-md transition-colors"
                           style={{ color: 'var(--text-muted)' }}

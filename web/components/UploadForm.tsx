@@ -30,8 +30,12 @@ export function UploadForm() {
   const [audioFile, setAudioFile] = useState<File | null>(null)
   /** Capa via upload manual (modo CoverPicker tab 'Manual') */
   const [coverFile, setCoverFile] = useState<File | null>(null)
-  /** Capa selecionada da biblioteca (modo CoverPicker tab 'Biblioteca') */
-  const [selectedCoverId, setSelectedCoverId] = useState<string | null>(null)
+  /** Capa selecionada da biblioteca (modo CoverPicker tab 'Biblioteca').
+   * Inicializa via query param `?cover_id=...` (vindo do botao "Usar em
+   * beat" da aba /capas). */
+  const [selectedCoverId, setSelectedCoverId] = useState<string | null>(
+    () => searchParams.get('cover_id'),
+  )
   const [artistas, setArtistas] = useState<string[]>([''])
   const [bpm, setBpm] = useState('')
   const [jaPublicado, setJaPublicado] = useState(false)

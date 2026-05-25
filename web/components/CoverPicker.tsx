@@ -51,7 +51,11 @@ export function CoverPicker({
   const supabase = createClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [tab, setTab] = useState<Tab>(selectedCoverId ? 'library' : 'manual')
+  // Default sempre 'library' -- cliente ja viu as capas que gerou em /capas,
+  // a aba de upload deve abrir mostrando essa biblioteca por padrao. Antes
+  // defaultava pra 'manual' quando nao havia selectedCoverId, escondendo
+  // as capas do cliente.
+  const [tab, setTab] = useState<Tab>('library')
   const [library, setLibrary] = useState<CoverLibraryItem[]>([])
   const [loadingLibrary, setLoadingLibrary] = useState(true)
   const [libraryError, setLibraryError] = useState<string | null>(null)
