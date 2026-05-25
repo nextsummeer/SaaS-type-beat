@@ -26,6 +26,7 @@ endpoint batch pra renovar. Documentar como divida tecnica.
 """
 import hashlib
 import logging
+import time
 import uuid
 
 import requests
@@ -38,6 +39,99 @@ from app.services.supabase_service import get_admin_client
 logger = logging.getLogger(__name__)
 
 COVERS_BUCKET = "covers"
+
+# Retry config -- aplicado em operacoes transientes (fal.ai, download, upload).
+# Saldo zerado (exhausted_balance) NUNCA tem retry -- Gustavo controla manual.
+# content_policy_violation tem retry ESPECIFICO via safety_mode no builder.
+RETRY_MAX_EXTRA_ATTEMPTS = 2  # alem da 1a tentativa, total = 3
+RETRY_BASE_DELAY_SECONDS = 2  # 1a espera 2s, 2a espera 4s (exponencial)
+
+
+def _call_fal_with_retries(prompt: str, user_id: str) -> dict | None:
+    """Chama fal.ai com retries em erros transientes.
+
+    NAO retry:
+    - exhausted_balance (saldo zerado -- Gustavo controla manual)
+    - content_policy_violation (caller faz retry com safety_mode no builder)
+
+    Retry em:
+    - None (timeout/network)
+    - dict com erro generico (qualquer outro tipo)
+    """
+    last_result: dict | None = None
+    for attempt in range(RETRY_MAX_EXTRA_ATTEMPTS + 1):
+        last_result = generate_cover(prompt, user_id=user_id)
+
+        if last_result and last_result.get("ok"):
+            return last_result
+
+        if last_result and last_result.get("error") in (
+            "exhausted_balance",
+            "content_policy_violation",
+        ):
+            return last_result  # caller decide
+
+        if attempt < RETRY_MAX_EXTRA_ATTEMPTS:
+            delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
+            logger.info(
+                "cover worker: fal.ai falhou (tentativa %d/%d), retry em %ds",
+                attempt + 1, RETRY_MAX_EXTRA_ATTEMPTS + 1, delay,
+            )
+            time.sleep(delay)
+
+    return last_result
+
+
+def _download_with_retries(url: str, timeout: int) -> bytes | None:
+    """Download da imagem do fal.ai com retries exponenciais."""
+    for attempt in range(RETRY_MAX_EXTRA_ATTEMPTS + 1):
+        try:
+            resp = requests.get(url, timeout=timeout)
+            resp.raise_for_status()
+            return resp.content
+        except Exception as exc:
+            if attempt < RETRY_MAX_EXTRA_ATTEMPTS:
+                delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
+                logger.info(
+                    "cover worker: download falhou (tentativa %d/%d): %s, retry em %ds",
+                    attempt + 1, RETRY_MAX_EXTRA_ATTEMPTS + 1, exc, delay,
+                )
+                time.sleep(delay)
+            else:
+                logger.error(
+                    "cover worker: download falhou apos %d tentativas: %s",
+                    RETRY_MAX_EXTRA_ATTEMPTS + 1, exc,
+                )
+    return None
+
+
+def _upload_with_retries(client, storage_path: str, image_bytes: bytes) -> bool:
+    """Upload pra Supabase Storage com retries."""
+    for attempt in range(RETRY_MAX_EXTRA_ATTEMPTS + 1):
+        try:
+            client.storage.from_(COVERS_BUCKET).upload(
+                path=storage_path,
+                file=image_bytes,
+                file_options={
+                    "content-type": "image/jpeg",
+                    "upsert": "false",
+                },
+            )
+            return True
+        except Exception as exc:
+            if attempt < RETRY_MAX_EXTRA_ATTEMPTS:
+                delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
+                logger.info(
+                    "cover worker: upload falhou (tentativa %d/%d): %s, retry em %ds",
+                    attempt + 1, RETRY_MAX_EXTRA_ATTEMPTS + 1, exc, delay,
+                )
+                time.sleep(delay)
+            else:
+                logger.error(
+                    "cover worker: upload falhou apos %d tentativas: %s",
+                    RETRY_MAX_EXTRA_ATTEMPTS + 1, exc,
+                )
+    return False
 SIGNED_URL_EXPIRY_SECONDS = 31_536_000  # 1 ano
 FAL_DOWNLOAD_TIMEOUT_SECONDS = 30
 
@@ -158,13 +252,12 @@ def generate_covers(
         prompt_final = build_result.prompt_final
         variation_seeds = build_result.variation_seeds
 
-        # c. fal.ai gera imagem
-        fal_result = generate_cover(prompt_final, user_id=user_id)
+        # c. fal.ai gera imagem (com retries automaticos pra erros transientes)
+        fal_result = _call_fal_with_retries(prompt_final, user_id=user_id)
 
-        # c.1 Retry automatico se content_policy_violation do OpenAI.
-        # Builder regenera prompt em safety_mode (instrucao ultra-conservadora)
-        # e tenta fal.ai de novo. Cliente nao ve nada -- so demora ~50s em
-        # vez de ~25s. Limite 1 retry pra evitar loop + custo.
+        # c.1 Retry especifico pra content_policy_violation: builder regenera
+        # prompt em safety_mode (instrucao ultra-conservadora). Cliente nao ve
+        # falha -- so demora ~50s em vez de ~25s.
         if fal_result and fal_result.get("error") == "content_policy_violation":
             logger.info(
                 "cover worker: content_policy_violation -- tentando retry com "
@@ -179,7 +272,8 @@ def generate_covers(
             if retry_build.validation_passed and retry_build.prompt_final:
                 prompt_final = retry_build.prompt_final
                 variation_seeds = retry_build.variation_seeds
-                fal_result = generate_cover(prompt_final, user_id=user_id)
+                # Tenta fal.ai novamente -- com retries do mesmo jeito
+                fal_result = _call_fal_with_retries(prompt_final, user_id=user_id)
             else:
                 logger.warning(
                     "cover worker: retry build falhou: %s",
@@ -199,34 +293,28 @@ def generate_covers(
         fal_url = fal_result["url"]
         fal_cost = fal_result.get("cost_usd", 0.0)
 
-        # d.1 Download bytes
-        try:
-            resp = requests.get(fal_url, timeout=FAL_DOWNLOAD_TIMEOUT_SECONDS)
-            resp.raise_for_status()
-            image_bytes = resp.content
-        except Exception as exc:
-            logger.error("cover worker: falha download fal.ai: %s", exc)
-            _fail("falha download da imagem (sem cobranca)")
+        # d.1 Download bytes (com retries em erro de rede)
+        image_bytes = _download_with_retries(fal_url, FAL_DOWNLOAD_TIMEOUT_SECONDS)
+        if image_bytes is None:
+            _fail(
+                "falha download da imagem apos retries (sem cobranca)",
+                prompt_to_save=prompt_final,
+                seeds_to_save=variation_seeds or None,
+            )
             continue
 
         # d.2 Hash pra dedup
         image_hash = hashlib.sha256(image_bytes).hexdigest()
 
-        # d.3 Upload Storage
+        # d.3 Upload Storage (com retries em rate limit / falha de rede)
         cover_uuid = str(uuid.uuid4())
         storage_path = f"{user_id}/library/{cover_uuid}.jpg"
-        try:
-            client.storage.from_(COVERS_BUCKET).upload(
-                path=storage_path,
-                file=image_bytes,
-                file_options={
-                    "content-type": "image/jpeg",
-                    "upsert": "false",
-                },
+        if not _upload_with_retries(client, storage_path, image_bytes):
+            _fail(
+                "falha upload storage apos retries (sem cobranca)",
+                prompt_to_save=prompt_final,
+                seeds_to_save=variation_seeds or None,
             )
-        except Exception as exc:
-            logger.error("cover worker: falha upload storage: %s", exc)
-            _fail("falha upload storage (sem cobranca)")
             continue
 
         # d.4 Signed URL (1 ano)
