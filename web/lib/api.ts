@@ -475,6 +475,8 @@ export interface CoverLibraryItem {
   brief_used: CoverBrief | null
   source: 'ai_generated' | 'manual_upload'
   used_in_beats_count: number
+  /** Rating do produtor 1-5 (null = nao avaliado). Migration 020. */
+  rating: number | null
   created_at: string
   status: CoverStatus
 }
@@ -513,6 +515,26 @@ export async function fetchCoverCredits(token: string): Promise<CoverCreditsStat
     throw new Error(body.detail ?? `Erro ${res.status} ao buscar créditos`)
   }
   return res.json()
+}
+
+/** Avalia uma capa com 1-5 estrelas. `rating=null` remove a avaliacao. */
+export async function rateCover(
+  token: string,
+  id: string,
+  rating: number | null,
+): Promise<void> {
+  const res = await fetch(`${API_URL}/covers/${id}/rating`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ rating }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao avaliar capa`)
+  }
 }
 
 /** Deleta uma capa da biblioteca + remove arquivo do storage. */

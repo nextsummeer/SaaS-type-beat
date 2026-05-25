@@ -11,6 +11,8 @@ type Props = {
   onDownload: (cover: CoverLibraryItem) => void
   onUseInBeat: (cover: CoverLibraryItem) => void
   onDiscard: (cover: CoverLibraryItem) => void
+  /** Click no card em modo normal abre o modal expandido. */
+  onExpand?: (cover: CoverLibraryItem) => void
   /** Modo selecao multipla: cards viram checkbox-clicaveis. */
   selectionMode?: boolean
   selected?: boolean
@@ -226,6 +228,7 @@ function ReadyCard({
   onDownload,
   onUseInBeat,
   onDiscard,
+  onExpand,
   selectionMode = false,
   selected = false,
   onToggleSelect,
@@ -235,7 +238,11 @@ function ReadyCard({
   const menuRef = useRef<HTMLDivElement>(null)
 
   const handleCardClick = () => {
-    if (selectionMode && onToggleSelect) onToggleSelect(cover)
+    if (selectionMode) {
+      onToggleSelect?.(cover)
+    } else {
+      onExpand?.(cover)
+    }
   }
 
   useEffect(() => {
@@ -256,14 +263,14 @@ function ReadyCard({
   return (
     <article
       className="group relative overflow-hidden rounded-lg transition-all"
-      onClick={selectionMode ? handleCardClick : undefined}
+      onClick={handleCardClick}
       style={{
         background: 'var(--bg-surface)',
         border: selected
           ? '1.5px solid var(--purple-light)'
           : '1px solid var(--border-subtle)',
         aspectRatio: '1 / 1',
-        cursor: selectionMode ? 'pointer' : 'default',
+        cursor: 'pointer',
         boxShadow: selected
           ? '0 0 0 3px rgba(199,181,255,0.20), 0 4px 16px rgba(65,0,255,0.15)'
           : 'none',
@@ -409,7 +416,10 @@ function ReadyCard({
       >
         <button
           type="button"
-          onClick={() => setMenuOpen((v) => !v)}
+          onClick={(e) => {
+            e.stopPropagation()
+            setMenuOpen((v) => !v)
+          }}
           className="flex h-7 w-7 items-center justify-center rounded-md transition-colors"
           style={{
             background: 'rgba(0,0,0,0.55)',
@@ -426,6 +436,7 @@ function ReadyCard({
         {menuOpen && (
           <div
             role="menu"
+            onClick={(e) => e.stopPropagation()}
             className="absolute bottom-full right-0 mb-1.5 min-w-[170px] overflow-hidden rounded-lg"
             style={{
               background: 'var(--bg-overlay)',

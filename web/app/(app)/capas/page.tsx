@@ -13,6 +13,7 @@ import {
   updateBrief,
   deleteBrief as apiDeleteBrief,
   activateBrief,
+  rateCover,
   type CoverLibraryItem,
   type CoverCreditsState,
   type CoverBrief,
@@ -21,6 +22,7 @@ import {
 import { CapasHeader } from '@/components/CapasHeader'
 import { CapasGrid } from '@/components/CapasGrid'
 import { CapasWizard } from '@/components/CapasWizard'
+import { CapaModal } from '@/components/CapaModal'
 import { ConfirmGenerateModal } from '@/components/ConfirmGenerateModal'
 import { ManageBriefsModal } from '@/components/ManageBriefsModal'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -69,6 +71,9 @@ export default function CapasPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false)
+  /** Modal expandido aberto ao clicar numa capa (em modo normal). */
+  const [expandedCover, setExpandedCover] = useState<CoverLibraryItem | null>(null)
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   /**
    * Skeletons "fantasma" que aparecem instantaneamente ao clicar Gerar,
    * antes do INSERT pending real chegar via Realtime. Some assim que o
@@ -393,6 +398,54 @@ export default function CapasPage() {
     })
   }, [])
 
+  // ─────────────────────────────────────────────────────────────────
+  // MODAL EXPANDIDO (#1)
+  // ─────────────────────────────────────────────────────────────────
+  const handleOpenExpanded = useCallback(
+    (cover: CoverLibraryItem) => {
+      // Calcula o indice da capa no array atual pra mostrar [01], [02]...
+      const idx = covers.findIndex((c) => c.id === cover.id)
+      setExpandedCover(cover)
+      setExpandedIndex(idx >= 0 ? idx : null)
+    },
+    [covers],
+  )
+
+  const handleCloseExpanded = useCallback(() => {
+    setExpandedCover(null)
+    setExpandedIndex(null)
+  }, [])
+
+  // Mantem o modal sincronizado se covers refresh (ex: rating salvou e
+  // loadData rodou). Reusa a referencia atualizada da capa.
+  useEffect(() => {
+    if (!expandedCover) return
+    const updated = covers.find((c) => c.id === expandedCover.id)
+    if (updated && updated !== expandedCover) {
+      setExpandedCover(updated)
+    }
+  }, [covers, expandedCover])
+
+  const handleRate = useCallback(
+    async (cover: CoverLibraryItem, rating: number | null) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+      // Optimistic: atualiza state local antes de aguardar API
+      setCovers((prev) =>
+        prev.map((c) => (c.id === cover.id ? { ...c, rating } : c)),
+      )
+      try {
+        await rateCover(token, cover.id, rating)
+      } catch (err) {
+        console.error('Falha ao salvar rating:', err)
+        // Reverte se falhou
+        await loadData()
+      }
+    },
+    [supabase, loadData],
+  )
+
   const handleBulkDeleteConfirm = useCallback(async () => {
     if (selectedIds.size === 0) return
     const { data: { session } } = await supabase.auth.getSession()
@@ -490,6 +543,7 @@ export default function CapasPage() {
             onDownload={handleDownload}
             onUseInBeat={handleUseInBeat}
             onDiscard={handleDiscard}
+            onExpand={handleOpenExpanded}
             selectionMode={selectionMode}
             selectedIds={selectedIds}
             onToggleSelect={handleToggleSelect}
@@ -536,6 +590,17 @@ export default function CapasPage() {
         loading={false}
         onCancel={() => setConfirmLote(null)}
         onConfirm={confirmGenerateAction}
+      />
+
+      <CapaModal
+        open={expandedCover !== null}
+        cover={expandedCover}
+        index={expandedIndex}
+        onClose={handleCloseExpanded}
+        onDownload={handleDownload}
+        onUseInBeat={handleUseInBeat}
+        onDiscard={handleDiscard}
+        onRate={handleRate}
       />
 
       <ConfirmDialog

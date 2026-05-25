@@ -12,6 +12,8 @@ type Props = {
   onDownload: (cover: CoverLibraryItem) => void
   onUseInBeat: (cover: CoverLibraryItem) => void
   onDiscard: (cover: CoverLibraryItem) => void
+  /** Click no card em modo normal abre o modal expandido. */
+  onExpand?: (cover: CoverLibraryItem) => void
   /** Modo selecao multipla: cards viram checkbox-clicaveis. */
   selectionMode?: boolean
   selectedIds?: Set<string>
@@ -31,6 +33,7 @@ export function CapasGrid({
   onDownload,
   onUseInBeat,
   onDiscard,
+  onExpand,
   selectionMode = false,
   selectedIds,
   onToggleSelect,
@@ -70,6 +73,7 @@ export function CapasGrid({
             onDownload={onDownload}
             onUseInBeat={onUseInBeat}
             onDiscard={onDiscard}
+            onExpand={onExpand}
             selectionMode={selectionMode}
             selected={selectedIds?.has(cover.id) ?? false}
             onToggleSelect={onToggleSelect}

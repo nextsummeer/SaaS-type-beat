@@ -69,7 +69,8 @@ def list_library(authorization: str = Header(...)):
 
     Returns:
         list de capas ordenadas por created_at desc, com fields:
-            id, image_url, brief_used, source, used_in_beats_count, created_at
+            id, image_url, brief_used, source, used_in_beats_count,
+            rating, created_at
     """
     user = _authenticate(authorization)
     client = get_admin_client()
@@ -78,7 +79,7 @@ def list_library(authorization: str = Header(...)):
         client.table("cover_library")
         .select(
             "id, image_url, storage_path, brief_used, source, "
-            "used_in_beats_count, created_at"
+            "used_in_beats_count, rating, created_at"
         )
         .eq("user_id", str(user.id))
         .order("created_at", desc=True)
@@ -97,6 +98,49 @@ def get_credits(authorization: str = Header(...)):
     """
     user = _authenticate(authorization)
     return credits_service.get_remaining(str(user.id))
+
+
+class RateCoverRequest(BaseModel):
+    """Rating do produtor pra capa (1-5 ou null pra remover avaliacao)."""
+    rating: int | None
+
+
+@router.patch("/{cover_id}/rating")
+def rate_cover(
+    cover_id: str,
+    body: RateCoverRequest,
+    authorization: str = Header(...),
+):
+    """Atualiza rating de uma capa (1-5 estrelas) ou null pra remover."""
+    user = _authenticate(authorization)
+    user_id = str(user.id)
+
+    if body.rating is not None and not (1 <= body.rating <= 5):
+        raise HTTPException(
+            status_code=422,
+            detail="rating deve ser entre 1 e 5 ou null pra remover",
+        )
+
+    client = get_admin_client()
+
+    cur = (
+        client.table("cover_library")
+        .select("id, user_id")
+        .eq("id", cover_id)
+        .maybe_single()
+        .execute()
+    )
+    data = cur.data if cur else None
+    if not data:
+        raise HTTPException(status_code=404, detail="Capa nao encontrada")
+    if data["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Capa pertence a outro user")
+
+    client.table("cover_library").update({"rating": body.rating}).eq(
+        "id", cover_id
+    ).execute()
+    logger.info("cover rate: cover_id=%s rating=%s user=%s", cover_id, body.rating, user_id)
+    return {"ok": True, "rating": body.rating}
 
 
 @router.delete("/{cover_id}", status_code=204)
