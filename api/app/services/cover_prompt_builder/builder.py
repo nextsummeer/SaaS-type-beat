@@ -46,6 +46,7 @@ def build_cover_prompt(
     seed: int | None = None,
     user_id: str | None = None,
     force_variation: bool = False,
+    safety_mode: bool = False,
 ) -> BuildResult:
     """Monta o prompt final v3 pra geracao de capa.
 
@@ -56,6 +57,10 @@ def build_cover_prompt(
         force_variation: True quando produtor clicou "Gerar variacao" --
             ativa query DB nas ultimas 5 capas pra excluir sub_locations
             recentemente usadas.
+        safety_mode: True quando este e um RETRY apos content_policy_violation
+            do OpenAI gpt-image-2. Injeta instrucao EXTRA no user_prompt
+            pedindo prompt ULTRA-conservador (strip sensualidade do
+            wardrobe, expressa mood APENAS via luz/atmosfera/setting).
 
     Returns:
         BuildResult. Em sucesso: prompt_final populado, validation_passed=True,
@@ -108,6 +113,27 @@ def build_cover_prompt(
 
     # 5. Monta user prompt
     user_prompt_text = build_user_prompt(effective_brief, universe, seeds_dict)
+
+    # Safety mode: injeta aviso EXTRA pro Sonnet ser ultra-conservador.
+    # Usado quando worker faz retry apos content_policy_violation.
+    if safety_mode:
+        user_prompt_text = (
+            "=== RETRY MODE -- SAFETY MAXIMUM ===\n"
+            "The PREVIOUS prompt for this brief was REJECTED by OpenAI "
+            "gpt-image-2 moderation. You MUST be EXTRA conservative this "
+            "time. STRIP all sensuality from clothing description. Use ONLY "
+            "the safest possible language. Express the mood ONLY through "
+            "LIGHT, ATMOSPHERE, and SETTING. The subject paragraph should "
+            "be 2 sentences MAX with NO body/face details beyond ethnicity, "
+            "hair color, and obscuring method. SKIP describing clothing in "
+            "detail -- use only 'minimal clothing in neutral tones'. SKIP "
+            "the masterphrase if it contains 'private', 'shouldn't', "
+            "'intimate'. Use 'caught on tape, never meant to be a still' "
+            "instead.\n"
+            "===\n\n"
+            + user_prompt_text
+        )
+        logger.info("builder v3: safety_mode ATIVADO (retry pos-moderacao)")
 
     # 6. Chama Claude com prompt caching
     from anthropic import Anthropic

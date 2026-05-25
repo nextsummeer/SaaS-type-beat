@@ -160,8 +160,40 @@ def generate_covers(
 
         # c. fal.ai gera imagem
         fal_result = generate_cover(prompt_final, user_id=user_id)
-        if not fal_result:
-            _fail("falha em fal_service (sem cobranca)")
+
+        # c.1 Retry automatico se content_policy_violation do OpenAI.
+        # Builder regenera prompt em safety_mode (instrucao ultra-conservadora)
+        # e tenta fal.ai de novo. Cliente nao ve nada -- so demora ~50s em
+        # vez de ~25s. Limite 1 retry pra evitar loop + custo.
+        if fal_result and fal_result.get("error") == "content_policy_violation":
+            logger.info(
+                "cover worker: content_policy_violation -- tentando retry com "
+                "safety_mode (cover_id=%s)", pending_id
+            )
+            retry_build = build_cover_prompt(
+                cover_brief,
+                user_id=user_id,
+                force_variation=False,
+                safety_mode=True,
+            )
+            if retry_build.validation_passed and retry_build.prompt_final:
+                prompt_final = retry_build.prompt_final
+                variation_seeds = retry_build.variation_seeds
+                fal_result = generate_cover(prompt_final, user_id=user_id)
+            else:
+                logger.warning(
+                    "cover worker: retry build falhou: %s",
+                    retry_build.validation_error,
+                )
+
+        if not fal_result or not fal_result.get("ok"):
+            error_label = (fal_result or {}).get("error", "fal_unknown")
+            error_msg = (fal_result or {}).get("message", "falha generica")
+            _fail(
+                f"falha em fal_service ({error_label}): {error_msg} (sem cobranca)",
+                prompt_to_save=prompt_final,
+                seeds_to_save=variation_seeds or None,
+            )
             continue
 
         fal_url = fal_result["url"]
