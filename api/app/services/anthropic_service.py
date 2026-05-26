@@ -52,6 +52,7 @@ def generate_metadata(
     user_id: str | None = None,
     beat_id: str | None = None,
     title_style: str = "default",
+    music_scale: str | None = None,
 ) -> dict:
     """
     Usa Claude para gerar:
@@ -86,7 +87,15 @@ def generate_metadata(
     hashtags_str = " ".join(hashtags) + f" #trapbeat #{bpm if bpm else '140'}bpm"
 
     bpm_str = str(bpm) if bpm else "?"
-    key_str = music_key or "?"
+    # T4.39 -- key+scale separados. Concat pra display ("C# Major").
+    # Back-compat: se music_key ja vier "A minor" (string composta legacy),
+    # usa direto.
+    if music_key and music_scale:
+        key_str = f"{music_key} {music_scale}"
+    elif music_key:
+        key_str = music_key
+    else:
+        key_str = "?"
     top_tracks_str = ", ".join(f'"{t}"' for t in top_tracks) if top_tracks else "(não disponível)"
     trending_str = ", ".join(trending_tags[:20]) if trending_tags else "(não disponível)"
     nome_str = producer_nome or "[Nome do Produtor]"

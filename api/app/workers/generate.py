@@ -56,6 +56,7 @@ def generate_beat(beat_id: str):
         artista_principal = artistas[0]
         bpm = beat.get("bpm")
         music_key = beat.get("music_key")
+        music_scale = beat.get("music_scale")
         user_id = beat["user_id"]
 
         # Busca perfil do produtor — sem .maybe_single() (bug do postgrest-py com 204 No Content)
@@ -86,6 +87,7 @@ def generate_beat(beat_id: str):
             artistas=artistas,
             bpm=bpm,
             music_key=music_key,
+            music_scale=music_scale,
             top_tracks=top_tracks,
             trending_tags=trending_tags,
             producer_nome=profile.get("nome"),

@@ -20,6 +20,10 @@ class CreateBeatRequest(BaseModel):
     artista_nome: Optional[str] = None
     artistas: Optional[List[str]] = None
     bpm: int
+    """Nota musical (C, C#, D, ... B) -- T4.39 cliente envia via essentia.js. Fallback: worker analyze.py calcula via librosa."""
+    music_key: Optional[str] = None
+    """Modo musical (Major | Minor) -- T4.39. Idem music_key."""
+    music_scale: Optional[str] = None
     store_link: Optional[str] = None
 
 
@@ -40,7 +44,7 @@ def list_beats(authorization: str = Header(...)):
     beats_result = (
         client.table("beats")
         .select(
-            "id, status, artista_nome, bpm, music_key, cover_path, "
+            "id, status, artista_nome, bpm, music_key, music_scale, cover_path, "
             "error_message, created_at, updated_at"
         )
         .eq("user_id", str(user.id))
@@ -76,6 +80,7 @@ def list_beats(authorization: str = Header(...)):
                 "artista_nome": b.get("artista_nome"),
                 "bpm": b.get("bpm"),
                 "music_key": b.get("music_key"),
+                "music_scale": b.get("music_scale"),
                 "cover_path": b.get("cover_path"),
                 "error_message": b.get("error_message"),
                 "created_at": b.get("created_at"),
@@ -151,6 +156,18 @@ def create_beat(
         final_cover_path = cover_data["storage_path"]
         cover_source = "library"
 
+    # Normaliza key + scale do client (essentia.js manda separado, T4.39).
+    # Aceita None -- worker analyze.py vira fallback.
+    key_norm = (body.music_key or "").strip() or None
+    scale_norm = (body.music_scale or "").strip()
+    if scale_norm:
+        # Normaliza Capitalize ("major" -> "Major")
+        scale_norm = scale_norm.capitalize()
+        if scale_norm not in ("Major", "Minor"):
+            scale_norm = None
+    else:
+        scale_norm = None
+
     result = (
         client.table("beats")
         .insert(
@@ -162,6 +179,8 @@ def create_beat(
                 "cover_source": cover_source,
                 "artista_nome": artista_nome,
                 "bpm": body.bpm,
+                "music_key": key_norm,
+                "music_scale": scale_norm,
                 "store_link": body.store_link,
                 "status": "uploaded",
             }

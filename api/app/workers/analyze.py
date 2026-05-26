@@ -43,6 +43,21 @@ def analyze_beat(beat_id: str):
         logger.info("Beat %s já analisado (status=%s) — pulando", beat_id, beat["status"])
         return {"ok": True, "skipped": True}
 
+    # T4.39 — se o producer ja preencheu music_key + music_scale via
+    # essentia.js no client, pula a analise librosa server-side. Avanca
+    # direto pra analyzed e dispara generate.
+    if beat.get("music_key") and beat.get("music_scale"):
+        logger.info(
+            "Beat %s: client ja preencheu key=%s scale=%s -- pulando librosa",
+            beat_id, beat["music_key"], beat["music_scale"],
+        )
+        client.table("beats").update({"status": "analyzed"}).eq("id", beat_id).execute()
+        try:
+            dispatch_generate_job(beat_id)
+        except Exception as exc:
+            logger.error("Falha ao enviar job generate: beat=%s erro=%s", beat_id, exc)
+        return {"ok": True, "beat_id": beat_id, "skipped_librosa": True, "status": "analyzed"}
+
     # Avança para "analyzing" imediatamente (melhora UX na step list)
     client.table("beats").update({"status": "analyzing"}).eq("id", beat_id).execute()
 
@@ -80,10 +95,14 @@ def analyze_beat(beat_id: str):
     # Salva tom e avança status (BPM ja vem do upload — T2.13)
     client.table("beats").update({
         "music_key": analysis["music_key"],
+        "music_scale": analysis["music_scale"],
         "status": "analyzed",
     }).eq("id", beat_id).execute()
 
-    logger.info("Beat %s: key=%s → analyzed", beat_id, analysis["music_key"])
+    logger.info(
+        "Beat %s: key=%s scale=%s → analyzed",
+        beat_id, analysis["music_key"], analysis["music_scale"],
+    )
 
     try:
         dispatch_generate_job(beat_id)

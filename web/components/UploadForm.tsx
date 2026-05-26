@@ -13,6 +13,8 @@ import {
   saveRecentArtists,
   type SelectedArtist,
 } from './ArtistComboBox'
+import { AudioAnalyzeBox } from './AudioAnalyzeBox'
+import type { Key, Scale } from '@/lib/essentia/types'
 
 type Status = 'idle' | 'uploading' | 'error'
 
@@ -69,6 +71,8 @@ export function UploadForm() {
   }, [])
 
   const [bpm, setBpm] = useState('')
+  const [musicKey, setMusicKey] = useState<Key | ''>('')
+  const [musicScale, setMusicScale] = useState<Scale | ''>('')
   const [jaPublicado, setJaPublicado] = useState(false)
   const [storeLink, setStoreLink] = useState('')
   const [audioProgress, setAudioProgress] = useState(0)
@@ -89,6 +93,8 @@ export function UploadForm() {
     hasCover &&
     artistasUnicos.length > 0 &&
     bpmValid &&
+    !!musicKey &&
+    !!musicScale &&
     (!jaPublicado || storeLink.trim().length > 0)
 
   function exibirAviso(msg: string) {
@@ -193,6 +199,8 @@ export function UploadForm() {
             artistas: artistasUnicos,
             artista_nome: artistasUnicos.join(' x '),
             bpm: bpmNum,
+            music_key: musicKey || null,
+            music_scale: musicScale || null,
             store_link: jaPublicado ? storeLink.trim() : null,
           }),
         },
@@ -347,21 +355,16 @@ export function UploadForm() {
           </div>
         </div>
 
-        <div className="max-w-[140px]">
-          <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-            BPM <span style={{ color: 'var(--led-error)' }}>*</span>
-          </label>
-          <input
-            type="number"
-            value={bpm}
-            onChange={(e) => setBpm(e.target.value)}
-            disabled={uploading}
-            min={40}
-            max={300}
-            placeholder="140"
-            className="field-input disabled:opacity-50"
-          />
-        </div>
+        <AudioAnalyzeBox
+          audioFile={audioFile}
+          bpm={bpm}
+          setBpm={setBpm}
+          musicKey={musicKey}
+          setMusicKey={setMusicKey}
+          scale={musicScale}
+          setScale={setMusicScale}
+          disabled={uploading}
+        />
       </div>
 
       {/* Link da loja */}

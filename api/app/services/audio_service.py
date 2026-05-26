@@ -12,10 +12,14 @@ _NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 def detect_key(file_path: str) -> dict:
     """
-    Analisa um arquivo de áudio e retorna o tom musical (key).
-    BPM nao e detectado aqui — vem do input manual do produtor (T2.13).
+    Analisa um arquivo de áudio e retorna o tom musical (key + scale).
+    BPM nao e detectado aqui — vem do input manual do produtor (T2.13)
+    ou do essentia.js client-side (T4.39).
 
-    Retorna: {"music_key": "A minor"}
+    T4.39 — Fallback so. O cliente normalmente preenche via essentia.js
+    no /upload e o worker pula essa funcao (analyze.py noop).
+
+    Retorna: {"music_key": "A", "music_scale": "Minor"}
     """
     import librosa  # import lazy — evita custo de startup quando não usado
 
@@ -26,7 +30,8 @@ def detect_key(file_path: str) -> dict:
     chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
     chroma_mean = chroma.mean(axis=1)
 
-    best_key = "C major"
+    best_key = "C"
+    best_scale = "Major"
     best_score = -np.inf
 
     for i in range(12):
@@ -35,11 +40,13 @@ def detect_key(file_path: str) -> dict:
 
         if major_score > best_score:
             best_score = major_score
-            best_key = f"{_NOTES[i]} major"
+            best_key = _NOTES[i]
+            best_scale = "Major"
 
         if minor_score > best_score:
             best_score = minor_score
-            best_key = f"{_NOTES[i]} minor"
+            best_key = _NOTES[i]
+            best_scale = "Minor"
 
-    logger.info("Análise: key=%s", best_key)
-    return {"music_key": best_key}
+    logger.info("Análise: key=%s scale=%s", best_key, best_scale)
+    return {"music_key": best_key, "music_scale": best_scale}
