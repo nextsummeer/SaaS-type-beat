@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { fetchPost, patchPost, deleteBeat } from '@/lib/api'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DateTimePicker } from '@/components/DateTimePicker'
+import { MediaPreview } from '@/components/MediaPreview'
 
 const PLACEHOLDER_LINK = '[insira seu link de venda]'
 
@@ -327,6 +328,9 @@ export default function ReviewPage() {
           {error}
         </div>
       )}
+
+      {/* Preview de audio + capa pra confirmar visualmente o que vai virar video */}
+      <MediaPreview beatId={beatId} />
 
       {post?.youtube_video_id && (
         <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-300">

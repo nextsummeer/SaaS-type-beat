@@ -859,6 +859,19 @@ function ManualTab({
   onDragLeave: () => void
   onDrop: (e: React.DragEvent) => void
 }) {
+  // Preview visual da capa manual. Producer precisa confirmar que subiu a
+  // arte certa antes de publicar -- antes so via o nome do arquivo.
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (!file) {
+      setFilePreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(file)
+    setFilePreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file])
+
   return (
     <div className="space-y-3">
       <button
@@ -919,7 +932,21 @@ function ManualTab({
           </>
         ) : file ? (
           <>
-            <ImageIcon className="h-6 w-6" style={{ color: 'var(--text-primary)' }} />
+            {filePreviewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={filePreviewUrl}
+                alt="Pre-visualizacao da capa"
+                className="rounded-md object-cover"
+                style={{
+                  width: 96,
+                  height: 96,
+                  border: '1px solid var(--border-subtle)',
+                }}
+              />
+            ) : (
+              <ImageIcon className="h-6 w-6" style={{ color: 'var(--text-primary)' }} />
+            )}
             <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{file.name}</p>
           </>
         ) : (

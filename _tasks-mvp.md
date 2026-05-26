@@ -1,12 +1,12 @@
 # _tasks — [NOME] Fase 1 (MVP) @gustavo
 
 **Criado:** 2026-04-25
-**Atualizado:** 2026-05-25 (sessao 6 FECHADA: T4.34 estilo titulo + T4.35 banco capas manuais + T4.36 bulk upload + redesign BriefSelector. Proxima sessao = ULTIMO feature pro beta MVP)
+**Atualizado:** 2026-05-26 (sessao 7 ABERTA: T4.37 modal Spotify + T4.38 preview audio/imagem + T4.39 essentia.js BPM/KEY/SCALE -- tres tasks priorizadas apos analise dos prints do concorrente typebeat.fun. Sessao comeca pela T4.38 vitoria rapida)
 **Outcome:** Produtor convidado faz login, conecta canal YouTube, configura brief de estilo padrao na aba `/capas` (multi-presets nomeados, ate N por tier), gera capas reusaveis com IA (prompt base + Claude + fal.ai, ~30s, $0.013), sobe um beat informando artista de referencia + mood, escolhe capa da biblioteca ou envia propria, recebe titulo+descricao+tags geradas pela IA, edita o que quiser, confirma agendamento, e ve video publicado/agendado no YouTube Studio dele. Tudo multitenant via Supabase RLS desde dia 1. Meta: beta fechado setembro 2026.
 
 **Iniciado:** 2026-04-25
 **Status:** em-execucao
-**Proximo passo:** Sessao 6 (2026-05-25) FECHADA -- T4.34 (estilo titulo) + T4.35 (banco capas manuais, 3 blocos) + T4.36 (bulk upload + selecionar enviadas) + redesign BriefSelector (card editorial protagonista do header /capas) entregues em prod. Rary recebeu tier `internal` pra testar geracao de capas sem trava. **Proxima sessao = ULTIMO feature pra lancar o beta MVP** -- escopo a ser definido na abertura da sessao (Gustavo trara a decisao). HISTORICO sessao 5 (2026-05-25) -- T4.28-T4.33 da v3 + 8 features de UX (#1-#8) entregues em prod. **Pra proxima sessao continuar:** (a) expandir `artist_universe.py` quando Gustavo trouxer pacote de novo artista (Pop Smoke, Future, Kendrick, Carti, 21 Savage etc.), (b) eval suite de regression visual pros 5 briefs canonicos, (c) `vocabulary.py` rico com matriz scene x light x mood pra liberar opcao `aleatorio` no wizard, (d) T4.11 teste E2E pytest, (e) img2img (adiado por Gustavo ate validar text-to-image em uso real). HISTORICO sessao 4 (mantido pra contexto): T4.28 prompt_skeleton com camera video-still em 2 variantes + estrutura 12 elementos + sub-locations por artista (5 validados) + drop campo cenario + anti-repeticao via DB. Sequencia entregue T4.27 setup -> T4.28 skeleton -> T4.29 artist_universe -> T4.30 genre_dna+mood_modulation+lighting_setups -> T4.31 variation_engine -> T4.32 builder+validators+user_prompt+switch+smoke test -> T4.33 drop cenario backend+frontend. Sessao 4 ABRIU em 2026-05-22 apos v2 (T4.19-T4.26) ter sido testada e produzido capas visualmente ruins -- causa: camera "Analog film + 35mm" gerava estetica polida oposta ao desejado. ADR `2026-05-22-prompt-dna-capa-v3.md` substitui v2 com camera video-still fixa (VHS/MiniDV/phone video comprimido) + estrutura 12 elementos + sub-locations por artista (5 validados: Drake, Travis, Weeknd, Fakemink, Nettspend; expansivel) + drop campo cenario do brief (inferido do universo do artista) + anti-repeticao via query nas ultimas 5 variation_seeds + palavras banidas (music video, cinematic, B-roll, director...) + references banidas (cinematografos/Vogue) vs permitidas (Larry Clark, Nan Goldin, Cobrasnake, Hedi Slimane) + anti-bias inline (sem asiaticos default, sem gang signs). Sequencia aprovada: T4.27 setup -> T4.28 skeleton -> T4.29 artist_universe -> T4.30 genre_dna+mood_modulation+lighting_setups -> T4.31 variation_engine -> T4.32 builder+validators+user_prompt+switch+smoke test -> T4.33 drop cenario backend+frontend. img2img fica pra DEPOIS da v3. T4.19-T4.26 marcadas como "iteracao 1 superada pela v3" (preservadas no historico). Tasks velhas (sem mudanca): T4.11 (teste E2E pytest, backlog), T4.15 (generate.py NAO dispara cover.py). Bloqueadores paralelos (sem mudanca): (1) Rary republicar beat `ee96c64f`, (2) aumento quota YouTube, (3) OAuth verification, (4) decisao billing.
+**Proximo passo:** Sessao 7 (2026-05-26) EM ANDAMENTO -- **T4.38 ENTREGUE em prod** (preview audio + imagem no /upload e /beats/[id]/review via signed URLs do Supabase, novo componente `MediaPreview.tsx`, useEffect com cleanup pra blob URLs evitar memory leak). Proxima: **T4.37 modal Spotify** (busca de artista com foto+followers+generos, qualquer artista vale, curadoria-nao-e-gating). Depois **T4.39 essentia.js BPM/KEY/SCALE 3 campos** (DESCOBERTO via DevTools deles: typebeat.fun usa essentia.js client-side -- WebAssembly do Music Technology Group de Barcelona, AGPL gratis pra DSP classico, muito mais preciso que nosso librosa atual). Sequencia inteira responde ao concorrente typebeat.fun (BeatStars killer com auto-upload + beat store + 0% comissao + AI Channel Audit + Niche Finder) analisado em sessao 7. HISTORICO sessao 6 (2026-05-25) -- T4.34 (estilo titulo) + T4.35 (banco capas manuais, 3 blocos) + T4.36 (bulk upload + selecionar enviadas) + redesign BriefSelector (card editorial protagonista do header /capas) entregues em prod. Rary recebeu tier `internal` pra testar geracao de capas sem trava. HISTORICO sessao 5 (2026-05-25) -- T4.28-T4.33 da v3 + 8 features de UX (#1-#8) entregues em prod. **Pra proxima sessao continuar:** (a) expandir `artist_universe.py` quando Gustavo trouxer pacote de novo artista (Pop Smoke, Future, Kendrick, Carti, 21 Savage etc.), (b) eval suite de regression visual pros 5 briefs canonicos, (c) `vocabulary.py` rico com matriz scene x light x mood pra liberar opcao `aleatorio` no wizard, (d) T4.11 teste E2E pytest, (e) img2img (adiado por Gustavo ate validar text-to-image em uso real). HISTORICO sessao 4 (mantido pra contexto): T4.28 prompt_skeleton com camera video-still em 2 variantes + estrutura 12 elementos + sub-locations por artista (5 validados) + drop campo cenario + anti-repeticao via DB. Sequencia entregue T4.27 setup -> T4.28 skeleton -> T4.29 artist_universe -> T4.30 genre_dna+mood_modulation+lighting_setups -> T4.31 variation_engine -> T4.32 builder+validators+user_prompt+switch+smoke test -> T4.33 drop cenario backend+frontend. Sessao 4 ABRIU em 2026-05-22 apos v2 (T4.19-T4.26) ter sido testada e produzido capas visualmente ruins -- causa: camera "Analog film + 35mm" gerava estetica polida oposta ao desejado. ADR `2026-05-22-prompt-dna-capa-v3.md` substitui v2 com camera video-still fixa (VHS/MiniDV/phone video comprimido) + estrutura 12 elementos + sub-locations por artista (5 validados: Drake, Travis, Weeknd, Fakemink, Nettspend; expansivel) + drop campo cenario do brief (inferido do universo do artista) + anti-repeticao via query nas ultimas 5 variation_seeds + palavras banidas (music video, cinematic, B-roll, director...) + references banidas (cinematografos/Vogue) vs permitidas (Larry Clark, Nan Goldin, Cobrasnake, Hedi Slimane) + anti-bias inline (sem asiaticos default, sem gang signs). Sequencia aprovada: T4.27 setup -> T4.28 skeleton -> T4.29 artist_universe -> T4.30 genre_dna+mood_modulation+lighting_setups -> T4.31 variation_engine -> T4.32 builder+validators+user_prompt+switch+smoke test -> T4.33 drop cenario backend+frontend. img2img fica pra DEPOIS da v3. T4.19-T4.26 marcadas como "iteracao 1 superada pela v3" (preservadas no historico). Tasks velhas (sem mudanca): T4.11 (teste E2E pytest, backlog), T4.15 (generate.py NAO dispara cover.py). Bloqueadores paralelos (sem mudanca): (1) Rary republicar beat `ee96c64f`, (2) aumento quota YouTube, (3) OAuth verification, (4) decisao billing.
 **Tags:** beatpost, gustavo, mvp, saas, multitenant, supabase, nextjs, fastapi, gemini, youtube
 
 ## Contexto
@@ -971,6 +971,66 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 - **Criterio de pronto:** Selecionar 5 imagens no input do upload manual -> bulk dispara, progress mostra 1/5 -> 5/5, todas viram capas no banco. Selecionar 10 com quota=3 -> sobe 3 + msg "7 ignorados". Botao Selecionar nas Enviadas funciona igual nas Geradas (toolbar floating bulk delete aparece).
 - **Dependencia:** T4.35 (entregue)
 
+#### `[ ]` T4.37 — Modal de selecao de artista via Spotify Web API (UploadForm + CapasWizard)
+
+- **Motivacao:** Hoje campo `artistas` no UploadForm e `artista_primario/secundario` no CapasWizard sao inputs de texto livre. Concorrente typebeat.fun usa modal com busca Spotify (foto + followers + generos) que da sensacao de "plataforma profissional, achei exatamente o artista que quero". Sessao 7 (2026-05-26) decidiu adotar puramente como UX -- nao bloqueia nada no backend, qualquer artista continua valido (curadoria-nao-e-gating).
+- **Decisoes fechadas:**
+  - **Spotify Web API Client Credentials** (sem login do usuario). Service `spotify_service.py` ja tem auth + cache de token -- so adicionar `search_artists(query, limit=10)`.
+  - **Componente unico reusavel** `<SpotifyArtistPicker>` com prop `maxSelect`: 4 no UploadForm, 2 no CapasWizard (primario + secundario).
+  - **Fallback gracioso quando busca vazia**: mostra "Nenhum artista encontrado" + opcao "Usar '[query]' como texto livre" -- preserva escape pra artistas underground BR/PT fora do Spotify.
+  - **UX hibrida**: depois da selecao, mostra cards pequenos com foto + nome no form + botao "Editar selecao" reabre modal (estilo typebeat.fun, nao TypeBeat).
+  - **NAO persiste spotify_id no banco** nesta task (evita migration). Backend continua recebendo `artistas: List[str]` igual hoje. Persistencia fica como follow-up se virar util.
+  - **Cache em memoria backend** TTL 1h por query (rate limit Spotify modo Development = 180req/min, com cache passa de centenas de produtores).
+- **Arquivos previstos:**
+  - `api/app/services/spotify_service.py` (adiciona `search_artists`)
+  - `api/app/routes/artists.py` (novo, ou anexa em rota existente) -- `GET /artists/search?q=...` autenticado via Supabase JWT + cache memoria
+  - `web/components/SpotifyArtistPicker.tsx` (novo componente reusavel)
+  - `web/components/UploadForm.tsx` (substitui inputs texto livre por picker)
+  - `web/components/CapasWizard.tsx` (substitui inputs primario/secundario por picker)
+  - `web/lib/api.ts` (funcao `searchSpotifyArtists`)
+- **Criterio de pronto:** Producer no /upload clica "Selecionar artistas" -> modal abre com search debounced 300ms -> digita "Nettspend" -> lista cards Spotify (foto, followers, generos) -> seleciona 1, clica Confirmar -> form mostra card pequeno com foto/nome. Mesmo fluxo no /capas wizard (maxSelect=2). Backend recebe `artistas: ["Nettspend"]` igual hoje. Producer underground digita nome inexistente no Spotify -> escape "Usar como texto livre" funciona.
+- **Dependencia:** T2.8 (spotify_service ja existe), T4.36 (entregue)
+
+#### `[x]` T4.38 — Preview de audio + imagem (upload + review page)
+
+- **Motivacao:** Gap real vs typebeat.fun apontado pelo Gustavo na analise dos prints (sessao 7). Hoje quando o producer arrasta MP3/capa no UploadForm, so aparece o nome do arquivo -- impossivel confirmar "subi o beat certo?" antes de clicar Gerar. Mesma cegueira na /review apos geracao: nao tem player do audio nem thumb da capa, so dados textuais. Risco real: producer publicar arquivo errado no YouTube.
+- **Decisoes fechadas:**
+  - **Upload (pre-submit):** player HTML5 `<audio controls>` nativo apos drop do MP3 + thumb visual da capa via `URL.createObjectURL()`. Zero backend, puro client.
+  - **Review page:** mesmo player de audio + thumb da capa renderizados em cima dos campos editaveis. Frontend chama Supabase direto pra buscar `audio_path` e `cover_path` do beat + gera signed URLs (60min expiry). RLS garante que so o dono ve.
+  - **Layout review:** preview vai no topo da pagina, antes do bloco "Revisar conteudo do video", como confirmacao visual do que vai virar video.
+  - **Cleanup de blob URLs:** `useEffect` com return pra revogar URLs ao desmontar (evita memory leak).
+- **Arquivos previstos:**
+  - `web/components/UploadForm.tsx` (adiciona `<audio>` apos `audioFile` setado + thumb apos `coverFile` setado, ambos com cleanup)
+  - `web/components/CoverPicker.tsx` (validar se manual tab ja mostra preview -- ler primeiro)
+  - `web/app/(app)/beats/[id]/review/page.tsx` (adiciona secao MediaPreview no topo)
+  - `web/components/MediaPreview.tsx` (novo, encapsula audio+thumb fetch de signed URLs)
+- **Criterio de pronto:** Drag MP3 no /upload -> player aparece logo abaixo do drop area, da pra tocar e pausar. Upload manual de capa -> thumb visual aparece em vez de so nome do arquivo. /review de beat pronto -> topo da pagina tem audio player + thumb da capa final. Build verde. Verificacao visual em dev.
+- **Dependencia:** T4.36 (entregue)
+
+#### `[ ]` T4.39 — Essentia.js: BPM/KEY/SCALE client-side + 3 campos separados
+
+- **Motivacao:** Hoje librosa server-side (worker analyze.py) detecta BPM e key. Problema validado: librosa erra ~15-20% em trap com hi-hats em tripletas, e key detection e fraco (Krumhansl basico). Concorrente typebeat.fun usa **essentia.js** (descoberto via DevTools no console: `essentia-wasm.web.js:27`) -- biblioteca C++ do Music Technology Group (Barcelona) portada pra WebAssembly, mesma stack interna de algumas features do Spotify. Roda 100% no browser do producer. Resolve precisao E reduz custo de servidor.
+- **Decisoes fechadas:**
+  - **Licenciamento:** AGPL-3.0 gratis pra DSP classico (RhythmExtractor2013, KeyExtractor). NAO usar modelos ML pre-treinados do essentia (esses tem CC BY-NC-ND 4.0, exige licenca comercial). Cotacao comercial pro pos-beta via `mtg-info@upf.edu`.
+  - **Onde roda:** 100% client (browser do producer). Backend NAO recalcula -- confia no input.
+  - **UX:** botao "Auto-detect" no UploadForm dispara essentia, mostra loading ~2-3s, preenche 3 campos. Producer edita manualmente se quiser. Tudo ANTES de clicar "Gerar com IA" -- a partir dai os valores ja estao no form, generate.py recebe via POST /beats.
+  - **3 campos separados:** BPM (number), KEY (Literal: C, C#, D, ...), SCALE (Literal: Major, Minor). Concat `${key} ${scale}` pra exibir e usar em descricao.
+  - **Migration:** split do campo `music_key` atual (string tipo "A minor") em `music_key` (so nota) + `music_scale` (so modo). Script de migracao pra dados existentes.
+  - **Worker analyze.py:** vira no-op pro BPM/KEY (mantem so como fallback caso producer pule auto-detect e nao preencha manual). Reduz CPU do Railway.
+  - **Lazy load:** essentia WASM (~5-10MB) carregado so quando producer abre /upload, nao na home.
+- **Arquivos previstos:**
+  - `web/package.json` (add `essentia.js`)
+  - `web/lib/essentia/analyzer.ts` (novo, wrapper async com lazy import + funcao `analyzeAudio(file) -> {bpm, key, scale}`)
+  - `web/components/AudioAnalyzeButton.tsx` (novo, botao Auto-detect com loading state)
+  - `web/components/UploadForm.tsx` (substitui input BPM unico por 3 campos + botao auto-detect)
+  - `supabase/migrations/021_split_music_key_scale.sql` (split column + backfill)
+  - `api/app/routes/beats.py` (POST /beats aceita `music_key` + `music_scale` separados; back-compat com `music_key` "A minor")
+  - `api/app/workers/analyze.py` (passa a ser fallback so se beat.music_key for null)
+  - `api/app/services/anthropic_service.py` (template usa `${key} ${scale}` na descricao)
+  - `web/app/(app)/beats/[id]/review/page.tsx` (exibe 3 campos)
+- **Criterio de pronto:** Producer no /upload arrasta MP3, clica "Auto-detect" -> loading 2-3s -> 3 campos preenchem (BPM=140, KEY=C#, SCALE=Minor). Producer edita SCALE pra Major se quiser. Submit -> beat criado com 3 campos. Descricao gerada usa "140 BPM • C# Major". Migration roda limpa em prod. Build verde. Verificacao visual em dev.
+- **Dependencia:** T4.38 (vitoria rapida primeiro)
+
 ---
 
 ### Fase 5 — YouTube OAuth + postagem (Gustavo executa)
@@ -1285,6 +1345,8 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluida · `[-]` bloque
 ---
 
 ## Historico de chats
+
+- **2026-05-26 (sessao 7 em andamento -- T4.38 entregue)** — Sessao aberta apos Gustavo identificar concorrente forte **typebeat.fun** (BeatStars killer com auto-upload + beat store + 0% comissao + AI Channel Audit + Niche Finder). Analise estrategica em 2 etapas: (1) WebFetch do landing page deles -- posicionamento "The #1 Platform to Sell Beats", $17 Pro / $37 Ultimate com unlimited canais, claims "0+ Producers" placeholder indicando baixa tracao real, founder Daniel Pirisi com Billboard placements. (2) Analise dos prints da plataforma deles (Gustavo gravou tela mas Claude Code nao aceita video -- foi screenshots). 3 tasks priorizadas + 2 backlog: **T4.37** modal Spotify (UX premium, qualquer artista vale -- [[curadoria-nao-e-gating]]), **T4.38** preview audio+imagem (gap real), **T4.39** essentia.js BPM/KEY/SCALE em 3 campos. **Achado tecnico critico:** typebeat.fun usa **essentia.js client-side** (descoberto via DevTools no console: `essentia-wasm.web.js`) -- biblioteca C++ do Music Technology Group de Barcelona portada pra WebAssembly, mesma usada internamente pelo Spotify, AGPL gratis pra DSP classico. Resolve precisao do librosa (~15-20% erro em trap com tripletas) e zera custo de servidor pra analise. Backlog: wizard de onboarding pos-cadastro (com hook "104h/year wasted on manual uploads"), attribution survey. **T4.38 entregue:** `MediaPreview.tsx` busca via Supabase client + signed URLs 1h, renderiza thumb 96x96 + audio HTML5 controls. UploadForm ganhou player apos drop do MP3. ManualTab do CoverPicker substituiu icone+nome por thumb visual real. Build verde 18/18 paginas, sem erro de prerender. Memorias salvas: [[curadoria-nao-e-gating]] (modal Spotify NUNCA bloqueia artista fora da curadoria visual).
 
 - **2026-05-25 (sessao 6 FECHADA)** — Sessao do "beta mvp warm-up". 4 entregas grandes em prod:
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { UploadCloud, AlertCircle, Music, Plus, X, Check, Store, ExternalLink, CalendarClock, Sparkles, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -28,6 +28,18 @@ export function UploadForm() {
   const audioRef = useRef<HTMLInputElement>(null)
 
   const [audioFile, setAudioFile] = useState<File | null>(null)
+  const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!audioFile) {
+      setAudioPreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(audioFile)
+    setAudioPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [audioFile])
+
   /** Capa via upload manual (modo CoverPicker tab 'Manual') */
   const [coverFile, setCoverFile] = useState<File | null>(null)
   /** Capa selecionada da biblioteca (modo CoverPicker tab 'Biblioteca').
@@ -501,6 +513,25 @@ export function UploadForm() {
           className="hidden"
           onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
         />
+
+        {/* Preview player — confirma audialmente que o producer subiu o beat certo. */}
+        {audioPreviewUrl && (
+          <div
+            className="mt-3 flex items-center gap-3 rounded-lg px-3 py-2.5"
+            style={{
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+            }}
+          >
+            <audio
+              src={audioPreviewUrl}
+              controls
+              preload="metadata"
+              className="w-full"
+              style={{ height: 32 }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Progress bar */}
