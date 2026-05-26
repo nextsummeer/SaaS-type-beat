@@ -2,16 +2,17 @@
 
 import { useState, useRef, useMemo, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { UploadCloud, AlertCircle, Music, Check, Store, ExternalLink, CalendarClock, Sparkles, ArrowRight } from 'lucide-react'
+import { UploadCloud, AlertCircle, Music, Plus, Check, Store, ExternalLink, CalendarClock, Sparkles, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { uploadWithProgress } from '@/lib/storage'
 import { CoverPicker } from './CoverPicker'
 import { AudioPlayer } from './AudioPlayer'
 import {
-  SpotifyArtistPicker,
-  SelectedArtistsDisplay,
+  ArtistComboBox,
+  loadRecentArtists,
+  saveRecentArtists,
   type SelectedArtist,
-} from './SpotifyArtistPicker'
+} from './ArtistComboBox'
 
 type Status = 'idle' | 'uploading' | 'error'
 
@@ -54,8 +55,19 @@ export function UploadForm() {
   const [selectedCoverId, setSelectedCoverId] = useState<string | null>(
     () => searchParams.get('cover_id'),
   )
-  const [selectedArtists, setSelectedArtists] = useState<SelectedArtist[]>([])
-  const [artistPickerOpen, setArtistPickerOpen] = useState(false)
+  // Slots de artista (null = vazio com combobox aberto). Comeca com 1 slot
+  // e pre-popula com o ultimo artista usado se houver no localStorage.
+  const [artistSlots, setArtistSlots] = useState<(SelectedArtist | null)[]>([null])
+  const [recentArtists, setRecentArtists] = useState<SelectedArtist[]>([])
+
+  useEffect(() => {
+    const recents = loadRecentArtists()
+    setRecentArtists(recents)
+    if (recents.length > 0) {
+      setArtistSlots([recents[0]])
+    }
+  }, [])
+
   const [bpm, setBpm] = useState('')
   const [jaPublicado, setJaPublicado] = useState(false)
   const [storeLink, setStoreLink] = useState('')
@@ -67,7 +79,10 @@ export function UploadForm() {
 
   const bpmNum = Number(bpm)
   const bpmValid = Number.isFinite(bpmNum) && bpmNum >= 40 && bpmNum <= 300
-  const artistasUnicos = selectedArtists.map((a) => a.name)
+  const filledArtists = artistSlots.filter(
+    (a): a is SelectedArtist => a !== null,
+  )
+  const artistasUnicos = filledArtists.map((a) => a.name)
   const hasCover = !!coverFile || !!selectedCoverId
   const canSubmit =
     !!audioFile &&
@@ -96,19 +111,27 @@ export function UploadForm() {
     setAudioFile(arquivo)
   }
 
-  function handleArtistsConfirm(picked: SelectedArtist[]) {
-    setSelectedArtists(picked.slice(0, MAX_ARTISTAS))
-    setArtistPickerOpen(false)
+  function setSlotArtist(idx: number, artist: SelectedArtist | null) {
+    setArtistSlots((prev) => prev.map((a, i) => (i === idx ? artist : a)))
   }
 
-  function handleRemoveArtist(id: string) {
-    setSelectedArtists((prev) => prev.filter((a) => a.id !== id))
+  function adicionarSlot() {
+    setArtistSlots((prev) =>
+      prev.length < MAX_ARTISTAS ? [...prev, null] : prev,
+    )
+  }
+
+  function removerSlot(idx: number) {
+    setArtistSlots((prev) => {
+      if (prev.length === 1) return [null]
+      return prev.filter((_, i) => i !== idx)
+    })
   }
 
   const labelArtistas =
-    selectedArtists.length <= 1
+    artistSlots.length === 1
       ? 'Type beat de quem?'
-      : `Type beat de ${Array(selectedArtists.length).fill('quem').join(' x ')}?`
+      : `Type beat de ${Array(artistSlots.length).fill('quem').join(' x ')}?`
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -181,6 +204,9 @@ export function UploadForm() {
 
       const { id: dbBeatId } = await apiRes.json()
 
+      // Persiste artistas usados pra pre-preencher o proximo upload.
+      saveRecentArtists(filledArtists)
+
       if (preAgendar && typeof window !== 'undefined') {
         try {
           sessionStorage.setItem(PRE_SCHEDULE_KEY(dbBeatId), preAgendar.toISOString())
@@ -243,14 +269,82 @@ export function UploadForm() {
           <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
             {labelArtistas} <span style={{ color: 'var(--led-error)' }}>*</span>
           </label>
-          <SelectedArtistsDisplay
-            artists={selectedArtists}
-            maxSelect={MAX_ARTISTAS}
-            onEdit={() => setArtistPickerOpen(true)}
-            onRemove={handleRemoveArtist}
-            disabled={uploading}
-            label="Artistas"
-          />
+          <div className="space-y-2">
+            {artistSlots.map((slot, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <div className="flex-1">
+                  <ArtistComboBox
+                    value={slot}
+                    onChange={(a) => setSlotArtist(idx, a)}
+                    placeholder={
+                      idx === 0
+                        ? 'ex: Drake, Travis Scott…'
+                        : 'outro artista (colab)'
+                    }
+                    disabled={uploading}
+                    recentArtists={idx === 0 ? recentArtists : []}
+                    excludeNames={artistSlots
+                      .filter((s, i) => i !== idx && s !== null)
+                      .map((s) => s!.name)}
+                  />
+                </div>
+                {artistSlots.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removerSlot(idx)}
+                    disabled={uploading}
+                    aria-label={`Remover slot ${idx + 1}`}
+                    className="flex h-[50px] w-9 shrink-0 items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{
+                      color: 'var(--text-muted)',
+                      border: '1px solid var(--border-subtle)',
+                      background: 'transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(248,113,113,0.10)'
+                      e.currentTarget.style.color = 'var(--led-error)'
+                      e.currentTarget.style.borderColor = 'rgba(248,113,113,0.25)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = 'var(--text-muted)'
+                      e.currentTarget.style.borderColor = 'var(--border-subtle)'
+                    }}
+                  >
+                    <Plus size={14} strokeWidth={2.2} style={{ transform: 'rotate(45deg)' }} />
+                  </button>
+                )}
+              </div>
+            ))}
+            {artistSlots.length < MAX_ARTISTAS && (
+              <button
+                type="button"
+                onClick={adicionarSlot}
+                disabled={uploading}
+                className="font-mono uppercase inline-flex items-center gap-2 rounded-lg border border-dashed px-3.5 py-2.5 transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                style={{
+                  borderColor: 'var(--border-medium)',
+                  color: 'var(--text-muted)',
+                  background: 'transparent',
+                  fontSize: 10.5,
+                  letterSpacing: '0.22em',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-strong)'
+                  e.currentTarget.style.color = 'var(--text-primary)'
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-medium)'
+                  e.currentTarget.style.color = 'var(--text-muted)'
+                  e.currentTarget.style.background = 'transparent'
+                }}
+              >
+                <Plus size={11} strokeWidth={2.2} />
+                Adicionar artista
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="max-w-[140px]">
@@ -552,13 +646,6 @@ export function UploadForm() {
         )}
       </button>
 
-      <SpotifyArtistPicker
-        open={artistPickerOpen}
-        onClose={() => setArtistPickerOpen(false)}
-        onConfirm={handleArtistsConfirm}
-        initialSelection={selectedArtists}
-        maxSelect={MAX_ARTISTAS}
-      />
     </form>
   )
 }

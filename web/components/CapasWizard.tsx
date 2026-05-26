@@ -36,10 +36,9 @@ import {
 } from 'lucide-react'
 import type { CoverBrief } from '@/lib/api'
 import {
-  SpotifyArtistPicker,
-  SelectedArtistsDisplay,
+  ArtistComboBox,
   type SelectedArtist,
-} from './SpotifyArtistPicker'
+} from './ArtistComboBox'
 
 type Option = {
   slug: string
@@ -168,13 +167,16 @@ export function CapasWizard({
   const [step, setStep] = useState<Step>(1)
   const [presetName, setPresetName] = useState('')
 
-  // Identidade
-  const [artistaPrimario, setArtistaPrimario] = useState('')
-  const [artistaSecundario, setArtistaSecundario] = useState<string | null>(null)
-  const [selectedArtists, setSelectedArtists] = useState<SelectedArtist[]>([])
-  const [artistPickerOpen, setArtistPickerOpen] = useState(false)
+  // Identidade — primario e secundario sao slots editaveis no Step1
+  const [artistaPrimarioObj, setArtistaPrimarioObj] = useState<SelectedArtist | null>(null)
+  const [artistaSecundarioObj, setArtistaSecundarioObj] = useState<SelectedArtist | null>(null)
+  const [secundarioVisivel, setSecundarioVisivel] = useState(false)
   const [generoPrimario, setGeneroPrimario] = useState<string | null>(null)
   const [generoSecundario, setGeneroSecundario] = useState<string | null>(null)
+
+  // Derivacao pros campos string que o backend espera (compat com brief atual)
+  const artistaPrimario = artistaPrimarioObj?.name ?? ''
+  const artistaSecundario = artistaSecundarioObj?.name ?? null
 
   // Visual (v3 -- sem campo `cenario`, inferido do universo do artista)
   const [quemAparece, setQuemAparece] = useState<string | null>(null)
@@ -201,37 +203,37 @@ export function CapasWizard({
 
     setStep(1)
     setPresetName(initialName ?? '')
-    // Le campos v2 do brief; cai pra v1 (legacy) se preciso pra compat
+    // Le campos v2 do brief; cai pra v1 (legacy) se preciso pra compat.
+    // Brief salvo so tem o nome do artista (sem foto/genres), entao marca
+    // como custom -- producer reabre o combobox e re-busca se quiser foto.
     const initPrimario =
       initialBrief?.artista_primario ?? initialBrief?.artista_nome ?? ''
     const initSecundario = initialBrief?.artista_secundario ?? null
-    setArtistaPrimario(initPrimario)
-    setArtistaSecundario(initSecundario)
-    // Rehidrata selectedArtists do brief salvo. So tem o nome (sem foto/genres),
-    // entao marca como custom -- producer pode reabrir o picker pra re-selecionar
-    // a versao Spotify se quiser foto e gravar a referencia.
-    const rehydrated: SelectedArtist[] = []
-    if (initPrimario.trim()) {
-      rehydrated.push({
-        id: `custom:${initPrimario.toLowerCase()}`,
-        name: initPrimario,
-        imageUrl: null,
-        followers: 0,
-        genres: [],
-        custom: true,
-      })
-    }
-    if (initSecundario && initSecundario.trim()) {
-      rehydrated.push({
-        id: `custom:${initSecundario.toLowerCase()}`,
-        name: initSecundario,
-        imageUrl: null,
-        followers: 0,
-        genres: [],
-        custom: true,
-      })
-    }
-    setSelectedArtists(rehydrated)
+    setArtistaPrimarioObj(
+      initPrimario.trim()
+        ? {
+            id: `custom:${initPrimario.toLowerCase()}`,
+            name: initPrimario,
+            imageUrl: null,
+            followers: 0,
+            genres: [],
+            custom: true,
+          }
+        : null,
+    )
+    setArtistaSecundarioObj(
+      initSecundario && initSecundario.trim()
+        ? {
+            id: `custom:${initSecundario.toLowerCase()}`,
+            name: initSecundario,
+            imageUrl: null,
+            followers: 0,
+            genres: [],
+            custom: true,
+          }
+        : null,
+    )
+    setSecundarioVisivel(!!(initSecundario && initSecundario.trim()))
     setGeneroPrimario(initialBrief?.genero_primario ?? null)
     setGeneroSecundario(initialBrief?.genero_secundario ?? null)
     setQuemAparece(initialBrief?.quem_aparece ?? null)
@@ -260,23 +262,6 @@ export function CapasWizard({
       document.body.style.overflow = prev
     }
   }, [open])
-
-  function handleArtistsConfirm(picked: SelectedArtist[]) {
-    const limited = picked.slice(0, 2)
-    setSelectedArtists(limited)
-    setArtistaPrimario(limited[0]?.name ?? '')
-    setArtistaSecundario(limited[1]?.name ?? null)
-    setArtistPickerOpen(false)
-  }
-
-  function handleRemoveArtist(id: string) {
-    setSelectedArtists((prev) => {
-      const next = prev.filter((a) => a.id !== id)
-      setArtistaPrimario(next[0]?.name ?? '')
-      setArtistaSecundario(next[1]?.name ?? null)
-      return next
-    })
-  }
 
   if (!open) return null
 
@@ -390,9 +375,12 @@ export function CapasWizard({
         <div className="flex-1 overflow-y-auto px-7 py-8">
           {step === 1 && (
             <Step1Identidade
-              selectedArtists={selectedArtists}
-              onOpenArtistPicker={() => setArtistPickerOpen(true)}
-              onRemoveArtist={handleRemoveArtist}
+              artistaPrimarioObj={artistaPrimarioObj}
+              setArtistaPrimarioObj={setArtistaPrimarioObj}
+              artistaSecundarioObj={artistaSecundarioObj}
+              setArtistaSecundarioObj={setArtistaSecundarioObj}
+              secundarioVisivel={secundarioVisivel}
+              setSecundarioVisivel={setSecundarioVisivel}
               generoPrimario={generoPrimario}
               setGeneroPrimario={setGeneroPrimario}
               generoSecundario={generoSecundario}
@@ -510,14 +498,6 @@ export function CapasWizard({
           </div>
         </footer>
       </div>
-
-      <SpotifyArtistPicker
-        open={artistPickerOpen}
-        onClose={() => setArtistPickerOpen(false)}
-        onConfirm={handleArtistsConfirm}
-        initialSelection={selectedArtists}
-        maxSelect={2}
-      />
     </div>
   )
 }
@@ -554,17 +534,23 @@ function StepIndicator({ current }: { current: Step }) {
 // Step 1 — Identidade do beat (artista + genero)
 // ─────────────────────────────────────────────────────────────────────
 function Step1Identidade({
-  selectedArtists,
-  onOpenArtistPicker,
-  onRemoveArtist,
+  artistaPrimarioObj,
+  setArtistaPrimarioObj,
+  artistaSecundarioObj,
+  setArtistaSecundarioObj,
+  secundarioVisivel,
+  setSecundarioVisivel,
   generoPrimario,
   setGeneroPrimario,
   generoSecundario,
   setGeneroSecundario,
 }: {
-  selectedArtists: SelectedArtist[]
-  onOpenArtistPicker: () => void
-  onRemoveArtist: (id: string) => void
+  artistaPrimarioObj: SelectedArtist | null
+  setArtistaPrimarioObj: (v: SelectedArtist | null) => void
+  artistaSecundarioObj: SelectedArtist | null
+  setArtistaSecundarioObj: (v: SelectedArtist | null) => void
+  secundarioVisivel: boolean
+  setSecundarioVisivel: (v: boolean) => void
   generoPrimario: string | null
   setGeneroPrimario: (v: string | null) => void
   generoSecundario: string | null
@@ -601,7 +587,7 @@ function Step1Identidade({
         </p>
       </div>
 
-      {/* ARTISTAS — picker Spotify (primario + secundario opcional, ordem visivel) */}
+      {/* ARTISTAS — primario + secundario opcional, busca Spotify inline */}
       <div className="space-y-2">
         <label
           className="font-mono uppercase block"
@@ -611,21 +597,68 @@ function Step1Identidade({
             color: 'var(--text-muted)',
           }}
         >
-          Artistas de referência
+          Artista de referência
         </label>
-        <SelectedArtistsDisplay
-          artists={selectedArtists}
-          maxSelect={2}
-          onEdit={onOpenArtistPicker}
-          onRemove={onRemoveArtist}
-          label="Referencias"
+        <ArtistComboBox
+          value={artistaPrimarioObj}
+          onChange={setArtistaPrimarioObj}
+          placeholder="ex: Lil Baby, Drake, Playboi Carti…"
+          excludeNames={
+            artistaSecundarioObj ? [artistaSecundarioObj.name] : []
+          }
         />
-        <p
-          className="text-[11.5px]"
-          style={{ color: 'var(--text-subtle)' }}
-        >
-          O primeiro é o artista principal; o segundo (opcional) ancora variação.
-        </p>
+
+        {!secundarioVisivel && (
+          <button
+            type="button"
+            onClick={() => setSecundarioVisivel(true)}
+            className="font-mono uppercase mt-2 inline-flex items-center gap-1.5 transition-colors"
+            style={{
+              fontSize: 10,
+              letterSpacing: '0.18em',
+              color: 'var(--text-subtle)',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-subtle)')}
+          >
+            <Plus size={11} strokeWidth={2.2} />
+            adicionar 2º artista
+          </button>
+        )}
+
+        {secundarioVisivel && (
+          <div className="mt-3 space-y-2">
+            <label
+              className="font-mono uppercase block"
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.18em',
+                color: 'var(--text-muted)',
+              }}
+            >
+              Artista de referência 2 (opcional)
+              <button
+                type="button"
+                onClick={() => {
+                  setArtistaSecundarioObj(null)
+                  setSecundarioVisivel(false)
+                }}
+                className="ml-3 normal-case tracking-normal underline"
+                style={{ color: 'var(--text-subtle)' }}
+              >
+                remover
+              </button>
+            </label>
+            <ArtistComboBox
+              value={artistaSecundarioObj}
+              onChange={setArtistaSecundarioObj}
+              placeholder="ex: Future, Bryson Tiller…"
+              excludeNames={
+                artistaPrimarioObj ? [artistaPrimarioObj.name] : []
+              }
+            />
+          </div>
+        )}
       </div>
 
       {/* GENERO primario */}
