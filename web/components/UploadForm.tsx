@@ -2,11 +2,16 @@
 
 import { useState, useRef, useMemo, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { UploadCloud, AlertCircle, Music, Plus, X, Check, Store, ExternalLink, CalendarClock, Sparkles, ArrowRight } from 'lucide-react'
+import { UploadCloud, AlertCircle, Music, Check, Store, ExternalLink, CalendarClock, Sparkles, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { uploadWithProgress } from '@/lib/storage'
 import { CoverPicker } from './CoverPicker'
 import { AudioPlayer } from './AudioPlayer'
+import {
+  SpotifyArtistPicker,
+  SelectedArtistsDisplay,
+  type SelectedArtist,
+} from './SpotifyArtistPicker'
 
 type Status = 'idle' | 'uploading' | 'error'
 
@@ -49,7 +54,8 @@ export function UploadForm() {
   const [selectedCoverId, setSelectedCoverId] = useState<string | null>(
     () => searchParams.get('cover_id'),
   )
-  const [artistas, setArtistas] = useState<string[]>([''])
+  const [selectedArtists, setSelectedArtists] = useState<SelectedArtist[]>([])
+  const [artistPickerOpen, setArtistPickerOpen] = useState(false)
   const [bpm, setBpm] = useState('')
   const [jaPublicado, setJaPublicado] = useState(false)
   const [storeLink, setStoreLink] = useState('')
@@ -61,10 +67,7 @@ export function UploadForm() {
 
   const bpmNum = Number(bpm)
   const bpmValid = Number.isFinite(bpmNum) && bpmNum >= 40 && bpmNum <= 300
-  const artistasLimpos = artistas.map((a) => a.trim()).filter((a) => a.length > 0)
-  const artistasUnicos = artistasLimpos.filter(
-    (a, i) => artistasLimpos.findIndex((b) => b.toLowerCase() === a.toLowerCase()) === i,
-  )
+  const artistasUnicos = selectedArtists.map((a) => a.name)
   const hasCover = !!coverFile || !!selectedCoverId
   const canSubmit =
     !!audioFile &&
@@ -72,10 +75,6 @@ export function UploadForm() {
     artistasUnicos.length > 0 &&
     bpmValid &&
     (!jaPublicado || storeLink.trim().length > 0)
-
-  function setArtista(idx: number, valor: string) {
-    setArtistas((prev) => prev.map((a, i) => (i === idx ? valor : a)))
-  }
 
   function exibirAviso(msg: string) {
     setDropAviso(msg)
@@ -97,18 +96,19 @@ export function UploadForm() {
     setAudioFile(arquivo)
   }
 
-  function adicionarArtista() {
-    setArtistas((prev) => (prev.length < MAX_ARTISTAS ? [...prev, ''] : prev))
+  function handleArtistsConfirm(picked: SelectedArtist[]) {
+    setSelectedArtists(picked.slice(0, MAX_ARTISTAS))
+    setArtistPickerOpen(false)
   }
 
-  function removerArtista(idx: number) {
-    setArtistas((prev) => prev.filter((_, i) => i !== idx))
+  function handleRemoveArtist(id: string) {
+    setSelectedArtists((prev) => prev.filter((a) => a.id !== id))
   }
 
   const labelArtistas =
-    artistas.length === 1
+    selectedArtists.length <= 1
       ? 'Type beat de quem?'
-      : `Type beat de ${Array(artistas.length).fill('quem').join(' x ')}?`
+      : `Type beat de ${Array(selectedArtists.length).fill('quem').join(' x ')}?`
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -243,69 +243,14 @@ export function UploadForm() {
           <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
             {labelArtistas} <span style={{ color: 'var(--led-error)' }}>*</span>
           </label>
-          <div className="flex flex-wrap items-center gap-2">
-            {artistas.map((valor, idx) => (
-              <div key={idx} className="relative flex min-w-[160px] flex-1 items-center">
-                <input
-                  type="text"
-                  value={valor}
-                  onChange={(e) => setArtista(idx, e.target.value)}
-                  disabled={uploading}
-                  placeholder={idx === 0 ? 'Ex: Drake, Travis Scott...' : 'Outro artista'}
-                  className="field-input pr-9 disabled:opacity-50"
-                />
-                {idx > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => removerArtista(idx)}
-                    disabled={uploading}
-                    aria-label={`Remover artista ${idx + 1}`}
-                    className="absolute right-2 flex h-6 w-6 items-center justify-center rounded-md transition"
-                    style={{ color: 'var(--text-muted)' }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(248,113,113,0.10)'
-                      e.currentTarget.style.color = 'var(--led-error)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent'
-                      e.currentTarget.style.color = 'var(--text-muted)'
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            ))}
-            {artistas.length < MAX_ARTISTAS && (
-              <button
-                type="button"
-                onClick={adicionarArtista}
-                disabled={uploading}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-dashed px-3 py-3 text-sm font-medium transition"
-                style={{
-                  borderColor: 'var(--border-medium)',
-                  color: 'var(--text-muted)',
-                  background: 'transparent',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border-strong)'
-                  e.currentTarget.style.color = 'var(--text-primary)'
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border-medium)'
-                  e.currentTarget.style.color = 'var(--text-muted)'
-                  e.currentTarget.style.background = 'transparent'
-                }}
-              >
-                <Plus className="h-4 w-4" />
-                Adicionar
-              </button>
-            )}
-          </div>
-          {artistasLimpos.length > artistasUnicos.length && (
-            <p className="mt-1 text-xs" style={{ color: 'var(--led-warning)' }}>Artista duplicado ignorado.</p>
-          )}
+          <SelectedArtistsDisplay
+            artists={selectedArtists}
+            maxSelect={MAX_ARTISTAS}
+            onEdit={() => setArtistPickerOpen(true)}
+            onRemove={handleRemoveArtist}
+            disabled={uploading}
+            label="Artistas"
+          />
         </div>
 
         <div className="max-w-[140px]">
@@ -606,6 +551,14 @@ export function UploadForm() {
           />
         )}
       </button>
+
+      <SpotifyArtistPicker
+        open={artistPickerOpen}
+        onClose={() => setArtistPickerOpen(false)}
+        onConfirm={handleArtistsConfirm}
+        initialSelection={selectedArtists}
+        maxSelect={MAX_ARTISTAS}
+      />
     </form>
   )
 }

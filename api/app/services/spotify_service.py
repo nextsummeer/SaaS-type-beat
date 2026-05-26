@@ -45,6 +45,53 @@ def _get_access_token() -> str | None:
         return None
 
 
+def search_artists(query: str, limit: int = 10) -> list[dict]:
+    """
+    Busca artistas no Spotify pra alimentar o picker do /upload e /capas.
+    Cliente nao precisa estar logado no Spotify -- usa Client Credentials.
+
+    Retorna lista de dicts com {id, name, image_url, followers, genres}.
+    Lista vazia se token nao configurado ou erro de rede.
+    """
+    query = (query or "").strip()
+    if not query:
+        return []
+
+    token = _get_access_token()
+    if not token:
+        return []
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    try:
+        resp = requests.get(
+            f"{SPOTIFY_API_URL}/search",
+            headers=headers,
+            params={"q": query, "type": "artist", "limit": min(max(1, limit), 20)},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        artists = resp.json().get("artists", {}).get("items", [])
+        results: list[dict] = []
+        for a in artists:
+            images = a.get("images") or []
+            # Pega a imagem media (1) ou a primeira disponivel
+            image_url = None
+            if images:
+                image_url = images[1]["url"] if len(images) > 1 else images[0]["url"]
+            results.append({
+                "id": a["id"],
+                "name": a["name"],
+                "image_url": image_url,
+                "followers": (a.get("followers") or {}).get("total", 0),
+                "genres": a.get("genres", [])[:3],
+            })
+        return results
+    except Exception as exc:
+        logger.error("Erro ao buscar artistas Spotify '%s': %s", query, exc)
+        return []
+
+
 def get_top_tracks(artista_nome: str, market: str = "US") -> list[str]:
     """
     Busca as top tracks do artista no Spotify.

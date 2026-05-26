@@ -35,6 +35,11 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { CoverBrief } from '@/lib/api'
+import {
+  SpotifyArtistPicker,
+  SelectedArtistsDisplay,
+  type SelectedArtist,
+} from './SpotifyArtistPicker'
 
 type Option = {
   slug: string
@@ -166,6 +171,8 @@ export function CapasWizard({
   // Identidade
   const [artistaPrimario, setArtistaPrimario] = useState('')
   const [artistaSecundario, setArtistaSecundario] = useState<string | null>(null)
+  const [selectedArtists, setSelectedArtists] = useState<SelectedArtist[]>([])
+  const [artistPickerOpen, setArtistPickerOpen] = useState(false)
   const [generoPrimario, setGeneroPrimario] = useState<string | null>(null)
   const [generoSecundario, setGeneroSecundario] = useState<string | null>(null)
 
@@ -195,10 +202,36 @@ export function CapasWizard({
     setStep(1)
     setPresetName(initialName ?? '')
     // Le campos v2 do brief; cai pra v1 (legacy) se preciso pra compat
-    setArtistaPrimario(
-      initialBrief?.artista_primario ?? initialBrief?.artista_nome ?? '',
-    )
-    setArtistaSecundario(initialBrief?.artista_secundario ?? null)
+    const initPrimario =
+      initialBrief?.artista_primario ?? initialBrief?.artista_nome ?? ''
+    const initSecundario = initialBrief?.artista_secundario ?? null
+    setArtistaPrimario(initPrimario)
+    setArtistaSecundario(initSecundario)
+    // Rehidrata selectedArtists do brief salvo. So tem o nome (sem foto/genres),
+    // entao marca como custom -- producer pode reabrir o picker pra re-selecionar
+    // a versao Spotify se quiser foto e gravar a referencia.
+    const rehydrated: SelectedArtist[] = []
+    if (initPrimario.trim()) {
+      rehydrated.push({
+        id: `custom:${initPrimario.toLowerCase()}`,
+        name: initPrimario,
+        imageUrl: null,
+        followers: 0,
+        genres: [],
+        custom: true,
+      })
+    }
+    if (initSecundario && initSecundario.trim()) {
+      rehydrated.push({
+        id: `custom:${initSecundario.toLowerCase()}`,
+        name: initSecundario,
+        imageUrl: null,
+        followers: 0,
+        genres: [],
+        custom: true,
+      })
+    }
+    setSelectedArtists(rehydrated)
     setGeneroPrimario(initialBrief?.genero_primario ?? null)
     setGeneroSecundario(initialBrief?.genero_secundario ?? null)
     setQuemAparece(initialBrief?.quem_aparece ?? null)
@@ -227,6 +260,23 @@ export function CapasWizard({
       document.body.style.overflow = prev
     }
   }, [open])
+
+  function handleArtistsConfirm(picked: SelectedArtist[]) {
+    const limited = picked.slice(0, 2)
+    setSelectedArtists(limited)
+    setArtistaPrimario(limited[0]?.name ?? '')
+    setArtistaSecundario(limited[1]?.name ?? null)
+    setArtistPickerOpen(false)
+  }
+
+  function handleRemoveArtist(id: string) {
+    setSelectedArtists((prev) => {
+      const next = prev.filter((a) => a.id !== id)
+      setArtistaPrimario(next[0]?.name ?? '')
+      setArtistaSecundario(next[1]?.name ?? null)
+      return next
+    })
+  }
 
   if (!open) return null
 
@@ -340,10 +390,9 @@ export function CapasWizard({
         <div className="flex-1 overflow-y-auto px-7 py-8">
           {step === 1 && (
             <Step1Identidade
-              artistaPrimario={artistaPrimario}
-              setArtistaPrimario={setArtistaPrimario}
-              artistaSecundario={artistaSecundario}
-              setArtistaSecundario={setArtistaSecundario}
+              selectedArtists={selectedArtists}
+              onOpenArtistPicker={() => setArtistPickerOpen(true)}
+              onRemoveArtist={handleRemoveArtist}
               generoPrimario={generoPrimario}
               setGeneroPrimario={setGeneroPrimario}
               generoSecundario={generoSecundario}
@@ -461,6 +510,14 @@ export function CapasWizard({
           </div>
         </footer>
       </div>
+
+      <SpotifyArtistPicker
+        open={artistPickerOpen}
+        onClose={() => setArtistPickerOpen(false)}
+        onConfirm={handleArtistsConfirm}
+        initialSelection={selectedArtists}
+        maxSelect={2}
+      />
     </div>
   )
 }
@@ -497,26 +554,23 @@ function StepIndicator({ current }: { current: Step }) {
 // Step 1 — Identidade do beat (artista + genero)
 // ─────────────────────────────────────────────────────────────────────
 function Step1Identidade({
-  artistaPrimario,
-  setArtistaPrimario,
-  artistaSecundario,
-  setArtistaSecundario,
+  selectedArtists,
+  onOpenArtistPicker,
+  onRemoveArtist,
   generoPrimario,
   setGeneroPrimario,
   generoSecundario,
   setGeneroSecundario,
 }: {
-  artistaPrimario: string
-  setArtistaPrimario: (v: string) => void
-  artistaSecundario: string | null
-  setArtistaSecundario: (v: string | null) => void
+  selectedArtists: SelectedArtist[]
+  onOpenArtistPicker: () => void
+  onRemoveArtist: (id: string) => void
   generoPrimario: string | null
   setGeneroPrimario: (v: string | null) => void
   generoSecundario: string | null
   setGeneroSecundario: (v: string | null) => void
 }) {
   const generoSecundarioVisivel = generoSecundario !== null
-  const artistaSecundarioVisivel = artistaSecundario !== null
 
   return (
     <div className="space-y-8">
@@ -547,7 +601,7 @@ function Step1Identidade({
         </p>
       </div>
 
-      {/* ARTISTA primario + secundario opcional */}
+      {/* ARTISTAS — picker Spotify (primario + secundario opcional, ordem visivel) */}
       <div className="space-y-2">
         <label
           className="font-mono uppercase block"
@@ -556,77 +610,22 @@ function Step1Identidade({
             letterSpacing: '0.18em',
             color: 'var(--text-muted)',
           }}
-          htmlFor="wizard-artista-input"
         >
-          Artista de referência
+          Artistas de referência
         </label>
-        <input
-          id="wizard-artista-input"
-          type="text"
-          value={artistaPrimario}
-          onChange={(e) => setArtistaPrimario(e.target.value)}
-          placeholder="ex: Lil Baby, Drake, Playboi Carti…"
-          className="field-input font-display"
-          style={{
-            fontSize: 17,
-            letterSpacing: '-0.012em',
-            padding: '14px 16px',
-          }}
-          autoFocus
-          maxLength={120}
+        <SelectedArtistsDisplay
+          artists={selectedArtists}
+          maxSelect={2}
+          onEdit={onOpenArtistPicker}
+          onRemove={onRemoveArtist}
+          label="Referencias"
         />
-
-        {!artistaSecundarioVisivel && (
-          <button
-            type="button"
-            onClick={() => setArtistaSecundario('')}
-            className="font-mono uppercase mt-2 inline-flex items-center gap-1.5 transition-colors"
-            style={{
-              fontSize: 10,
-              letterSpacing: '0.18em',
-              color: 'var(--text-subtle)',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-subtle)')}
-          >
-            <Plus size={11} strokeWidth={2.2} />
-            adicionar 2º artista
-          </button>
-        )}
-
-        {artistaSecundarioVisivel && (
-          <div className="mt-3 space-y-2">
-            <label
-              className="font-mono uppercase block"
-              style={{
-                fontSize: 10,
-                letterSpacing: '0.18em',
-                color: 'var(--text-muted)',
-              }}
-              htmlFor="wizard-artista2-input"
-            >
-              Artista de referência 2 (opcional)
-              <button
-                type="button"
-                onClick={() => setArtistaSecundario(null)}
-                className="ml-3 normal-case tracking-normal underline"
-                style={{ color: 'var(--text-subtle)' }}
-              >
-                remover
-              </button>
-            </label>
-            <input
-              id="wizard-artista2-input"
-              type="text"
-              value={artistaSecundario ?? ''}
-              onChange={(e) => setArtistaSecundario(e.target.value)}
-              placeholder="ex: Future, Bryson Tiller…"
-              className="field-input"
-              style={{ fontSize: 15, padding: '12px 16px' }}
-              maxLength={120}
-            />
-          </div>
-        )}
+        <p
+          className="text-[11.5px]"
+          style={{ color: 'var(--text-subtle)' }}
+        >
+          O primeiro é o artista principal; o segundo (opcional) ancora variação.
+        </p>
       </div>
 
       {/* GENERO primario */}

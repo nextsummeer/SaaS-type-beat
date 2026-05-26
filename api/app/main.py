@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import beats, posts, youtube, analytics, achievements, covers, briefs
+from app.routes import beats, posts, youtube, analytics, achievements, covers, briefs, artists
 from app.workers import convert, analyze, generate, publish
 
 app = FastAPI(title="BeatPost API", version="0.1.0")
@@ -22,6 +22,7 @@ app.include_router(analytics.router)
 app.include_router(achievements.router)
 app.include_router(covers.router)
 app.include_router(briefs.router)
+app.include_router(artists.router)
 app.include_router(convert.router)
 app.include_router(analyze.router)
 app.include_router(generate.router)
