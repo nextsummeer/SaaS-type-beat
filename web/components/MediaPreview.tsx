@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { ImageOff, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { AudioPlayer } from './AudioPlayer'
 
 type Props = {
   beatId: string
@@ -80,7 +81,14 @@ export function MediaPreview({ beatId }: Props) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-950/40 px-4 py-5 text-sm text-zinc-400">
+      <div
+        className="flex items-center gap-3 rounded-xl px-4 py-5 text-sm"
+        style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-subtle)',
+          color: 'var(--text-muted)',
+        }}
+      >
         <Loader2 className="h-4 w-4 animate-spin" />
         <span>Carregando preview...</span>
       </div>
@@ -89,47 +97,69 @@ export function MediaPreview({ beatId }: Props) {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 px-4 py-3 text-xs text-zinc-500">
+      <div
+        className="rounded-xl px-4 py-3 text-xs"
+        style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-subtle)',
+          color: 'var(--text-subtle)',
+        }}
+      >
         Preview indisponivel: {error}
       </div>
     )
   }
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-      <div className="flex items-center gap-4">
-        <div className="shrink-0">
+    <div
+      className="overflow-hidden rounded-xl"
+      style={{
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-subtle)',
+      }}
+    >
+      <div className="flex items-stretch gap-0">
+        <div
+          className="relative shrink-0"
+          style={{
+            width: 120,
+            background: 'var(--bg-base)',
+            borderRight: '1px solid var(--border-subtle)',
+          }}
+        >
           {coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={coverUrl}
               alt="Capa do beat"
-              className="rounded-lg object-cover"
-              style={{ width: 96, height: 96 }}
+              className="absolute inset-0 h-full w-full object-cover"
             />
           ) : (
-            <div
-              className="flex items-center justify-center rounded-lg bg-zinc-800"
-              style={{ width: 96, height: 96 }}
-            >
-              <ImageOff className="h-5 w-5 text-zinc-500" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <ImageOff
+                className="h-5 w-5"
+                style={{ color: 'var(--text-subtle)' }}
+              />
             </div>
           )}
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="mb-2 font-mono text-[10.5px] uppercase tracking-[0.18em] text-zinc-500">
+        <div className="min-w-0 flex-1 p-3.5">
+          <p
+            className="mb-2.5 font-mono uppercase"
+            style={{
+              fontSize: 10,
+              letterSpacing: '0.22em',
+              color: 'var(--text-subtle)',
+            }}
+          >
             / Preview do video
           </p>
           {audioUrl ? (
-            <audio
-              src={audioUrl}
-              controls
-              preload="metadata"
-              className="w-full"
-              style={{ height: 36 }}
-            />
+            <AudioPlayer src={audioUrl} flat />
           ) : (
-            <p className="text-xs text-zinc-500">Audio indisponivel.</p>
+            <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>
+              Audio indisponivel.
+            </p>
           )}
         </div>
       </div>

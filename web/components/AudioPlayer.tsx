@@ -1,0 +1,242 @@
+'use client'
+
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Play, Pause } from 'lucide-react'
+
+type Props = {
+  /** URL do audio (object URL local ou signed URL remoto) */
+  src: string
+  /** Nome do arquivo exibido em mono no canto -- opcional */
+  fileName?: string
+  /** Quantas barras a waveform falsa tem (mais barras = mais resolucao visual) */
+  bars?: number
+  /** Remove o container (border + bg) -- pra usar embarcado em outra superficie */
+  flat?: boolean
+}
+
+// Gera waveform pseudo-aleatoria deterministica a partir de um seed.
+// Mesma string sempre gera a mesma onda -- evita "tremor" entre renders.
+// Usa envelope senoidal pra parecer um audio real (centro mais alto que pontas).
+function generateWaveform(seed: string, bars: number): number[] {
+  let h = 0
+  for (let i = 0; i < seed.length; i += 1) {
+    h = (h * 31 + seed.charCodeAt(i)) >>> 0
+  }
+  const heights: number[] = []
+  for (let i = 0; i < bars; i += 1) {
+    h = (Math.imul(h, 1103515245) + 12345) >>> 0
+    const v = ((h >>> 8) & 0xffff) / 0xffff
+    const env = Math.sin((i / (bars - 1)) * Math.PI)
+    const raw = 0.18 + v * 0.55 * env + 0.27 * env
+    heights.push(Math.max(0.08, Math.min(1, raw)))
+  }
+  return heights
+}
+
+function formatTime(s: number): string {
+  if (!Number.isFinite(s) || s < 0) return '0:00'
+  const m = Math.floor(s / 60)
+  const ss = Math.floor(s % 60)
+    .toString()
+    .padStart(2, '0')
+  return `${m}:${ss}`
+}
+
+/**
+ * Player de audio custom com waveform fake estetica.
+ * Editorial Mono -- preto, hairlines, mono uppercase em timestamps.
+ * Click na waveform faz seek. Click no botao redondo toca/pausa.
+ */
+export function AudioPlayer({ src, fileName, bars = 56, flat = false }: Props) {
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const trackRef = useRef<HTMLDivElement | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [hoverRatio, setHoverRatio] = useState<number | null>(null)
+
+  const waveform = useMemo(
+    () => generateWaveform(fileName ?? src ?? 'x', bars),
+    [src, fileName, bars],
+  )
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    function handleTime() {
+      setCurrentTime(audio!.currentTime)
+    }
+    function handleMeta() {
+      setDuration(audio!.duration)
+    }
+    function handleEnd() {
+      setPlaying(false)
+    }
+    audio.addEventListener('timeupdate', handleTime)
+    audio.addEventListener('loadedmetadata', handleMeta)
+    audio.addEventListener('ended', handleEnd)
+    return () => {
+      audio.removeEventListener('timeupdate', handleTime)
+      audio.removeEventListener('loadedmetadata', handleMeta)
+      audio.removeEventListener('ended', handleEnd)
+    }
+  }, [src])
+
+  // Quando src muda, reseta o estado pra evitar herdar timestamp de outro arquivo
+  useEffect(() => {
+    setPlaying(false)
+    setCurrentTime(0)
+    setDuration(0)
+  }, [src])
+
+  async function toggle() {
+    const audio = audioRef.current
+    if (!audio) return
+    if (playing) {
+      audio.pause()
+      setPlaying(false)
+      return
+    }
+    try {
+      await audio.play()
+      setPlaying(true)
+    } catch {
+      setPlaying(false)
+    }
+  }
+
+  function seekByEvent(e: React.MouseEvent<HTMLDivElement>) {
+    const track = trackRef.current
+    const audio = audioRef.current
+    if (!track || !audio || !duration) return
+    const rect = track.getBoundingClientRect()
+    const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    audio.currentTime = ratio * duration
+    setCurrentTime(ratio * duration)
+  }
+
+  function handleHover(e: React.MouseEvent<HTMLDivElement>) {
+    const track = trackRef.current
+    if (!track) return
+    const rect = track.getBoundingClientRect()
+    setHoverRatio(Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)))
+  }
+
+  const progress = duration > 0 ? currentTime / duration : 0
+
+  return (
+    <div
+      className={flat ? '' : 'rounded-xl'}
+      style={
+        flat
+          ? undefined
+          : {
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+              padding: 12,
+            }
+      }
+    >
+      <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
+
+      <div className="flex items-center gap-3.5">
+        {/* play/pause */}
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={playing ? 'Pausar' : 'Tocar'}
+          className="group flex shrink-0 items-center justify-center rounded-full transition-transform active:scale-95"
+          style={{
+            width: 40,
+            height: 40,
+            background: 'var(--text-primary)',
+            color: 'var(--bg-base)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.04)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)'
+          }}
+        >
+          {playing ? (
+            <Pause size={15} fill="currentColor" strokeWidth={0} />
+          ) : (
+            <Play
+              size={15}
+              fill="currentColor"
+              strokeWidth={0}
+              style={{ marginLeft: 2 }}
+            />
+          )}
+        </button>
+
+        {/* waveform + meta */}
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <div
+            ref={trackRef}
+            role="slider"
+            aria-label="Posicao do audio"
+            aria-valuemin={0}
+            aria-valuemax={duration || 0}
+            aria-valuenow={currentTime}
+            tabIndex={0}
+            onClick={seekByEvent}
+            onMouseMove={handleHover}
+            onMouseLeave={() => setHoverRatio(null)}
+            className="relative flex h-9 cursor-pointer items-center gap-[2px] select-none"
+          >
+            {waveform.map((h, i) => {
+              const barRatio = i / (waveform.length - 1)
+              const played = barRatio <= progress
+              const hovered = hoverRatio !== null && barRatio <= hoverRatio
+              return (
+                <span
+                  key={i}
+                  className="flex-1 rounded-full"
+                  style={{
+                    height: `${h * 100}%`,
+                    minHeight: 2,
+                    background: played
+                      ? 'var(--text-primary)'
+                      : hovered
+                        ? 'var(--text-muted)'
+                        : 'var(--border-medium)',
+                    transition: 'background 120ms ease',
+                  }}
+                />
+              )
+            })}
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <span
+              className="font-mono uppercase tabular-nums"
+              style={{
+                fontSize: 10.5,
+                letterSpacing: '0.16em',
+                color: 'var(--text-muted)',
+              }}
+            >
+              {formatTime(currentTime)}{' '}
+              <span style={{ color: 'var(--text-subtle)' }}>/ {formatTime(duration)}</span>
+            </span>
+            {fileName && (
+              <span
+                className="truncate font-mono"
+                style={{
+                  fontSize: 10.5,
+                  color: 'var(--text-subtle)',
+                  maxWidth: 220,
+                }}
+                title={fileName}
+              >
+                {fileName}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

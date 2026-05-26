@@ -6,6 +6,7 @@ import { UploadCloud, AlertCircle, Music, Plus, X, Check, Store, ExternalLink, C
 import { createClient } from '@/lib/supabase/client'
 import { uploadWithProgress } from '@/lib/storage'
 import { CoverPicker } from './CoverPicker'
+import { AudioPlayer } from './AudioPlayer'
 
 type Status = 'idle' | 'uploading' | 'error'
 
@@ -515,21 +516,9 @@ export function UploadForm() {
         />
 
         {/* Preview player — confirma audialmente que o producer subiu o beat certo. */}
-        {audioPreviewUrl && (
-          <div
-            className="mt-3 flex items-center gap-3 rounded-lg px-3 py-2.5"
-            style={{
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-            }}
-          >
-            <audio
-              src={audioPreviewUrl}
-              controls
-              preload="metadata"
-              className="w-full"
-              style={{ height: 32 }}
-            />
+        {audioPreviewUrl && audioFile && (
+          <div className="mt-3">
+            <AudioPlayer src={audioPreviewUrl} fileName={audioFile.name} />
           </div>
         )}
       </div>

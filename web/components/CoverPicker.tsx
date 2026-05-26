@@ -874,100 +874,167 @@ function ManualTab({
 
   return (
     <div className="space-y-3">
-      <button
-        type="button"
-        onClick={onPickClick}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-        disabled={disabled}
-        className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-5 text-center transition-all disabled:cursor-not-allowed disabled:opacity-50"
-        style={{
-          borderColor: dragOver
-            ? '#FFFFFF'
-            : file
-            ? 'var(--border-strong)'
-            : 'var(--border-medium)',
-          background: dragOver
-            ? 'rgba(255,255,255,0.04)'
-            : file
-            ? 'var(--bg-surface)'
-            : 'var(--bg-base)',
-        }}
-      >
-        {uploadingToBank ? (
-          <>
-            <Loader2
-              className="h-6 w-6 animate-spin"
-              style={{ color: 'var(--purple-light)' }}
-            />
-            <p
-              className="font-mono uppercase"
-              style={{
-                fontSize: 11,
-                letterSpacing: '0.22em',
-                color: 'var(--text-muted)',
-              }}
-            >
-              Salvando no banco...
-            </p>
-          </>
-        ) : dragOver ? (
-          <>
-            <span
-              className="led led-pulse"
-              style={{ color: '#FFFFFF', width: 8, height: 8 }}
-            />
-            <p
-              className="font-mono uppercase"
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                letterSpacing: '0.18em',
-                color: 'var(--text-primary)',
-              }}
-            >
-              Solte a capa aqui
-            </p>
-          </>
-        ) : file ? (
-          <>
+      {file ? (
+        // Card-preview da capa selecionada: imagem grande + meta-bar com Replace.
+        // Inspirado no fluxo do typebeat.fun -- producer ve a arte de verdade
+        // antes de confirmar, sem precisar abrir o arquivo em outro app.
+        <div
+          className="relative overflow-hidden rounded-xl"
+          style={{
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            opacity: disabled && !uploadingToBank ? 0.6 : 1,
+          }}
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+        >
+          <div
+            className="relative w-full"
+            style={{
+              background: 'var(--bg-base)',
+              aspectRatio: '1 / 1',
+              maxHeight: 360,
+            }}
+          >
             {filePreviewUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={filePreviewUrl}
                 alt="Pre-visualizacao da capa"
-                className="rounded-md object-cover"
-                style={{
-                  width: 96,
-                  height: 96,
-                  border: '1px solid var(--border-subtle)',
-                }}
+                className="absolute inset-0 h-full w-full object-contain"
               />
             ) : (
-              <ImageIcon className="h-6 w-6" style={{ color: 'var(--text-primary)' }} />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <ImageIcon
+                  className="h-7 w-7"
+                  style={{ color: 'var(--text-subtle)' }}
+                />
+              </div>
             )}
-            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{file.name}</p>
-          </>
-        ) : (
-          <>
-            <ImageIcon className="h-6 w-6" style={{ color: 'var(--text-muted)' }} />
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              Arraste ou{' '}
+
+            {uploadingToBank && (
+              <div
+                className="absolute inset-0 flex flex-col items-center justify-center gap-2"
+                style={{ background: 'rgba(6,6,8,0.78)', backdropFilter: 'blur(2px)' }}
+              >
+                <Loader2
+                  className="h-6 w-6 animate-spin"
+                  style={{ color: 'var(--purple-light)' }}
+                />
+                <span
+                  className="font-mono uppercase"
+                  style={{
+                    fontSize: 10.5,
+                    letterSpacing: '0.22em',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  Salvando no banco
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* META-BAR: filename · size · Done · Replace */}
+          <div
+            className="flex items-center gap-3 px-3.5 py-2.5"
+            style={{ borderTop: '1px solid var(--border-subtle)' }}
+          >
+            <span
+              className="min-w-0 flex-1 truncate font-mono"
+              style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}
+              title={file.name}
+            >
+              {file.name}
+            </span>
+            <span
+              className="font-mono tabular-nums"
+              style={{ fontSize: 10.5, color: 'var(--text-subtle)' }}
+            >
+              {file.size < 1024 * 1024
+                ? `${(file.size / 1024).toFixed(0)} KB`
+                : `${(file.size / 1024 / 1024).toFixed(1)} MB`}
+            </span>
+            <span
+              className="inline-flex items-center gap-1 font-mono uppercase"
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.16em',
+                color: 'var(--led-success)',
+              }}
+            >
+              <Check size={10} strokeWidth={3} />
+              Done
+            </span>
+            <button
+              type="button"
+              onClick={onPickClick}
+              disabled={disabled}
+              className="font-mono uppercase transition-colors hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+              style={{
+                fontSize: 10.5,
+                letterSpacing: '0.16em',
+                color: 'var(--text-primary)',
+                textUnderlineOffset: 3,
+              }}
+            >
+              Replace
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onPickClick}
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+          disabled={disabled}
+          className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-5 text-center transition-all disabled:cursor-not-allowed disabled:opacity-50"
+          style={{
+            borderColor: dragOver ? '#FFFFFF' : 'var(--border-medium)',
+            background: dragOver ? 'rgba(255,255,255,0.04)' : 'var(--bg-base)',
+          }}
+        >
+          {dragOver ? (
+            <>
               <span
+                className="led led-pulse"
+                style={{ color: '#FFFFFF', width: 8, height: 8 }}
+              />
+              <p
+                className="font-mono uppercase"
                 style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
                   color: 'var(--text-primary)',
-                  textDecoration: 'underline',
-                  textUnderlineOffset: 2,
                 }}
               >
-                clique para adicionar
-              </span>{' '}
-              (JPG ou PNG)
-            </p>
-          </>
-        )}
-      </button>
+                Solte a capa aqui
+              </p>
+            </>
+          ) : (
+            <>
+              <ImageIcon className="h-6 w-6" style={{ color: 'var(--text-muted)' }} />
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                Arraste ou{' '}
+                <span
+                  style={{
+                    color: 'var(--text-primary)',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: 2,
+                  }}
+                >
+                  clique para adicionar
+                </span>{' '}
+                (JPG ou PNG)
+              </p>
+            </>
+          )}
+        </button>
+      )}
 
       {/* T4.35 — checkbox "Salvar no meu banco manual" */}
       <label
