@@ -240,7 +240,7 @@ export function UploadForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex max-w-lg flex-col gap-6">
+    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-6">
       {/* Banner pre-agendamento */}
       {preAgendar && (
         <div
@@ -354,17 +354,6 @@ export function UploadForm() {
             )}
           </div>
         </div>
-
-        <AudioAnalyzeBox
-          audioFile={audioFile}
-          bpm={bpm}
-          setBpm={setBpm}
-          musicKey={musicKey}
-          setMusicKey={setMusicKey}
-          scale={musicScale}
-          setScale={setMusicScale}
-          disabled={uploading}
-        />
       </div>
 
       {/* Link da loja */}
@@ -584,6 +573,18 @@ export function UploadForm() {
           </div>
         </div>
       )}
+
+      {/* Analise tecnica — aparece logo apos o audio pra Auto-detect ter base */}
+      <AudioAnalyzeBox
+        audioFile={audioFile}
+        bpm={bpm}
+        setBpm={setBpm}
+        musicKey={musicKey}
+        setMusicKey={setMusicKey}
+        scale={musicScale}
+        setScale={setMusicScale}
+        disabled={uploading}
+      />
 
       {/* Capa: picker com 2 tabs (biblioteca + manual) */}
       <div>
