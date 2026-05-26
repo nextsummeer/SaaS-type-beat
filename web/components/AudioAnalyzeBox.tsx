@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Sparkles, Loader2, Check, AlertCircle } from 'lucide-react'
 import { KEYS, SCALES, type Key, type Scale } from '@/lib/essentia/types'
+import { MonoSelect } from './MonoSelect'
 
 type Props = {
   audioFile: File | null
@@ -154,51 +155,23 @@ export function AudioAnalyzeBox({
         </FieldBlock>
 
         <FieldBlock label="Key" required>
-          <select
+          <MonoSelect<Key>
             value={musicKey}
-            onChange={(e) => setMusicKey(e.target.value as Key | '')}
+            onChange={setMusicKey}
+            options={KEYS}
             disabled={disabled}
-            className="field-input"
-            style={{
-              fontSize: 14,
-              fontWeight: 500,
-              textAlign: 'center',
-              padding: '10px 8px',
-              appearance: 'none',
-              cursor: disabled ? 'not-allowed' : 'pointer',
-            }}
-          >
-            <option value="">—</option>
-            {KEYS.map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </select>
+            ariaLabel="Tonalidade musical"
+          />
         </FieldBlock>
 
         <FieldBlock label="Scale" required>
-          <select
+          <MonoSelect<Scale>
             value={scale}
-            onChange={(e) => setScale(e.target.value as Scale | '')}
+            onChange={setScale}
+            options={SCALES}
             disabled={disabled}
-            className="field-input"
-            style={{
-              fontSize: 14,
-              fontWeight: 500,
-              textAlign: 'center',
-              padding: '10px 8px',
-              appearance: 'none',
-              cursor: disabled ? 'not-allowed' : 'pointer',
-            }}
-          >
-            <option value="">—</option>
-            {SCALES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+            ariaLabel="Modo musical"
+          />
         </FieldBlock>
       </div>
 
