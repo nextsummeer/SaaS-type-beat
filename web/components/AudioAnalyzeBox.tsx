@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Sparkles, Loader2, Check, AlertCircle, AlertTriangle } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Sparkles, Loader2, Check, AlertCircle, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react'
 import { KEYS, SCALES, type Key, type Scale } from '@/lib/essentia/types'
 import type { BpmConfidence } from '@/lib/essentia/analyzer'
 import { MonoSelect } from './MonoSelect'
@@ -148,23 +148,7 @@ export function AudioAnalyzeBox({
       {/* 3 campos: BPM | KEY | SCALE */}
       <div className="grid grid-cols-3 gap-2">
         <FieldBlock label="BPM" required>
-          <input
-            type="number"
-            value={bpm}
-            onChange={(e) => setBpm(e.target.value)}
-            disabled={disabled}
-            min={40}
-            max={300}
-            placeholder="140"
-            className="field-input"
-            style={{
-              fontSize: 16,
-              fontWeight: 500,
-              textAlign: 'center',
-              padding: '10px 8px',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          />
+          <BpmInput value={bpm} onChange={setBpm} disabled={disabled} />
         </FieldBlock>
 
         <FieldBlock label="Key" required>
@@ -273,5 +257,163 @@ function FieldBlock({
       </label>
       {children}
     </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// BpmInput — input numero com spinners custom (esconde os nativos do
+// browser que vinham com cara de "Windows 98"). Long-press acelera a
+// taxa de incremento depois de 400ms.
+// ─────────────────────────────────────────────────────────────────────
+
+const BPM_MIN = 40
+const BPM_MAX = 300
+
+function BpmInput({
+  value,
+  onChange,
+  disabled = false,
+}: {
+  value: string
+  onChange: (v: string) => void
+  disabled?: boolean
+}) {
+  const current = Number(value)
+  const hasValue = Number.isFinite(current) && value !== ''
+  const canIncrement = !hasValue || current < BPM_MAX
+  const canDecrement = !hasValue || current > BPM_MIN
+
+  // Refs pra long-press: timeout do delay inicial (400ms) + interval
+  // do auto-repeat (80ms enquanto segura).
+  const holdTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  function adjust(delta: number) {
+    const next = hasValue ? current + delta : 140
+    if (next < BPM_MIN || next > BPM_MAX) return
+    onChange(String(next))
+  }
+
+  function stopRepeat() {
+    if (holdTimeoutRef.current) {
+      clearTimeout(holdTimeoutRef.current)
+      holdTimeoutRef.current = null
+    }
+    if (repeatIntervalRef.current) {
+      clearInterval(repeatIntervalRef.current)
+      repeatIntervalRef.current = null
+    }
+  }
+
+  function startPress(delta: number) {
+    if (disabled) return
+    adjust(delta)
+    holdTimeoutRef.current = setTimeout(() => {
+      repeatIntervalRef.current = setInterval(() => adjust(delta), 80)
+    }, 400)
+  }
+
+  // Cleanup ao desmontar (evita interval orfão se desmontar enquanto segurando)
+  useEffect(() => () => stopRepeat(), [])
+
+  return (
+    <div className="relative">
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        min={BPM_MIN}
+        max={BPM_MAX}
+        placeholder="140"
+        className="bpm-input field-input"
+        style={{
+          fontSize: 16,
+          fontWeight: 500,
+          textAlign: 'center',
+          padding: '10px 26px 10px 8px',
+          fontVariantNumeric: 'tabular-nums',
+          minHeight: 42,
+        }}
+      />
+      <style>{`
+        .bpm-input::-webkit-outer-spin-button,
+        .bpm-input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        .bpm-input { -moz-appearance: textfield; appearance: textfield; }
+      `}</style>
+
+      <div
+        className="pointer-events-none absolute inset-y-0 right-1.5 flex flex-col items-stretch justify-center"
+        style={{ width: 18 }}
+      >
+        <BpmSpinnerButton
+          direction="up"
+          onPress={() => startPress(1)}
+          onRelease={stopRepeat}
+          disabled={disabled || !canIncrement}
+        />
+        <BpmSpinnerButton
+          direction="down"
+          onPress={() => startPress(-1)}
+          onRelease={stopRepeat}
+          disabled={disabled || !canDecrement}
+        />
+      </div>
+    </div>
+  )
+}
+
+function BpmSpinnerButton({
+  direction,
+  onPress,
+  onRelease,
+  disabled,
+}: {
+  direction: 'up' | 'down'
+  onPress: () => void
+  onRelease: () => void
+  disabled: boolean
+}) {
+  const Icon = direction === 'up' ? ChevronUp : ChevronDown
+  return (
+    <button
+      type="button"
+      tabIndex={-1}
+      onMouseDown={(e) => {
+        e.preventDefault()
+        onPress()
+      }}
+      onMouseUp={onRelease}
+      onMouseLeave={onRelease}
+      onTouchStart={(e) => {
+        e.preventDefault()
+        onPress()
+      }}
+      onTouchEnd={onRelease}
+      onTouchCancel={onRelease}
+      disabled={disabled}
+      aria-label={direction === 'up' ? 'Aumentar BPM' : 'Diminuir BPM'}
+      className="pointer-events-auto flex flex-1 items-center justify-center rounded-[3px] transition-colors disabled:cursor-not-allowed disabled:opacity-30"
+      style={{
+        color: 'var(--text-subtle)',
+        background: 'transparent',
+        minHeight: 14,
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.color = 'var(--accent)'
+          e.currentTarget.style.background = 'rgba(124,58,237,0.10)'
+        }
+      }}
+      onMouseOut={(e) => {
+        e.currentTarget.style.color = 'var(--text-subtle)'
+        e.currentTarget.style.background = 'transparent'
+      }}
+    >
+      <Icon size={11} strokeWidth={2.4} />
+    </button>
   )
 }
