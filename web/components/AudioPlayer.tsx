@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Play, Pause } from 'lucide-react'
 
 type Props = {
@@ -97,14 +97,31 @@ export function AudioPlayer({ src, fileName, bars = 56, flat = false }: Props) {
     [src, fileName, bars],
   )
 
-  // Pre-calcula cores de cada barra (azul->roxo->rosa->roxo->azul) -- 1x
-  // por mudanca em `bars`. Evita recalcular interpolacao 56x por render.
-  const barColors = useMemo(() => {
-    return waveform.map((_, i) => {
-      const r = bars > 1 ? i / (bars - 1) : 0
-      return getBarColor(r)
-    })
-  }, [waveform, bars])
+  // Polygon points pra SVG shape lenticular (formato organico de "onda")
+  // -- N pontos no topo + N no bottom espelhados. Cada x percorre 0-100,
+  // y centrado em 50 com amplitude max 46 (deixa 4 de respiro top/bottom).
+  const polygonPoints = useMemo(() => {
+    const N = waveform.length
+    if (N < 2) return ''
+    const top: string[] = []
+    const bottom: string[] = []
+    for (let i = 0; i < N; i += 1) {
+      const x = ((i / (N - 1)) * 100).toFixed(2)
+      const halfAmp = (waveform[i] * 46).toFixed(2)
+      const yTop = (50 - parseFloat(halfAmp)).toFixed(2)
+      const yBottom = (50 + parseFloat(halfAmp)).toFixed(2)
+      top.push(`${x},${yTop}`)
+      bottom.push(`${x},${yBottom}`)
+    }
+    return [...top, ...bottom.reverse()].join(' ')
+  }, [waveform])
+
+  // IDs unicos por instancia (useful pra SVG defs nao conflitarem
+  // quando dois AudioPlayer aparecem na mesma pagina)
+  const reactId = useId().replace(/:/g, '')
+  const gradientId = `aw-grad-${reactId}`
+  const clipId = `aw-clip-${reactId}`
+  const glowId = `aw-glow-${reactId}`
 
   useEffect(() => {
     const audio = audioRef.current
@@ -222,22 +239,28 @@ export function AudioPlayer({ src, fileName, bars = 56, flat = false }: Props) {
       <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
 
       <style>{`
-        @keyframes audio-bar-pulse {
-          0%, 100% { transform: scaleY(0.92); }
-          50%      { transform: scaleY(1.08); }
-        }
         @keyframes audio-btn-pulse {
           0%   { box-shadow: 0 0 0 0 rgba(124,58,237,0.55); }
           70%  { box-shadow: 0 0 0 10px rgba(124,58,237,0); }
           100% { box-shadow: 0 0 0 0 rgba(124,58,237,0); }
         }
-        .audio-bar-playing {
-          animation: audio-bar-pulse 1.4s ease-in-out infinite;
-          animation-delay: var(--bar-delay, 0s);
-          transform-origin: center;
+        @keyframes audio-wave-glow-pulse {
+          0%, 100% { opacity: 0.55; }
+          50%      { opacity: 1; }
+        }
+        @keyframes audio-wave-breathe {
+          0%, 100% { transform: scaleY(1); }
+          50%      { transform: scaleY(1.05); }
         }
         .audio-btn-playing {
           animation: audio-btn-pulse 1.8s ease-out infinite;
+        }
+        .audio-wave-playing .audio-wave-glow {
+          animation: audio-wave-glow-pulse 1.6s ease-in-out infinite;
+        }
+        .audio-wave-playing svg {
+          animation: audio-wave-breathe 2.4s ease-in-out infinite;
+          transform-origin: center;
         }
       `}</style>
 
@@ -292,36 +315,82 @@ export function AudioPlayer({ src, fileName, bars = 56, flat = false }: Props) {
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
             onPointerLeave={() => setHoverRatio(null)}
-            className="relative flex h-9 items-center gap-[2px] select-none touch-none"
+            className={`relative h-9 select-none touch-none ${playing ? 'audio-wave-playing' : ''}`}
             style={{ cursor: isDragging ? 'grabbing' : 'pointer' }}
           >
-            {waveform.map((h, i) => {
-              const barRatio = i / (waveform.length - 1)
-              const played = barRatio <= progress
-              const hovered = hoverRatio !== null && barRatio <= hoverRatio
-              const animatePlaying = playing && played
-              const color = barColors[i]
-              const colorStr = `rgb(${color.r}, ${color.g}, ${color.b})`
-              const colorGlowStr = `rgba(${color.r}, ${color.g}, ${color.b}, 0.55)`
-              const colorDimStr = `rgba(${color.r}, ${color.g}, ${color.b}, ${hovered ? 0.4 : 0.18})`
-              return (
-                <span
-                  key={i}
-                  className={`flex-1 rounded-full ${animatePlaying ? 'audio-bar-playing' : ''}`}
-                  style={
-                    {
-                      height: `${h * 100}%`,
-                      minHeight: 2,
-                      background: played ? colorStr : colorDimStr,
-                      boxShadow: played ? `0 0 8px ${colorGlowStr}` : 'none',
-                      transition:
-                        'background 120ms ease, box-shadow 120ms ease',
-                      '--bar-delay': `${(i % 8) * 0.06}s`,
-                    } as React.CSSProperties
-                  }
+            <svg
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              className="absolute inset-0 h-full w-full overflow-visible"
+              aria-hidden
+            >
+              <defs>
+                <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#6366f1" />
+                  <stop offset="22%" stopColor="#7c3aed" />
+                  <stop offset="50%" stopColor="#ec4899" />
+                  <stop offset="78%" stopColor="#7c3aed" />
+                  <stop offset="100%" stopColor="#6366f1" />
+                </linearGradient>
+                <filter id={glowId} x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="1.6" />
+                </filter>
+                <clipPath id={clipId}>
+                  <rect
+                    x="0"
+                    y="0"
+                    width={Math.max(0.001, progress * 100)}
+                    height="100"
+                  />
+                </clipPath>
+                <clipPath id={`${clipId}-hover`}>
+                  <rect
+                    x="0"
+                    y="0"
+                    width={
+                      hoverRatio !== null
+                        ? Math.max(0.001, hoverRatio * 100)
+                        : 0
+                    }
+                    height="100"
+                  />
+                </clipPath>
+              </defs>
+
+              {/* Camada dim -- waveform completa em opacity baixa */}
+              <polygon
+                points={polygonPoints}
+                fill={`url(#${gradientId})`}
+                opacity="0.18"
+              />
+
+              {/* Camada hover preview (entre dim e tocada) */}
+              {hoverRatio !== null && !isDragging && (
+                <polygon
+                  points={polygonPoints}
+                  fill={`url(#${gradientId})`}
+                  opacity="0.4"
+                  clipPath={`url(#${clipId}-hover)`}
                 />
-              )
-            })}
+              )}
+
+              {/* Camada glow blur (tocada) */}
+              <polygon
+                points={polygonPoints}
+                fill={`url(#${gradientId})`}
+                filter={`url(#${glowId})`}
+                clipPath={`url(#${clipId})`}
+                opacity="0.85"
+                className="audio-wave-glow"
+              />
+
+              {/* Camada sharp (tocada, em cima do blur) */}
+              <polygon
+                points={polygonPoints}
+                fill={`url(#${gradientId})`}
+                clipPath={`url(#${clipId})`}
+              />
+            </svg>
           </div>
 
           <div className="flex items-center justify-between gap-3">
