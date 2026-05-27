@@ -588,11 +588,26 @@ export default function CapasPage() {
         </header>
 
         <section className="rise rise-2">
-          <SectionLabel
-            num="02"
-            label="Capas geradas"
-            action={
-              covers.filter((c) => c.status === 'ready').length > 0 ? (
+          {/* Linha unificada: filtros (artista/status/rating/data) a esquerda
+            * + botao Selecionar a direita. Removeu o SectionLabel "02 / Capas
+            * geradas" pra reduzir ruido visual -- gerou linha extra desnecessaria.
+            * Botao Selecionar agora se alinha com os filtros no mesmo eixo. */}
+          {(readyCovers.length >= 2 || covers.filter((c) => c.status === 'ready').length > 0) && (
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                {readyCovers.length >= 2 && (
+                  <CoverFilterBar
+                    covers={readyCovers}
+                    filters={filters}
+                    onChange={(next) => {
+                      setFilters(next)
+                      // Reseta paginacao quando filtro muda
+                      setVisibleCount(GRID_PAGE_SIZE)
+                    }}
+                  />
+                )}
+              </div>
+              {covers.filter((c) => c.status === 'ready').length > 0 && (
                 <button
                   type="button"
                   onClick={
@@ -602,9 +617,7 @@ export default function CapasPage() {
                   style={{
                     fontSize: 10.5,
                     letterSpacing: '0.18em',
-                    color: selectionMode
-                      ? 'var(--text-primary)'
-                      : 'var(--text-primary)',
+                    color: 'var(--text-primary)',
                     border: '1px solid',
                     borderColor: selectionMode
                       ? 'var(--border-purple)'
@@ -628,22 +641,7 @@ export default function CapasPage() {
                 >
                   {selectionMode ? 'Cancelar' : 'Selecionar'}
                 </button>
-              ) : null
-            }
-          />
-          {/* Filtros inline (artista/status/rating/data) -- so aparecem
-            * quando ha >= 2 capas ready (sem 1 capa nao tem o que filtrar). */}
-          {readyCovers.length >= 2 && (
-            <div className="mb-5">
-              <CoverFilterBar
-                covers={readyCovers}
-                filters={filters}
-                onChange={(next) => {
-                  setFilters(next)
-                  // Reseta paginacao quando filtro muda
-                  setVisibleCount(GRID_PAGE_SIZE)
-                }}
-              />
+              )}
             </div>
           )}
 
