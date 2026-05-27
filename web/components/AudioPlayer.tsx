@@ -42,6 +42,41 @@ function formatTime(s: number): string {
   return `${m}:${ss}`
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// Multi-color gradient ao longo da waveform.
+// Stops: azul -> roxo -> rosa (centro quente) -> roxo -> azul (simetrico)
+// Cada barra pega a cor interpolada da sua posicao (0 a 1).
+// ─────────────────────────────────────────────────────────────────────
+
+const COLOR_STOPS: Array<{ pos: number; rgb: [number, number, number] }> = [
+  { pos: 0.0, rgb: [99, 102, 241] }, // indigo-500
+  { pos: 0.22, rgb: [124, 58, 237] }, // roxo-violet
+  { pos: 0.5, rgb: [236, 72, 153] }, // pink-500 (centro quente)
+  { pos: 0.78, rgb: [124, 58, 237] }, // roxo-violet
+  { pos: 1.0, rgb: [99, 102, 241] }, // indigo-500
+]
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t
+}
+
+function getBarColor(ratio: number): { r: number; g: number; b: number } {
+  for (let i = 0; i < COLOR_STOPS.length - 1; i += 1) {
+    const a = COLOR_STOPS[i]
+    const b = COLOR_STOPS[i + 1]
+    if (ratio >= a.pos && ratio <= b.pos) {
+      const t = (ratio - a.pos) / (b.pos - a.pos)
+      return {
+        r: Math.round(lerp(a.rgb[0], b.rgb[0], t)),
+        g: Math.round(lerp(a.rgb[1], b.rgb[1], t)),
+        b: Math.round(lerp(a.rgb[2], b.rgb[2], t)),
+      }
+    }
+  }
+  const last = COLOR_STOPS[COLOR_STOPS.length - 1].rgb
+  return { r: last[0], g: last[1], b: last[2] }
+}
+
 /**
  * Player de audio custom com waveform fake estetica.
  * Editorial Mono -- preto, hairlines, mono uppercase em timestamps.
@@ -61,6 +96,15 @@ export function AudioPlayer({ src, fileName, bars = 56, flat = false }: Props) {
     () => generateWaveform(fileName ?? src ?? 'x', bars),
     [src, fileName, bars],
   )
+
+  // Pre-calcula cores de cada barra (azul->roxo->rosa->roxo->azul) -- 1x
+  // por mudanca em `bars`. Evita recalcular interpolacao 56x por render.
+  const barColors = useMemo(() => {
+    return waveform.map((_, i) => {
+      const r = bars > 1 ? i / (bars - 1) : 0
+      return getBarColor(r)
+    })
+  }, [waveform, bars])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -256,6 +300,10 @@ export function AudioPlayer({ src, fileName, bars = 56, flat = false }: Props) {
               const played = barRatio <= progress
               const hovered = hoverRatio !== null && barRatio <= hoverRatio
               const animatePlaying = playing && played
+              const color = barColors[i]
+              const colorStr = `rgb(${color.r}, ${color.g}, ${color.b})`
+              const colorGlowStr = `rgba(${color.r}, ${color.g}, ${color.b}, 0.55)`
+              const colorDimStr = `rgba(${color.r}, ${color.g}, ${color.b}, ${hovered ? 0.4 : 0.18})`
               return (
                 <span
                   key={i}
@@ -264,14 +312,8 @@ export function AudioPlayer({ src, fileName, bars = 56, flat = false }: Props) {
                     {
                       height: `${h * 100}%`,
                       minHeight: 2,
-                      background: played
-                        ? 'var(--accent, #7c3aed)'
-                        : hovered
-                          ? 'var(--text-muted)'
-                          : 'var(--border-medium)',
-                      boxShadow: played
-                        ? '0 0 6px rgba(217, 70, 239, 0.45)'
-                        : 'none',
+                      background: played ? colorStr : colorDimStr,
+                      boxShadow: played ? `0 0 8px ${colorGlowStr}` : 'none',
                       transition:
                         'background 120ms ease, box-shadow 120ms ease',
                       '--bar-delay': `${(i % 8) * 0.06}s`,
