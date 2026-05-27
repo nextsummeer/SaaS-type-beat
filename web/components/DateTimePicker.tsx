@@ -146,11 +146,16 @@ export function DateTimePicker({ value, onChange, minDate, placeholder = 'Seleci
 
       {open && (
         <div
-          className="absolute left-0 right-0 z-50 mt-2 origin-top rounded-xl p-4"
+          className="absolute left-0 z-50 mt-2 origin-top rounded-xl p-4"
           style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-medium)',
             boxShadow: 'var(--shadow-lg)',
+            // Width fixa: trigger ocupa a largura do form pai (que agora eh
+            // max-w-6xl ~1152px). Sem cap aqui, o grid de 7 dias virava
+            // celulas enormes inutilmente. 360px da ~46px por dia, ideal.
+            width: 360,
+            maxWidth: 'calc(100vw - 2rem)',
           }}
         >
           {/* Navegação do mês */}
