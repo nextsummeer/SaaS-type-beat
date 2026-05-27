@@ -39,6 +39,8 @@ export function CoverPickerExpanded({
   onClose,
 }: Props) {
   const mouseDownOnBackdropRef = useRef(false)
+  const modalRef = useRef<HTMLDivElement | null>(null)
+  const gridScrollRef = useRef<HTMLDivElement | null>(null)
   const [filters, setFilters] = useState<CoverFilters>(EMPTY_COVER_FILTERS)
 
   // Esc fecha
@@ -61,6 +63,27 @@ export function CoverPickerExpanded({
     }
   }, [open])
 
+  // Redireciona wheel event do modal inteiro pro grid scrollavel.
+  // Antes: scroll so funcionava com cursor EM CIMA do grid (cursor no
+  // header ou margin nao scrollava nada -- "as vezes nao funciona").
+  // Agora: wheel em qualquer parte do modal sobre o grid.
+  useEffect(() => {
+    if (!open) return
+    const modal = modalRef.current
+    const grid = gridScrollRef.current
+    if (!modal || !grid) return
+    function handleWheel(e: WheelEvent) {
+      if (!grid) return
+      // Se o cursor ja esta dentro do grid scrollavel, deixa o scroll
+      // nativo funcionar normal (nao queremos roubar/duplicar)
+      if (grid.contains(e.target as Node)) return
+      e.preventDefault()
+      grid.scrollTop += e.deltaY
+    }
+    modal.addEventListener('wheel', handleWheel, { passive: false })
+    return () => modal.removeEventListener('wheel', handleWheel)
+  }, [open])
+
   const filteredCovers = useMemo(
     () => applyCoverFilters(covers, filters),
     [covers, filters],
@@ -70,10 +93,10 @@ export function CoverPickerExpanded({
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-4 sm:px-6 sm:py-6"
+      className="fixed inset-0 z-[70] flex items-start justify-center px-4 pt-6 pb-4 sm:px-6 sm:pt-8 sm:pb-6"
       style={{
         background: 'rgba(0,0,0,0.78)',
-        backdropFilter: 'blur(8px)',
+        backdropFilter: 'blur(10px)',
       }}
       onMouseDown={(e) => {
         mouseDownOnBackdropRef.current = e.target === e.currentTarget
@@ -86,6 +109,7 @@ export function CoverPickerExpanded({
       }}
     >
       <div
+        ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-label="Escolher capa da biblioteca"
@@ -94,13 +118,11 @@ export function CoverPickerExpanded({
           background: 'var(--bg-surface)',
           border: '1px solid var(--border-medium, var(--border-subtle))',
           boxShadow: 'var(--shadow-lg, 0 24px 64px rgba(0,0,0,0.5))',
-          // Modal cresce ate o cap conforme o conteudo -- em telas grandes
-          // (1080p+) ocupa praticamente toda viewport util, em telas
-          // menores se ajusta sozinho. Antes era `height` fixa de 720px,
-          // que deixava espaco preto em cima/baixo em telas grandes.
-          maxHeight: 'min(880px, calc(100vh - 4rem))',
-          // minHeight evita o caso "modal mini" quando filtro deixa 0-2 capas
-          minHeight: 'min(520px, calc(100vh - 4rem))',
+          // Encostado no topo (items-start no overlay), usa quase toda
+          // viewport disponivel. Em qualquer altura de tela, sempre o
+          // mesmo respiro top/bottom = previsivel e premium.
+          maxHeight: 'calc(100vh - 3.5rem)',
+          minHeight: 'min(540px, calc(100vh - 3.5rem))',
         }}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -176,7 +198,7 @@ export function CoverPickerExpanded({
         </header>
 
         {/* GRID scrollavel -- capas selecionaveis */}
-        <div className="flex-1 overflow-y-auto px-5 py-5">
+        <div ref={gridScrollRef} className="flex-1 overflow-y-auto px-5 py-5">
           {filteredCovers.length === 0 ? (
             <EmptyState
               hasFilters={filters !== EMPTY_COVER_FILTERS}
