@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { Loader2, Save, CalendarClock, CheckCircle2, Tag, X, ExternalLink, Trash2, Globe, EyeOff, Zap, Tv2, Info } from 'lucide-react'
+import { Loader2, Save, CalendarClock, CheckCircle2, Check, Tag, X, ExternalLink, Trash2, Globe, EyeOff, Zap, Tv2, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { fetchPost, patchPost, deleteBeat } from '@/lib/api'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -129,6 +129,8 @@ export default function ReviewPage() {
   const [saving, setSaving] = useState(false)
   const [scheduling, setScheduling] = useState(false)
   const [savedOk, setSavedOk] = useState(false)
+  const [linkSaving, setLinkSaving] = useState(false)
+  const [linkSavedOk, setLinkSavedOk] = useState(false)
   const [confirmandoDelete, setConfirmandoDelete] = useState(false)
   const [deletando, setDeletando] = useState(false)
 
@@ -215,6 +217,43 @@ export default function ReviewPage() {
     }
   }
 
+  // Salva SOMENTE o link de venda (purchase_link) + descricao sincronizada.
+  // Atalho do "Salvar edicoes" geral pra quem so quer colar/atualizar o link
+  // sem precisar rolar a pagina inteira. T-2026-05-27.
+  async function handleSaveLink() {
+    if (!post) return
+    setLinkSaving(true)
+    setLinkSavedOk(false)
+    setError(null)
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (!session) throw new Error('Sessão expirada')
+      const descSincronizada = sincronizaLink(
+        descricao,
+        post.purchase_link,
+        purchaseLink,
+      )
+      if (descSincronizada !== descricao) setDescricao(descSincronizada)
+      await patchPost(post.id, session.access_token, {
+        descricao: descSincronizada,
+        purchase_link: purchaseLink || undefined,
+      })
+      setPost({
+        ...post,
+        purchase_link: purchaseLink,
+        descricao: descSincronizada,
+      })
+      setLinkSavedOk(true)
+      setTimeout(() => setLinkSavedOk(false), 2500)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao salvar link')
+    } finally {
+      setLinkSaving(false)
+    }
+  }
+
   async function handleSchedule() {
     if (!post) return
     if (!scheduledAt) {
@@ -268,6 +307,10 @@ export default function ReviewPage() {
   const linkVaiAtualizar =
     !!purchaseLink &&
     (placeholderNaDescricao || (!!post?.purchase_link && post.purchase_link !== purchaseLink && descricao.includes(post.purchase_link)))
+  // Habilita o botao "Salvar link" inline so quando ha mudanca real no
+  // campo de link em relacao ao que ja esta salvo no banco.
+  const linkPendingSave =
+    !!post && purchaseLink.trim() !== (post.purchase_link ?? '').trim()
 
   // YouTube trunca a previa em ~120 chars; link beatstars.com/beat/... longo
   // estoura essa previa e fica cortado com "..." (visualmente nao clicavel).
@@ -369,6 +412,34 @@ export default function ReviewPage() {
             placeholder="https://www.beatstars.com/beat/..."
             className="field-input flex-1"
           />
+          <button
+            type="button"
+            onClick={handleSaveLink}
+            disabled={!linkPendingSave || linkSaving}
+            title={
+              linkPendingSave
+                ? 'Salvar link e sincronizar com a descrição'
+                : 'Nada pra salvar'
+            }
+            className="btn-primary shrink-0 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {linkSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Salvando…
+              </>
+            ) : linkSavedOk ? (
+              <>
+                <Check className="h-4 w-4" />
+                Salvo
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Salvar
+              </>
+            )}
+          </button>
           <button
             type="button"
             onClick={abrirLinkVenda}
