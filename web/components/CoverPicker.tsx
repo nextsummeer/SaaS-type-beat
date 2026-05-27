@@ -239,30 +239,50 @@ export function CoverPicker({
     onPickLibrary(cover.id)
   }
 
+  // Contadores totais por origem -- subiu pro CoverPicker pra renderizar
+  // o sub-filtro ao lado das tabs principais (otimizando o espaco
+  // horizontal -- antes os 2 switches ficavam empilhados a esquerda).
+  const totalAI = library.filter((c) => c.source === 'ai_generated').length
+  const totalManual = library.filter((c) => c.source === 'manual_upload').length
+
   return (
     <div className="space-y-3">
-      {/* Tabs */}
-      <div
-        className="inline-flex items-center gap-0.5 rounded-lg p-0.5"
-        style={{
-          background: 'rgba(255,255,255,0.025)',
-          border: '1px solid var(--border-subtle)',
-        }}
-      >
-        <TabButton
-          active={tab === 'library'}
-          icon={Library}
-          label="Biblioteca"
-          disabled={disabled}
-          onClick={() => handleTabChange('library')}
-        />
-        <TabButton
-          active={tab === 'manual'}
-          icon={Upload}
-          label="Manual"
-          disabled={disabled}
-          onClick={() => handleTabChange('manual')}
-        />
+      {/* Tabs principais + sub-filtro (Todas/IA/Manuais) lado a lado.
+        * Aproveita a largura do card e cria hierarquia visual clara. */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div
+          className="inline-flex items-center gap-0.5 rounded-lg p-1"
+          style={{
+            background: 'rgba(255,255,255,0.025)',
+            border: '1px solid var(--border-subtle)',
+          }}
+        >
+          <TabButton
+            active={tab === 'library'}
+            icon={Library}
+            label="Biblioteca"
+            disabled={disabled}
+            onClick={() => handleTabChange('library')}
+          />
+          <TabButton
+            active={tab === 'manual'}
+            icon={Upload}
+            label="Manual"
+            disabled={disabled}
+            onClick={() => handleTabChange('manual')}
+          />
+        </div>
+
+        {tab === 'library' && (
+          <LibrarySourceSwitch
+            librarySource={librarySource}
+            onChange={setLibrarySource}
+            totalAll={library.length}
+            totalAI={totalAI}
+            totalManual={totalManual}
+            disabled={disabled}
+          />
+        )}
       </div>
 
       {/* Conteudo da tab ativa */}
@@ -270,7 +290,6 @@ export function CoverPicker({
         <LibraryTab
           library={library}
           librarySource={librarySource}
-          onLibrarySourceChange={setLibrarySource}
           loading={loadingLibrary}
           error={libraryError}
           selectedCoverId={selectedCoverId}
@@ -357,9 +376,9 @@ function TabButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex items-center gap-2 rounded-md px-4 py-2 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
       style={{
-        fontSize: 12.5,
+        fontSize: 13.5,
         fontWeight: 500,
         color: active ? 'var(--text-primary)' : 'var(--text-muted)',
         background: active ? 'rgba(255,255,255,0.06)' : 'transparent',
@@ -371,7 +390,7 @@ function TabButton({
         if (!disabled && !active) e.currentTarget.style.color = 'var(--text-muted)'
       }}
     >
-      <Icon size={13} strokeWidth={active ? 2 : 1.7} />
+      <Icon size={14} strokeWidth={active ? 2 : 1.7} />
       {label}
     </button>
   )
@@ -394,7 +413,6 @@ function applyLibrarySource(
 function LibraryTab({
   library,
   librarySource,
-  onLibrarySourceChange,
   loading,
   error,
   selectedCoverId,
@@ -406,7 +424,6 @@ function LibraryTab({
 }: {
   library: CoverLibraryItem[]
   librarySource: LibrarySource
-  onLibrarySourceChange: (next: LibrarySource) => void
   loading: boolean
   error: string | null
   selectedCoverId: string | null
@@ -476,9 +493,6 @@ function LibraryTab({
     )
   }
 
-  // Contadores totais por origem (pra mostrar no sub-switch IA/Manual)
-  const totalAI = library.filter((c) => c.source === 'ai_generated').length
-  const totalManual = library.filter((c) => c.source === 'manual_upload').length
   const filteredLibrary = applyLibrarySource(library, librarySource)
 
   // Mostra preview limitado pra nao poluir o /upload (era o gargalo --
@@ -505,18 +519,6 @@ function LibraryTab({
 
   return (
     <div className="space-y-3">
-      {/* T4.35 — sub-segmented IA/Manual dentro da Biblioteca.
-        * Aparece sempre que tem pelo menos uma capa de algum tipo
-        * (didatico mesmo se zero do outro). */}
-      <LibrarySourceSwitch
-        librarySource={librarySource}
-        onChange={onLibrarySourceChange}
-        totalAll={library.length}
-        totalAI={totalAI}
-        totalManual={totalManual}
-        disabled={disabled}
-      />
-
       {filteredLibrary.length === 0 ? (
         <LibraryEmptyForSource source={librarySource} />
       ) : (
@@ -610,7 +612,7 @@ function LibrarySourceSwitch({
   ]
   return (
     <div
-      className="inline-flex items-center gap-0.5 rounded-md p-0.5"
+      className="inline-flex items-center gap-0.5 rounded-md p-1"
       role="tablist"
       aria-label="Origem da capa"
       style={{
@@ -628,9 +630,9 @@ function LibrarySourceSwitch({
             aria-selected={active}
             onClick={() => onChange(opt.value)}
             disabled={disabled}
-            className="inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             style={{
-              fontSize: 11.5,
+              fontSize: 12.5,
               fontWeight: 500,
               color: active ? 'var(--text-primary)' : 'var(--text-muted)',
               background: active ? 'rgba(255,255,255,0.06)' : 'transparent',
@@ -640,7 +642,7 @@ function LibrarySourceSwitch({
             <span
               className="font-mono tabular"
               style={{
-                fontSize: 9.5,
+                fontSize: 10.5,
                 color: active ? 'var(--purple-light)' : 'var(--text-subtle)',
                 letterSpacing: '0.10em',
               }}
