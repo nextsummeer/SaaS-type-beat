@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Sparkles, Loader2, Check, AlertCircle, AlertTriangle } from 'lucide-react'
 import { KEYS, SCALES, type Key, type Scale } from '@/lib/essentia/types'
 import type { BpmConfidence } from '@/lib/essentia/analyzer'
@@ -39,6 +39,15 @@ export function AudioAnalyzeBox({
   const [state, setState] = useState<AnalyzeState>('idle')
   const [error, setError] = useState<string | null>(null)
   const [bpmConfidence, setBpmConfidence] = useState<BpmConfidence | null>(null)
+
+  // Quando o producer troca o arquivo, a analise anterior fica invalida --
+  // volta pro estado idle e some o badge "Detectado". Os campos BPM/KEY/
+  // SCALE ficam preservados (caso o producer prefira reusar manualmente).
+  useEffect(() => {
+    setState('idle')
+    setError(null)
+    setBpmConfidence(null)
+  }, [audioFile])
 
   async function handleAnalyze() {
     if (!audioFile || disabled) return
@@ -229,36 +238,10 @@ export function AudioAnalyzeBox({
               className="text-[11px]"
               style={{ color: '#FCD34D', opacity: 0.85 }}
             >
-              Type beats com tripletas confundem o algoritmo. Confirme
-              o BPM manualmente se souber.
+              Confirme o BPM manualmente se souber o valor exato.
             </span>
           </div>
         </div>
-      )}
-      {state === 'done' && bpmConfidence === 'medium' && (
-        <p
-          className="mt-2 font-mono uppercase"
-          style={{
-            fontSize: 9.5,
-            letterSpacing: '0.2em',
-            color: 'var(--text-subtle)',
-          }}
-        >
-          Confianca media — confira se discordar
-        </p>
-      )}
-      {state === 'done' && bpmConfidence === 'high' && (
-        <p
-          className="mt-2 font-mono uppercase"
-          style={{
-            fontSize: 9.5,
-            letterSpacing: '0.2em',
-            color: 'var(--led-success)',
-            opacity: 0.85,
-          }}
-        >
-          Alta confianca · 2 algoritmos concordaram
-        </p>
       )}
     </div>
   )
