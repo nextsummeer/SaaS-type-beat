@@ -63,13 +63,23 @@ export function CoverPickerExpanded({
   }, [open])
 
   // Reseta o scroll do grid pra 0 quando o modal abre OU quando filtros
-  // mudam. Antes: scroll herdava posicao da sessao anterior (modal
-  // reabria "no meio") OU quando trocava filtro continuava onde estava
-  // (capas novas escondidas). Agora: sempre comeca do topo, UX previsivel.
+  // mudam. Aplica em 3 momentos (defesa em profundidade): imediato no
+  // commit, no proximo frame apos paint, e via setTimeout(50ms) como
+  // fallback caso o layout assincrono (imagens carregando, etc) mude
+  // a posicao depois.
   useEffect(() => {
     if (!open) return
-    const grid = gridScrollRef.current
-    if (grid) grid.scrollTop = 0
+    function reset() {
+      const grid = gridScrollRef.current
+      if (grid) grid.scrollTop = 0
+    }
+    reset()
+    const raf = requestAnimationFrame(reset)
+    const timeout = setTimeout(reset, 50)
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(timeout)
+    }
   }, [open, filters])
 
   const filteredCovers = useMemo(
