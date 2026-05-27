@@ -53,9 +53,11 @@ export function MediaPreview({ beatId }: Props) {
         }
 
         if (beat.cover_id) {
-          // Capa da biblioteca: tenta image_url primeiro, fallback pro
-          // storage_path se faltar. NB: pode haver capa em status pending
-          // ou failed sem image_url ainda -- aceitavel mostrar fallback.
+          // Capa da biblioteca: PRIORIZA storage_path -> signed URL.
+          // image_url salvo em cover_library eh URL publica do Supabase --
+          // se o bucket eh privado (caso atual), retorna 403. Signed URL
+          // gerada via service usa token e sempre funciona.
+          // image_url fica como fallback final.
           const { data: cover, error: coverErr } = await supabase
             .from('cover_library')
             .select('image_url, storage_path, status')
@@ -66,9 +68,7 @@ export function MediaPreview({ beatId }: Props) {
             cover,
             error: coverErr?.message,
           })
-          if (cover?.image_url && !cancelled) {
-            setCoverUrl(cover.image_url)
-          } else if (cover?.storage_path) {
+          if (cover?.storage_path) {
             const s = await supabase.storage
               .from('covers')
               .createSignedUrl(cover.storage_path, 3600)
@@ -77,7 +77,15 @@ export function MediaPreview({ beatId }: Props) {
               ok: !!s.data,
               error: s.error?.message,
             })
-            if (!cancelled && s.data) setCoverUrl(s.data.signedUrl)
+            if (!cancelled && s.data) {
+              setCoverUrl(s.data.signedUrl)
+            } else if (cover.image_url && !cancelled) {
+              // Fallback: image_url publica (pode 403 se bucket privado,
+              // mas eh ultima chance)
+              setCoverUrl(cover.image_url)
+            }
+          } else if (cover?.image_url && !cancelled) {
+            setCoverUrl(cover.image_url)
           } else {
             console.warn(
               '[MediaPreview] cover_id presente mas sem image_url nem storage_path',
