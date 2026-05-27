@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { X, Check } from 'lucide-react'
 import type { CoverLibraryItem } from '@/lib/api'
@@ -88,8 +89,15 @@ export function CoverPickerExpanded({
   )
 
   if (!open) return null
+  if (typeof document === 'undefined') return null
 
-  return (
+  // Renderiza VIA PORTAL direto no document.body pra evitar que
+  // ancestrais com `transform` (classe .rise da page /upload, por exemplo)
+  // criem um novo containing block e quebrem o `position: fixed`.
+  // Sem isso, "fixed inset-0" virava relativo ao parent com transform,
+  // nao a viewport -- modal abria scrollado pra baixo se a pagina tava
+  // scrollada quando o producer clicou "Ver todas".
+  return createPortal(
     <div
       className="fixed inset-0 z-[70] flex items-start justify-center px-4 pt-6 pb-4 sm:px-6 sm:pt-8 sm:pb-6"
       style={{
@@ -218,7 +226,8 @@ export function CoverPickerExpanded({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
