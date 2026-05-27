@@ -39,7 +39,6 @@ export function CoverPickerExpanded({
   onClose,
 }: Props) {
   const mouseDownOnBackdropRef = useRef(false)
-  const modalRef = useRef<HTMLDivElement | null>(null)
   const gridScrollRef = useRef<HTMLDivElement | null>(null)
   const [filters, setFilters] = useState<CoverFilters>(EMPTY_COVER_FILTERS)
 
@@ -63,26 +62,15 @@ export function CoverPickerExpanded({
     }
   }, [open])
 
-  // Redireciona wheel event do modal inteiro pro grid scrollavel.
-  // Antes: scroll so funcionava com cursor EM CIMA do grid (cursor no
-  // header ou margin nao scrollava nada -- "as vezes nao funciona").
-  // Agora: wheel em qualquer parte do modal sobre o grid.
+  // Reseta o scroll do grid pra 0 quando o modal abre OU quando filtros
+  // mudam. Antes: scroll herdava posicao da sessao anterior (modal
+  // reabria "no meio") OU quando trocava filtro continuava onde estava
+  // (capas novas escondidas). Agora: sempre comeca do topo, UX previsivel.
   useEffect(() => {
     if (!open) return
-    const modal = modalRef.current
     const grid = gridScrollRef.current
-    if (!modal || !grid) return
-    function handleWheel(e: WheelEvent) {
-      if (!grid) return
-      // Se o cursor ja esta dentro do grid scrollavel, deixa o scroll
-      // nativo funcionar normal (nao queremos roubar/duplicar)
-      if (grid.contains(e.target as Node)) return
-      e.preventDefault()
-      grid.scrollTop += e.deltaY
-    }
-    modal.addEventListener('wheel', handleWheel, { passive: false })
-    return () => modal.removeEventListener('wheel', handleWheel)
-  }, [open])
+    if (grid) grid.scrollTop = 0
+  }, [open, filters])
 
   const filteredCovers = useMemo(
     () => applyCoverFilters(covers, filters),
@@ -109,7 +97,6 @@ export function CoverPickerExpanded({
       }}
     >
       <div
-        ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-label="Escolher capa da biblioteca"
