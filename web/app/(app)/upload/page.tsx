@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function UploadPage() {
   return (
-    <div className="mx-auto max-w-3xl">
+    <div>
       {/* Hero */}
       <div className="rise rise-1 flex flex-col gap-2">
         <div className="flex items-center gap-2.5">
