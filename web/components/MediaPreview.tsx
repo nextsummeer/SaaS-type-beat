@@ -21,6 +21,7 @@ export function MediaPreview({ beatId }: Props) {
   const supabase = createClient()
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
+  const [coverImgFailed, setCoverImgFailed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,6 +37,13 @@ export function MediaPreview({ beatId }: Props) {
         if (beatErr) throw beatErr
         if (!beat) throw new Error('Beat nao encontrado')
 
+        console.log('[MediaPreview] Beat carregado:', {
+          beatId,
+          audio_path: beat.audio_path,
+          cover_id: beat.cover_id,
+          cover_path: beat.cover_path,
+        })
+
         if (beat.audio_path) {
           const signed = await supabase.storage
             .from('audios')
@@ -45,27 +53,54 @@ export function MediaPreview({ beatId }: Props) {
         }
 
         if (beat.cover_id) {
-          const { data: cover } = await supabase
+          // Capa da biblioteca: tenta image_url primeiro, fallback pro
+          // storage_path se faltar. NB: pode haver capa em status pending
+          // ou failed sem image_url ainda -- aceitavel mostrar fallback.
+          const { data: cover, error: coverErr } = await supabase
             .from('cover_library')
-            .select('image_url, storage_path')
+            .select('image_url, storage_path, status')
             .eq('id', beat.cover_id)
             .maybeSingle()
+          console.log('[MediaPreview] cover_library lookup:', {
+            cover_id: beat.cover_id,
+            cover,
+            error: coverErr?.message,
+          })
           if (cover?.image_url && !cancelled) {
             setCoverUrl(cover.image_url)
           } else if (cover?.storage_path) {
             const s = await supabase.storage
               .from('covers')
               .createSignedUrl(cover.storage_path, 3600)
+            console.log('[MediaPreview] signed URL via cover.storage_path:', {
+              storage_path: cover.storage_path,
+              ok: !!s.data,
+              error: s.error?.message,
+            })
             if (!cancelled && s.data) setCoverUrl(s.data.signedUrl)
+          } else {
+            console.warn(
+              '[MediaPreview] cover_id presente mas sem image_url nem storage_path',
+            )
           }
         } else if (beat.cover_path) {
           const signedCover = await supabase.storage
             .from('covers')
             .createSignedUrl(beat.cover_path, 3600)
+          console.log('[MediaPreview] signed URL via beat.cover_path:', {
+            cover_path: beat.cover_path,
+            ok: !!signedCover.data,
+            error: signedCover.error?.message,
+          })
           if (signedCover.error) throw signedCover.error
           if (!cancelled) setCoverUrl(signedCover.data.signedUrl)
+        } else {
+          console.warn(
+            '[MediaPreview] beat sem cover_id e sem cover_path -- nada pra renderizar',
+          )
         }
       } catch (e) {
+        console.error('[MediaPreview] Falha no load:', e)
         if (!cancelled) {
           setError(e instanceof Error ? e.message : 'Erro ao carregar midia')
         }
@@ -127,19 +162,36 @@ export function MediaPreview({ beatId }: Props) {
             borderRight: '1px solid var(--border-subtle)',
           }}
         >
-          {coverUrl ? (
+          {coverUrl && !coverImgFailed ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={coverUrl}
               alt="Capa do beat"
               className="absolute inset-0 h-full w-full object-cover"
+              onError={() => {
+                console.error(
+                  '[MediaPreview] <img> falhou ao carregar coverUrl:',
+                  coverUrl,
+                )
+                setCoverImgFailed(true)
+              }}
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-2 text-center">
               <ImageOff
                 className="h-5 w-5"
                 style={{ color: 'var(--text-subtle)' }}
               />
+              <span
+                className="font-mono uppercase"
+                style={{
+                  fontSize: 8.5,
+                  letterSpacing: '0.18em',
+                  color: 'var(--text-subtle)',
+                }}
+              >
+                {coverImgFailed ? 'imagem inacessivel' : 'sem capa'}
+              </span>
             </div>
           )}
         </div>
