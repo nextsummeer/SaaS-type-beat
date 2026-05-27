@@ -70,7 +70,7 @@ export function CoverPickerExpanded({
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-6 sm:px-6 sm:py-10"
+      className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-4 sm:px-6 sm:py-6"
       style={{
         background: 'rgba(0,0,0,0.78)',
         backdropFilter: 'blur(8px)',
@@ -89,16 +89,18 @@ export function CoverPickerExpanded({
         role="dialog"
         aria-modal="true"
         aria-label="Escolher capa da biblioteca"
-        className="relative flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl"
+        className="relative flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl"
         style={{
           background: 'var(--bg-surface)',
           border: '1px solid var(--border-medium, var(--border-subtle))',
           boxShadow: 'var(--shadow-lg, 0 24px 64px rgba(0,0,0,0.5))',
-          // ALTURA FIXA -- evita layout shift quando grid encolhe apos
-          // filtrar (modal continuaria centralizado verticalmente e
-          // "afundaria" pra cima). Min() garante que viewport pequena
-          // nao quebra.
-          height: 'min(720px, calc(100vh - 5rem))',
+          // Modal cresce ate o cap conforme o conteudo -- em telas grandes
+          // (1080p+) ocupa praticamente toda viewport util, em telas
+          // menores se ajusta sozinho. Antes era `height` fixa de 720px,
+          // que deixava espaco preto em cima/baixo em telas grandes.
+          maxHeight: 'min(880px, calc(100vh - 4rem))',
+          // minHeight evita o caso "modal mini" quando filtro deixa 0-2 capas
+          minHeight: 'min(520px, calc(100vh - 4rem))',
         }}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -181,7 +183,7 @@ export function CoverPickerExpanded({
               onClear={() => setFilters(EMPTY_COVER_FILTERS)}
             />
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {filteredCovers.map((cover) => (
                 <PickerCard
                   key={cover.id}
