@@ -129,6 +129,41 @@ function normalizeScale(raw: string): Scale {
   return lower === 'minor' ? 'Minor' : 'Major'
 }
 
+// Essentia.js RhythmExtractor2013 e KeyExtractor EXIGEM 44100 Hz.
+// Sem resample, BPM erra proporcionalmente -- audio 48kHz com BPM real
+// 126 detecta como 126 * (44100/48000) = 115.76 ~ 116 BPM. Bug
+// confirmado pelo Gustavo em 2026-05-26: typebeat.fun (mesma essentia.js)
+// acerta porque resampleiam; nos nao resamplevamos.
+const TARGET_SAMPLE_RATE = 44100
+
+async function resampleToMono44100(buffer: AudioBuffer): Promise<Float32Array> {
+  // Se ja esta no sample rate certo, so retorna o canal 0
+  if (buffer.sampleRate === TARGET_SAMPLE_RATE) {
+    return buffer.getChannelData(0)
+  }
+
+  // Renderiza via OfflineAudioContext em 44.1 kHz mono. Web Audio API
+  // faz o resample com qualidade alta automaticamente.
+  const duration = buffer.length / buffer.sampleRate
+  const targetLength = Math.ceil(duration * TARGET_SAMPLE_RATE)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const OAC: any =
+    (window as unknown as { OfflineAudioContext: typeof OfflineAudioContext })
+      .OfflineAudioContext ||
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).webkitOfflineAudioContext
+  if (!OAC) {
+    throw new Error('Browser nao suporta OfflineAudioContext')
+  }
+  const offlineCtx = new OAC(1, targetLength, TARGET_SAMPLE_RATE)
+  const src = offlineCtx.createBufferSource()
+  src.buffer = buffer
+  src.connect(offlineCtx.destination)
+  src.start(0)
+  const rendered = await offlineCtx.startRendering()
+  return rendered.getChannelData(0)
+}
+
 /**
  * Decodifica o File pra Float32Array mono e roda RhythmExtractor2013 +
  * KeyExtractor. Tempo tipico: 2-4s pra MP3 de 3min apos o WASM carregar.
@@ -157,23 +192,30 @@ export async function analyzeAudio(file: File): Promise<AudioAnalysisResult> {
     }
   }
 
-  // Mono: usa canal 0 (se stereo, perdemos info do segundo mas BPM/KEY nao
-  // precisam dele).
-  // BPM: pula primeiros 10s (intro/build-up sem hi-hat completo confunde
-  // o algoritmo) e analisa do 10s ao 70s -- 60s eh suficiente.
-  // KEY: usa do inicio ao 60s -- harmonia geralmente ja se estabelece.
-  const sampleRate = audioBuffer.sampleRate
-  const totalSamples = audioBuffer.length
-  const channel0 = audioBuffer.getChannelData(0)
+  const originalSampleRate = audioBuffer.sampleRate
+  console.log('[essentia] Audio decodificado:', {
+    sampleRate: originalSampleRate,
+    channels: audioBuffer.numberOfChannels,
+    duration: audioBuffer.duration.toFixed(2) + 's',
+  })
 
-  // BPM window: 10s ate 70s (ou ate o fim do audio se for menor)
-  const bpmStart = Math.min(totalSamples, sampleRate * 10)
-  const bpmEnd = Math.min(totalSamples, sampleRate * 70)
-  const bpmSignal = channel0.slice(bpmStart, bpmEnd)
+  // Resample pra 44.1 kHz (mono) -- essentia.js exige isso pra rhythm/key.
+  // Sem resample, audio 48kHz reporta BPM ~8% menor que o real.
+  const monoSignal = await resampleToMono44100(audioBuffer)
+  if (originalSampleRate !== TARGET_SAMPLE_RATE) {
+    console.log(
+      `[essentia] Resampled ${originalSampleRate}Hz -> ${TARGET_SAMPLE_RATE}Hz (${monoSignal.length} samples)`,
+    )
+  }
 
-  // KEY window: 0 ate 60s
-  const keyEnd = Math.min(totalSamples, sampleRate * 60)
-  const keySignal = channel0.slice(0, keyEnd)
+  // BPM window: 10s a 70s (pula intro/build-up sem hi-hat completo)
+  // KEY window: 0s a 60s (harmonia ja se estabelece)
+  const bpmStart = Math.min(monoSignal.length, TARGET_SAMPLE_RATE * 10)
+  const bpmEnd = Math.min(monoSignal.length, TARGET_SAMPLE_RATE * 70)
+  const bpmSignal = monoSignal.slice(bpmStart, bpmEnd)
+
+  const keyEnd = Math.min(monoSignal.length, TARGET_SAMPLE_RATE * 60)
+  const keySignal = monoSignal.slice(0, keyEnd)
 
   const { essentia } = await getEssentia()
   const bpmVector = essentia.arrayToVector(bpmSignal)
