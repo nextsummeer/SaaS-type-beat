@@ -283,10 +283,14 @@ function BpmInput({
   const canIncrement = !hasValue || current < BPM_MAX
   const canDecrement = !hasValue || current > BPM_MIN
 
+  const inputRef = useRef<HTMLInputElement | null>(null)
   // Refs pra long-press: timeout do delay inicial (400ms) + interval
   // do auto-repeat (80ms enquanto segura).
   const holdTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Ref pro estado atual usado pelo listener wheel (evita re-bind)
+  const stateRef = useRef({ value, onChange, disabled })
+  stateRef.current = { value, onChange, disabled }
 
   function adjust(delta: number) {
     const next = hasValue ? current + delta : 140
@@ -316,9 +320,31 @@ function BpmInput({
   // Cleanup ao desmontar (evita interval orfão se desmontar enquanto segurando)
   useEffect(() => () => stopRepeat(), [])
 
+  // Wheel handler precisa ser non-passive pra chamar preventDefault.
+  // React onWheel eh passive por default, entao adiciono via DOM API.
+  // Sem isso, a pagina scrolla junto com o ajuste do BPM.
+  useEffect(() => {
+    const input = inputRef.current
+    if (!input) return
+    function handleWheel(e: WheelEvent) {
+      const { value: v, onChange: setV, disabled: dis } = stateRef.current
+      if (dis) return
+      e.preventDefault()
+      const currentNum = Number(v)
+      const valid = Number.isFinite(currentNum) && v !== ''
+      const delta = e.deltaY < 0 ? 1 : -1
+      const next = valid ? currentNum + delta : 140
+      if (next < BPM_MIN || next > BPM_MAX) return
+      setV(String(next))
+    }
+    input.addEventListener('wheel', handleWheel, { passive: false })
+    return () => input.removeEventListener('wheel', handleWheel)
+  }, [])
+
   return (
     <div className="relative">
       <input
+        ref={inputRef}
         type="number"
         value={value}
         onChange={(e) => onChange(e.target.value)}
