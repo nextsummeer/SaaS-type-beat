@@ -50,10 +50,12 @@ function formatTime(s: number): string {
 export function AudioPlayer({ src, fileName, bars = 56, flat = false }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const trackRef = useRef<HTMLDivElement | null>(null)
+  const wasPlayingRef = useRef(false)
   const [playing, setPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [hoverRatio, setHoverRatio] = useState<number | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
 
   const waveform = useMemo(
     () => generateWaveform(fileName ?? src ?? 'x', bars),
@@ -105,21 +107,57 @@ export function AudioPlayer({ src, fileName, bars = 56, flat = false }: Props) {
     }
   }
 
-  function seekByEvent(e: React.MouseEvent<HTMLDivElement>) {
+  function seekToClientX(clientX: number) {
     const track = trackRef.current
     const audio = audioRef.current
     if (!track || !audio || !duration) return
     const rect = track.getBoundingClientRect()
-    const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
     audio.currentTime = ratio * duration
     setCurrentTime(ratio * duration)
   }
 
-  function handleHover(e: React.MouseEvent<HTMLDivElement>) {
+  // Pointer events unificados (mouse + touch). setPointerCapture mantem
+  // o drag funcionando mesmo se o cursor sair do track. Pausa o audio
+  // durante o drag pra scrub limpo, retoma se estava tocando antes.
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.preventDefault()
+    const track = trackRef.current
+    if (!track) return
+    track.setPointerCapture(e.pointerId)
+    setIsDragging(true)
+    if (playing && audioRef.current) {
+      audioRef.current.pause()
+      wasPlayingRef.current = true
+      setPlaying(false)
+    } else {
+      wasPlayingRef.current = false
+    }
+    seekToClientX(e.clientX)
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
     const track = trackRef.current
     if (!track) return
     const rect = track.getBoundingClientRect()
     setHoverRatio(Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)))
+    if (isDragging) seekToClientX(e.clientX)
+  }
+
+  function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (!isDragging) return
+    const track = trackRef.current
+    if (track && track.hasPointerCapture(e.pointerId)) {
+      track.releasePointerCapture(e.pointerId)
+    }
+    setIsDragging(false)
+    if (wasPlayingRef.current && audioRef.current) {
+      audioRef.current
+        .play()
+        .then(() => setPlaying(true))
+        .catch(() => setPlaying(false))
+      wasPlayingRef.current = false
+    }
   }
 
   const progress = duration > 0 ? currentTime / duration : 0
@@ -139,21 +177,45 @@ export function AudioPlayer({ src, fileName, bars = 56, flat = false }: Props) {
     >
       <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
 
+      <style>{`
+        @keyframes audio-bar-pulse {
+          0%, 100% { transform: scaleY(0.92); }
+          50%      { transform: scaleY(1.08); }
+        }
+        @keyframes audio-btn-pulse {
+          0%   { box-shadow: 0 0 0 0 rgba(124,58,237,0.55); }
+          70%  { box-shadow: 0 0 0 10px rgba(124,58,237,0); }
+          100% { box-shadow: 0 0 0 0 rgba(124,58,237,0); }
+        }
+        .audio-bar-playing {
+          animation: audio-bar-pulse 1.4s ease-in-out infinite;
+          animation-delay: var(--bar-delay, 0s);
+          transform-origin: center;
+        }
+        .audio-btn-playing {
+          animation: audio-btn-pulse 1.8s ease-out infinite;
+        }
+      `}</style>
+
       <div className="flex items-center gap-3.5">
         {/* play/pause */}
         <button
           type="button"
           onClick={toggle}
           aria-label={playing ? 'Pausar' : 'Tocar'}
-          className="group flex shrink-0 items-center justify-center rounded-full transition-transform active:scale-95"
+          className={`group flex shrink-0 items-center justify-center rounded-full transition-all duration-200 active:scale-95 ${
+            playing ? 'audio-btn-playing' : ''
+          }`}
           style={{
             width: 40,
             height: 40,
-            background: 'var(--text-primary)',
-            color: 'var(--bg-base)',
+            background: playing
+              ? 'linear-gradient(135deg, #7c3aed 0%, #d946ef 100%)'
+              : 'var(--text-primary)',
+            color: playing ? '#FFFFFF' : 'var(--bg-base)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'scale(1.04)'
+            e.currentTarget.style.transform = 'scale(1.05)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'scale(1)'
@@ -181,29 +243,40 @@ export function AudioPlayer({ src, fileName, bars = 56, flat = false }: Props) {
             aria-valuemax={duration || 0}
             aria-valuenow={currentTime}
             tabIndex={0}
-            onClick={seekByEvent}
-            onMouseMove={handleHover}
-            onMouseLeave={() => setHoverRatio(null)}
-            className="relative flex h-9 cursor-pointer items-center gap-[2px] select-none"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onPointerLeave={() => setHoverRatio(null)}
+            className="relative flex h-9 items-center gap-[2px] select-none touch-none"
+            style={{ cursor: isDragging ? 'grabbing' : 'pointer' }}
           >
             {waveform.map((h, i) => {
               const barRatio = i / (waveform.length - 1)
               const played = barRatio <= progress
               const hovered = hoverRatio !== null && barRatio <= hoverRatio
+              const animatePlaying = playing && played
               return (
                 <span
                   key={i}
-                  className="flex-1 rounded-full"
-                  style={{
-                    height: `${h * 100}%`,
-                    minHeight: 2,
-                    background: played
-                      ? 'var(--text-primary)'
-                      : hovered
-                        ? 'var(--text-muted)'
-                        : 'var(--border-medium)',
-                    transition: 'background 120ms ease',
-                  }}
+                  className={`flex-1 rounded-full ${animatePlaying ? 'audio-bar-playing' : ''}`}
+                  style={
+                    {
+                      height: `${h * 100}%`,
+                      minHeight: 2,
+                      background: played
+                        ? 'var(--accent, #7c3aed)'
+                        : hovered
+                          ? 'var(--text-muted)'
+                          : 'var(--border-medium)',
+                      boxShadow: played
+                        ? '0 0 6px rgba(217, 70, 239, 0.45)'
+                        : 'none',
+                      transition:
+                        'background 120ms ease, box-shadow 120ms ease',
+                      '--bar-delay': `${(i % 8) * 0.06}s`,
+                    } as React.CSSProperties
+                  }
                 />
               )
             })}
