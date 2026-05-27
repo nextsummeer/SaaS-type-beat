@@ -77,6 +77,32 @@ function getBarColor(ratio: number): { r: number; g: number; b: number } {
   return { r: last[0], g: last[1], b: last[2] }
 }
 
+// Catmull-Rom -> Bezier: gera path SVG suave a partir de N pontos.
+// tension entre 0 (lineares retos) e 0.5 (curvas pronunciadas). 0.3
+// da resultado natural sem oscilacao excessiva.
+function smoothPathSegment(
+  points: Array<[number, number]>,
+  tension = 0.3,
+): string {
+  if (points.length < 2) return ''
+  const cmds: string[] = []
+  cmds.push(`${points[0][0].toFixed(2)},${points[0][1].toFixed(2)}`)
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const p0 = points[i - 1] ?? points[i]
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const p3 = points[i + 2] ?? p2
+    const cp1x = p1[0] + (p2[0] - p0[0]) * tension
+    const cp1y = p1[1] + (p2[1] - p0[1]) * tension
+    const cp2x = p2[0] - (p3[0] - p1[0]) * tension
+    const cp2y = p2[1] - (p3[1] - p1[1]) * tension
+    cmds.push(
+      `C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2[0].toFixed(2)},${p2[1].toFixed(2)}`,
+    )
+  }
+  return cmds.join(' ')
+}
+
 /**
  * Player de audio custom com waveform fake estetica.
  * Editorial Mono -- preto, hairlines, mono uppercase em timestamps.
@@ -97,23 +123,28 @@ export function AudioPlayer({ src, fileName, bars = 56, flat = false }: Props) {
     [src, fileName, bars],
   )
 
-  // Polygon points pra SVG shape lenticular (formato organico de "onda")
-  // -- N pontos no topo + N no bottom espelhados. Cada x percorre 0-100,
-  // y centrado em 50 com amplitude max 46 (deixa 4 de respiro top/bottom).
-  const polygonPoints = useMemo(() => {
+  // Path SVG com curvas Bezier suaves (Catmull-Rom -> Bezier) gerado dos
+  // N pontos da waveform, espelhado em torno do eixo central y=50.
+  // Resultado: shape lenticular liso, sem facetas angulosas.
+  const pathD = useMemo(() => {
     const N = waveform.length
     if (N < 2) return ''
-    const top: string[] = []
-    const bottom: string[] = []
+    const topPoints: Array<[number, number]> = []
+    const bottomPoints: Array<[number, number]> = []
     for (let i = 0; i < N; i += 1) {
-      const x = ((i / (N - 1)) * 100).toFixed(2)
-      const halfAmp = (waveform[i] * 46).toFixed(2)
-      const yTop = (50 - parseFloat(halfAmp)).toFixed(2)
-      const yBottom = (50 + parseFloat(halfAmp)).toFixed(2)
-      top.push(`${x},${yTop}`)
-      bottom.push(`${x},${yBottom}`)
+      const x = (i / (N - 1)) * 100
+      const halfAmp = waveform[i] * 46
+      topPoints.push([x, 50 - halfAmp])
+      bottomPoints.push([x, 50 + halfAmp])
     }
-    return [...top, ...bottom.reverse()].join(' ')
+    // Top: esquerda -> direita. Bottom: direita -> esquerda (reverse) pra
+    // fechar suavemente. Comeca em M (move), Z fecha o path.
+    const topPath = smoothPathSegment(topPoints, 0.32)
+    const bottomReversed = bottomPoints.slice().reverse()
+    const bottomPath = smoothPathSegment(bottomReversed, 0.32)
+    // Note: bottomPath comeca com x,y do primeiro ponto reversed; usamos L
+    // pra conectar do ultimo top ao primeiro bottom (que ja eh proximo)
+    return `M ${topPath} L ${bottomPath} Z`
   }, [waveform])
 
   // IDs unicos por instancia (useful pra SVG defs nao conflitarem
@@ -332,8 +363,17 @@ export function AudioPlayer({ src, fileName, bars = 56, flat = false }: Props) {
                   <stop offset="78%" stopColor="#7c3aed" />
                   <stop offset="100%" stopColor="#6366f1" />
                 </linearGradient>
-                <filter id={glowId} x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="1.6" />
+                {/* Glow elaborado: aura externa larga + halo medio + sharp
+                  * em cima. Cria sensacao de luz vazando ao redor do shape
+                  * sem perder nitidez. */}
+                <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="3" result="bigGlow" />
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="midGlow" />
+                  <feMerge>
+                    <feMergeNode in="bigGlow" />
+                    <feMergeNode in="midGlow" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
                 </filter>
                 <clipPath id={clipId}>
                   <rect
@@ -358,37 +398,29 @@ export function AudioPlayer({ src, fileName, bars = 56, flat = false }: Props) {
               </defs>
 
               {/* Camada dim -- waveform completa em opacity baixa */}
-              <polygon
-                points={polygonPoints}
+              <path
+                d={pathD}
                 fill={`url(#${gradientId})`}
-                opacity="0.18"
+                opacity="0.16"
               />
 
               {/* Camada hover preview (entre dim e tocada) */}
               {hoverRatio !== null && !isDragging && (
-                <polygon
-                  points={polygonPoints}
+                <path
+                  d={pathD}
                   fill={`url(#${gradientId})`}
-                  opacity="0.4"
+                  opacity="0.38"
                   clipPath={`url(#${clipId}-hover)`}
                 />
               )}
 
-              {/* Camada glow blur (tocada) */}
-              <polygon
-                points={polygonPoints}
+              {/* Camada glow magico (tocada) -- filter aplica aura+halo+sharp */}
+              <path
+                d={pathD}
                 fill={`url(#${gradientId})`}
                 filter={`url(#${glowId})`}
                 clipPath={`url(#${clipId})`}
-                opacity="0.85"
                 className="audio-wave-glow"
-              />
-
-              {/* Camada sharp (tocada, em cima do blur) */}
-              <polygon
-                points={polygonPoints}
-                fill={`url(#${gradientId})`}
-                clipPath={`url(#${clipId})`}
               />
             </svg>
           </div>
