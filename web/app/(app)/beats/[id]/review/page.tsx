@@ -348,7 +348,7 @@ export default function ReviewPage() {
   }
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Revisar conteúdo do vídeo</h1>
