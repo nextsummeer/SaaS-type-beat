@@ -84,10 +84,19 @@ async function getEssentia(): Promise<{
   }>
 }
 
+export type BpmConfidence = 'high' | 'medium' | 'low'
+
 export interface AudioAnalysisResult {
   bpm: number
   key: Key
   scale: Scale
+  /**
+   * Confianca da deteccao de BPM:
+   * - high: 2 algoritmos concordam dentro de 2 BPM
+   * - medium: divergencia 3-5 BPM, usa RhythmExtractor2013
+   * - low: divergencia > 5 BPM OU confidence interna baixa
+   */
+  bpmConfidence: BpmConfidence
 }
 
 const KEY_MAP: Record<string, Key> = {
@@ -149,35 +158,82 @@ export async function analyzeAudio(file: File): Promise<AudioAnalysisResult> {
   }
 
   // Mono: usa canal 0 (se stereo, perdemos info do segundo mas BPM/KEY nao
-  // precisam dele). Truncamos pra 60s pra acelerar -- KeyExtractor converge
-  // rapido e nao precisa do beat inteiro.
+  // precisam dele).
+  // BPM: pula primeiros 10s (intro/build-up sem hi-hat completo confunde
+  // o algoritmo) e analisa do 10s ao 70s -- 60s eh suficiente.
+  // KEY: usa do inicio ao 60s -- harmonia geralmente ja se estabelece.
   const sampleRate = audioBuffer.sampleRate
-  const maxSamples = Math.min(audioBuffer.length, sampleRate * 60)
-  const signal = audioBuffer.getChannelData(0).slice(0, maxSamples)
+  const totalSamples = audioBuffer.length
+  const channel0 = audioBuffer.getChannelData(0)
+
+  // BPM window: 10s ate 70s (ou ate o fim do audio se for menor)
+  const bpmStart = Math.min(totalSamples, sampleRate * 10)
+  const bpmEnd = Math.min(totalSamples, sampleRate * 70)
+  const bpmSignal = channel0.slice(bpmStart, bpmEnd)
+
+  // KEY window: 0 ate 60s
+  const keyEnd = Math.min(totalSamples, sampleRate * 60)
+  const keySignal = channel0.slice(0, keyEnd)
 
   const { essentia } = await getEssentia()
-  const vector = essentia.arrayToVector(signal)
+  const bpmVector = essentia.arrayToVector(bpmSignal)
+  const keyVector = essentia.arrayToVector(keySignal)
 
   let bpm = 0
+  let bpmConfidence: BpmConfidence = 'low'
   let key: Key = 'C'
   let scale: Scale = 'Major'
 
   try {
-    const rhythm = essentia.RhythmExtractor2013(vector)
-    if (rhythm && typeof rhythm.bpm === 'number' && rhythm.bpm > 0) {
-      bpm = Math.round(rhythm.bpm)
+    // Cruza 2 algoritmos pra detectar divergencias. RhythmExtractor2013
+    // eh mais geral, PercivalBpmEstimator eh especifico pra tempo loops.
+    const r2013 = essentia.RhythmExtractor2013(bpmVector)
+    const percival = essentia.PercivalBpmEstimator(bpmVector)
+
+    const r2013Bpm = Math.round(r2013?.bpm ?? 0)
+    const r2013Conf = typeof r2013?.confidence === 'number' ? r2013.confidence : 0
+    const percivalBpm = Math.round(percival?.bpm ?? 0)
+
+    console.log('[essentia] BPM detection:', {
+      RhythmExtractor2013: { bpm: r2013Bpm, confidence: r2013Conf.toFixed(2) },
+      PercivalBpmEstimator: { bpm: percivalBpm },
+    })
+
+    const diff = Math.abs(r2013Bpm - percivalBpm)
+
+    if (r2013Bpm > 0 && percivalBpm > 0) {
+      if (diff <= 2 && r2013Conf >= 1.5) {
+        // Alta concordancia + alta confidence interna -- usa media
+        bpm = Math.round((r2013Bpm + percivalBpm) / 2)
+        bpmConfidence = 'high'
+      } else if (diff <= 5) {
+        // Divergencia moderada -- prefere RhythmExtractor2013
+        bpm = r2013Bpm
+        bpmConfidence = 'medium'
+      } else {
+        // Divergem muito -- usa RhythmExtractor mas marca baixa confianca
+        bpm = r2013Bpm
+        bpmConfidence = 'low'
+      }
+    } else if (r2013Bpm > 0) {
+      bpm = r2013Bpm
+      bpmConfidence = r2013Conf >= 1.5 ? 'medium' : 'low'
+    } else if (percivalBpm > 0) {
+      bpm = percivalBpm
+      bpmConfidence = 'low'
     }
   } catch (e) {
-    console.warn('[essentia] RhythmExtractor2013 falhou:', e)
+    console.warn('[essentia] BPM detection falhou:', e)
   }
 
   try {
-    const keyResult = essentia.KeyExtractor(vector)
+    const keyResult = essentia.KeyExtractor(keyVector)
     if (keyResult?.key) key = normalizeKey(keyResult.key)
     if (keyResult?.scale) scale = normalizeScale(keyResult.scale)
+    console.log('[essentia] Key detection:', { key, scale })
   } catch (e) {
     console.warn('[essentia] KeyExtractor falhou:', e)
   }
 
-  return { bpm, key, scale }
+  return { bpm, key, scale, bpmConfidence }
 }

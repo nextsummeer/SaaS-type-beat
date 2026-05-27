@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, Loader2, Check, AlertCircle } from 'lucide-react'
+import { Sparkles, Loader2, Check, AlertCircle, AlertTriangle } from 'lucide-react'
 import { KEYS, SCALES, type Key, type Scale } from '@/lib/essentia/types'
+import type { BpmConfidence } from '@/lib/essentia/analyzer'
 import { MonoSelect } from './MonoSelect'
 
 type Props = {
@@ -37,17 +38,20 @@ export function AudioAnalyzeBox({
 }: Props) {
   const [state, setState] = useState<AnalyzeState>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [bpmConfidence, setBpmConfidence] = useState<BpmConfidence | null>(null)
 
   async function handleAnalyze() {
     if (!audioFile || disabled) return
     setState('loading')
     setError(null)
+    setBpmConfidence(null)
     try {
       const { analyzeAudio } = await import('@/lib/essentia/analyzer')
       const result = await analyzeAudio(audioFile)
       if (result.bpm > 0) setBpm(String(result.bpm))
       setMusicKey(result.key)
       setScale(result.scale)
+      setBpmConfidence(result.bpmConfidence)
       setState('done')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro na analise')
@@ -196,7 +200,42 @@ export function AudioAnalyzeBox({
           {error}
         </p>
       )}
-      {state === 'done' && (
+      {state === 'done' && bpmConfidence === 'low' && (
+        <div
+          className="mt-2.5 flex items-start gap-2 rounded-md px-2.5 py-2"
+          style={{
+            background: 'rgba(245,158,11,0.08)',
+            border: '1px solid rgba(245,158,11,0.25)',
+          }}
+        >
+          <AlertTriangle
+            size={11}
+            strokeWidth={2.2}
+            style={{ color: '#FCD34D', marginTop: 2 }}
+          />
+          <div className="flex flex-col gap-0.5">
+            <span
+              className="font-mono uppercase"
+              style={{
+                fontSize: 9.5,
+                letterSpacing: '0.2em',
+                color: '#FCD34D',
+                fontWeight: 600,
+              }}
+            >
+              Deteccao incerta
+            </span>
+            <span
+              className="text-[11px]"
+              style={{ color: '#FCD34D', opacity: 0.85 }}
+            >
+              Type beats com tripletas confundem o algoritmo. Confirme
+              o BPM manualmente se souber.
+            </span>
+          </div>
+        </div>
+      )}
+      {state === 'done' && bpmConfidence === 'medium' && (
         <p
           className="mt-2 font-mono uppercase"
           style={{
@@ -205,7 +244,20 @@ export function AudioAnalyzeBox({
             color: 'var(--text-subtle)',
           }}
         >
-          Pode ajustar manualmente se discordar
+          Confianca media — confira se discordar
+        </p>
+      )}
+      {state === 'done' && bpmConfidence === 'high' && (
+        <p
+          className="mt-2 font-mono uppercase"
+          style={{
+            fontSize: 9.5,
+            letterSpacing: '0.2em',
+            color: 'var(--led-success)',
+            opacity: 0.85,
+          }}
+        >
+          Alta confianca · 2 algoritmos concordaram
         </p>
       )}
     </div>
