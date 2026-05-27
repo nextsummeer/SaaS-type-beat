@@ -444,7 +444,34 @@ export function UploadForm() {
               className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 transition focus-within:ring-1"
               style={inputBase}
             >
-              <ExternalLink size={14} style={{ color: 'var(--text-muted)' }} className="shrink-0" />
+              <button
+                type="button"
+                onClick={() => {
+                  const raw = storeLink.trim()
+                  if (!raw) return
+                  const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
+                  window.open(url, '_blank', 'noopener,noreferrer')
+                }}
+                disabled={uploading || !storeLink.trim()}
+                aria-label="Abrir link em nova aba pra testar"
+                title={
+                  storeLink.trim() ? 'Abrir link em nova aba' : 'Cole um link primeiro'
+                }
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={(e) => {
+                  if (!uploading && storeLink.trim()) {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                    e.currentTarget.style.color = 'var(--text-primary)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'var(--text-muted)'
+                }}
+              >
+                <ExternalLink size={14} />
+              </button>
               <input
                 type="url"
                 value={storeLink}
