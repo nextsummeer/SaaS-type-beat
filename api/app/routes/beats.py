@@ -98,6 +98,94 @@ def list_beats(authorization: str = Header(...)):
     return out
 
 
+@router.get("/{beat_id}/media-urls")
+def get_media_urls(beat_id: str, authorization: str = Header(...)):
+    """Retorna signed URLs do audio e da capa do beat (1h validade).
+
+    Usado pelo MediaPreview da review page. Centralizar aqui pq:
+    1. Cover_library tem RLS bloqueando SELECT direto via supabase-js
+       do client (causa erro 403). Backend usa service-role e bypassa.
+    2. Signed URLs precisam de service-role pra serem geradas.
+
+    Valida ownership do beat via JWT antes de retornar URLs.
+    """
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token invalido")
+    token = authorization.removeprefix("Bearer ")
+
+    try:
+        user = validate_token(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token invalido ou expirado")
+
+    client = get_admin_client()
+
+    beat_resp = (
+        client.table("beats")
+        .select("user_id, audio_path, cover_path, cover_id")
+        .eq("id", beat_id)
+        .maybe_single()
+        .execute()
+    )
+    beat = beat_resp.data if beat_resp else None
+    if not beat:
+        raise HTTPException(status_code=404, detail="Beat nao encontrado")
+    if beat["user_id"] != str(user.id):
+        raise HTTPException(status_code=403, detail="Beat pertence a outro usuario")
+
+    audio_url: Optional[str] = None
+    cover_url: Optional[str] = None
+
+    # Audio
+    if beat.get("audio_path"):
+        try:
+            signed = client.storage.from_("audios").create_signed_url(
+                beat["audio_path"], 3600
+            )
+            audio_url = signed.get("signedURL") if signed else None
+        except Exception as exc:
+            logger.warning("Falha ao gerar signed audio URL beat=%s: %s", beat_id, exc)
+
+    # Cover: prioriza cover_id (biblioteca) com signed URL via storage_path
+    if beat.get("cover_id"):
+        cover_resp = (
+            client.table("cover_library")
+            .select("image_url, storage_path")
+            .eq("id", beat["cover_id"])
+            .maybe_single()
+            .execute()
+        )
+        cover_row = cover_resp.data if cover_resp else None
+        if cover_row:
+            if cover_row.get("storage_path"):
+                try:
+                    s = client.storage.from_("covers").create_signed_url(
+                        cover_row["storage_path"], 3600
+                    )
+                    cover_url = s.get("signedURL") if s else None
+                except Exception as exc:
+                    logger.warning(
+                        "Falha ao gerar signed cover URL via storage_path beat=%s: %s",
+                        beat_id, exc,
+                    )
+            # Fallback final: image_url publico (pode 403 se bucket privado)
+            if not cover_url and cover_row.get("image_url"):
+                cover_url = cover_row["image_url"]
+    elif beat.get("cover_path"):
+        try:
+            s = client.storage.from_("covers").create_signed_url(
+                beat["cover_path"], 3600
+            )
+            cover_url = s.get("signedURL") if s else None
+        except Exception as exc:
+            logger.warning(
+                "Falha ao gerar signed cover URL via cover_path beat=%s: %s",
+                beat_id, exc,
+            )
+
+    return {"audio_url": audio_url, "cover_url": cover_url}
+
+
 @router.post("", status_code=201)
 def create_beat(
     body: CreateBeatRequest,

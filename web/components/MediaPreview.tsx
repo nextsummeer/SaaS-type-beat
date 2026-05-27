@@ -12,10 +12,9 @@ type Props = {
 /**
  * Preview do audio + capa do beat na review page.
  *
- * Busca os paths em `beats` via Supabase client (RLS valida ownership) e
- * gera signed URLs de 1h pros buckets `audios` e `covers`. Capa da biblioteca
- * vem com `cover_id` + `cover_library.image_url` ja publico; capa manual
- * usa `cover_path` no bucket `covers`.
+ * Chama o endpoint backend GET /beats/{id}/media-urls que retorna ambas
+ * signed URLs (1h). Backend usa service-role e bypassa a RLS de
+ * cover_library (que bloqueia SELECT direto via supabase-js do client).
  */
 export function MediaPreview({ beatId }: Props) {
   const supabase = createClient()
@@ -29,84 +28,31 @@ export function MediaPreview({ beatId }: Props) {
     let cancelled = false
     async function load() {
       try {
-        const { data: beat, error: beatErr } = await supabase
-          .from('beats')
-          .select('audio_path, cover_path, cover_id')
-          .eq('id', beatId)
-          .maybeSingle()
-        if (beatErr) throw beatErr
-        if (!beat) throw new Error('Beat nao encontrado')
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        if (!session) throw new Error('Sessao expirada')
 
-        console.log('[MediaPreview] Beat carregado:', {
-          beatId,
-          audio_path: beat.audio_path,
-          cover_id: beat.cover_id,
-          cover_path: beat.cover_path,
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? ''
+        const res = await fetch(`${apiUrl}/beats/${beatId}/media-urls`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          cache: 'no-store',
         })
-
-        if (beat.audio_path) {
-          const signed = await supabase.storage
-            .from('audios')
-            .createSignedUrl(beat.audio_path, 3600)
-          if (signed.error) throw signed.error
-          if (!cancelled) setAudioUrl(signed.data.signedUrl)
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body.detail ?? `Erro ${res.status} ao buscar midia`)
         }
-
-        if (beat.cover_id) {
-          // Capa da biblioteca: PRIORIZA storage_path -> signed URL.
-          // image_url salvo em cover_library eh URL publica do Supabase --
-          // se o bucket eh privado (caso atual), retorna 403. Signed URL
-          // gerada via service usa token e sempre funciona.
-          // image_url fica como fallback final.
-          const { data: cover, error: coverErr } = await supabase
-            .from('cover_library')
-            .select('image_url, storage_path, status')
-            .eq('id', beat.cover_id)
-            .maybeSingle()
-          console.log('[MediaPreview] cover_library lookup:', {
-            cover_id: beat.cover_id,
-            cover,
-            error: coverErr?.message,
-          })
-          if (cover?.storage_path) {
-            const s = await supabase.storage
-              .from('covers')
-              .createSignedUrl(cover.storage_path, 3600)
-            console.log('[MediaPreview] signed URL via cover.storage_path:', {
-              storage_path: cover.storage_path,
-              ok: !!s.data,
-              error: s.error?.message,
-            })
-            if (!cancelled && s.data) {
-              setCoverUrl(s.data.signedUrl)
-            } else if (cover.image_url && !cancelled) {
-              // Fallback: image_url publica (pode 403 se bucket privado,
-              // mas eh ultima chance)
-              setCoverUrl(cover.image_url)
-            }
-          } else if (cover?.image_url && !cancelled) {
-            setCoverUrl(cover.image_url)
-          } else {
-            console.warn(
-              '[MediaPreview] cover_id presente mas sem image_url nem storage_path',
-            )
-          }
-        } else if (beat.cover_path) {
-          const signedCover = await supabase.storage
-            .from('covers')
-            .createSignedUrl(beat.cover_path, 3600)
-          console.log('[MediaPreview] signed URL via beat.cover_path:', {
-            cover_path: beat.cover_path,
-            ok: !!signedCover.data,
-            error: signedCover.error?.message,
-          })
-          if (signedCover.error) throw signedCover.error
-          if (!cancelled) setCoverUrl(signedCover.data.signedUrl)
-        } else {
-          console.warn(
-            '[MediaPreview] beat sem cover_id e sem cover_path -- nada pra renderizar',
-          )
+        const data = (await res.json()) as {
+          audio_url: string | null
+          cover_url: string | null
         }
+        if (cancelled) return
+        setAudioUrl(data.audio_url)
+        setCoverUrl(data.cover_url)
+        console.log('[MediaPreview] URLs:', {
+          audio_url: !!data.audio_url,
+          cover_url: !!data.cover_url,
+        })
       } catch (e) {
         console.error('[MediaPreview] Falha no load:', e)
         if (!cancelled) {
