@@ -159,6 +159,7 @@ INSTRUÇÕES:
 3. DESCRICAO: Monte a descrição EXATAMENTE neste template (substituindo os campos entre chaves):
 
 💵 Purchase this beat: {link_str}
+
 Free Download | Purchase (For Profit): {link_str}
 
 free ONLY for NON PROFIT use. credit is always required
