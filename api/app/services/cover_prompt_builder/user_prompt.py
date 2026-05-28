@@ -98,6 +98,17 @@ def build_user_prompt(
     artist_secondary = brief.artista_secundario or "none"
     nota = brief.nota_livre or "none"
 
+    # ---------- Composition (pose + framing sorteados pelo Python) ----------
+    framing_chosen = seeds.get("framing_chosen") or "medium shot at eye level"
+    pose_chosen = seeds.get("pose_chosen")
+    if pose_chosen:
+        pose_block = pose_chosen
+    else:
+        pose_block = (
+            "(no human subject this time -- there is NO person in the frame; "
+            "focus the composition entirely on the setting and its objects)"
+        )
+
     return f"""=== BRIEF ===
 Primary genre: {brief.genero_primario} -- {genre_primary_label}
 Secondary genre: {brief.genero_secundario or "none"} -- {genre_secondary_label}
@@ -118,7 +129,7 @@ Masterphrase:
 Hair directives (USE LITERALLY in element 4 SUBJECT -- this overrides any default tendencies. If it says "bleached blonde DEFAULT 70%", actually generate blonde hair in this output):
   {hair_directives}
 
-Sub-location seed (EXPAND this into element 7 with 4-6 rich descriptive sentences + 2-3 culturally iconic objects + 1 sensory detail + 1 atmospheric sentence -- DO NOT use OR-lists, focus on ONE specific scene):
+Sub-location (AUTHORITATIVE -- use THIS EXACT setting. Do NOT replace it with a bedroom or any "default" scene for the genre, even if a bedroom feels more typical for this artist/mood. EXPAND it into element 7 with 4-6 rich descriptive sentences + culturally iconic objects + 1 sensory detail + 1 atmospheric sentence -- DO NOT use OR-lists, focus on ONE specific scene):
   {sub_location_chosen}
 
 Wardrobe pool (draw items for element 6, no shared uniform):
@@ -133,6 +144,12 @@ References (use 3-5 of these in element 12):
 City anchor: {city_anchor}
 Punch phrase for this mood (use as element 5, on its own line): {punch_phrase}
 3-word closer (final line of element 12, on its own line): {closer_3}
+
+=== COMPOSITION (this generation -- use these EXACT choices, do NOT default) ===
+Chosen POSE (integrate into element 4 SUBJECT as 1-2 natural sentences. If it clashes with the sub-location, ADAPT it to fit the scene while keeping its spirit -- do NOT fall back to a generic seated pose. Keep the face obscured per the camera DNA rule):
+  {pose_block}
+Chosen FRAMING (reflect this in ONE short composition sentence near the subject/setting transition -- guide the crop, do not over-describe):
+  {framing_chosen}
 
 === MOOD MODULATION ===
 Palette hue orientation: {mood_palette_hue}

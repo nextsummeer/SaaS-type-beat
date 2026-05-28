@@ -27,8 +27,7 @@ CAMERA_DNA_PADRAO: str = (
     "a video still: very subtle motion blur, mild soft focus throughout, "
     "edges that feather slightly rather than cut sharp. Light video "
     "compression softness across the frame, gentle color banding in "
-    "gradients. Thin black letterbox bars on top and bottom of the frame. "
-    "The image is gently degraded -- soft, not destroyed."
+    "gradients. The image is gently degraded -- soft, not destroyed."
 )
 
 # Variante underground: usada APENAS quando genero_primario == 'underground_trap'
@@ -48,9 +47,8 @@ CAMERA_DNA_UNDERGROUND: str = (
     "with no crisply sharp detail anywhere, edges that feather rather than "
     "cut. Heavy video compression artifacts across the entire frame -- "
     "blocky pixelation in the dark areas, color banding in gradients, "
-    "smeared detail where motion meets stillness. Thin black letterbox bars "
-    "on top and bottom of the frame from being recorded in a wider format "
-    "than displayed. Occasional faint vertical glitch line from imperfect "
+    "smeared detail where motion meets stillness. Occasional faint vertical "
+    "glitch line from imperfect "
     "playback. The image is technically degraded in the specific way only "
     "video stills from low-bitrate recordings are degraded -- different "
     "from film grain, different from JPEG noise."
@@ -66,6 +64,51 @@ SHOT_ON_CLOSER: str = (
     "standard-definition phone video. Frame extracted from playback, never "
     "meant to be a still."
 )
+
+
+# ============================================================================
+# POSE POOL -- 8 poses neutras, sorteadas em runtime pelo variation_engine.
+# ============================================================================
+# Objetivo: quebrar a pose-default ("sitting, caught mid-thought") que fazia
+# toda capa sair igual. Frases neutras o bastante pra caber em qualquer
+# cenario; o Claude adapta ao sub-location quando houver conflito.
+# Constraints embutidos: rosto sempre obscurecido (regra global do elemento 4),
+# sem gestos de mao, renderaveis por gpt-image-2 quality=low (anatomia simples,
+# uma figura, sem contorcao). NAO se aplica quando quem_aparece='sem_pessoa'.
+
+POSE_POOL: list[str] = [
+    "sitting slouched forward, elbows resting on the knees, head hanging low",
+    "standing with the back flat against a wall, shoulders loose and dropped",
+    "leaning against a doorframe, the body half-turned away from the camera",
+    "lying back across a surface (bed, couch, or backseat), one arm draped "
+    "loosely over the face",
+    "crouched low near the ground, spine curved, weight settled on the heels",
+    "standing by a window looking out, the back partly turned to the camera",
+    "seated sideways and turned away from the camera, the profile lost in "
+    "shadow or behind hair",
+    "caught mid-step walking past the frame, motion blur trailing, not "
+    "looking at the camera",
+]
+
+
+# ============================================================================
+# FRAMING POOL -- 6 enquadramentos, sorteados em runtime.
+# ============================================================================
+# Aplica-se SEMPRE (com ou sem pessoa). Composicoes simples que gpt-image-2
+# quality=low renderiza de forma confiavel -- sem through-doorway, sem
+# obstrucao de foreground, sem angulo extremo que distorce anatomia.
+
+FRAMING_POOL: list[str] = [
+    "medium shot at eye level",
+    "medium shot from a slightly low angle",
+    "close-up of the upper body, the face cropped at the top of the frame "
+    "or obscured",
+    "wide shot with the subject small in the frame and a lot of negative "
+    "space around them",
+    "over-the-shoulder framing, the back of the head and one shoulder soft "
+    "in the foreground",
+    "high angle looking down at the subject",
+]
 
 
 # ============================================================================

@@ -66,8 +66,9 @@ Every BeatPost cover simulates a frame from a low-resolution video that someone 
    - Use the SUB-LOCATION provided in input as the seed (or infer one from artist+genre+mood when sub_location_chosen is empty)
    - Expand it into 4-6 descriptive sentences with **3-5 culturally iconic objects** specific to the artist/genre universe + 1 sensory detail (smell, temperature, implied sound) + 1 short atmospheric sentence
    - **CULTURAL OBJECT RULE -- this is what gives BeatPost identity:** Objects in the scene are NOT decoration, they are CULTURAL SIGNALING. They MUST be specific to the genre/artist's world.
-     - ✓ CORRECT for underground bedroom: "posters of underground rappers and shoegaze bands (Lil B, Bladee, Drain Gang, Yeat, Carti, Playboi Carti's WLR-era art, Slowthai, Deftones, My Bloody Valentine) peeling off the walls, tangled cables, an unmade bed with crumpled sheets, a half-eaten ramen cup on the bedside table, a laptop open and glowing on the floor, a stack of burned CD-Rs with marker scribbles"
-     - ✓ CORRECT for trap luxury interior: "a half-empty glass of dark amber liquor on marble, a champagne bottle held by the neck not the body, layered gold cuban links on the table, an OVO owl etched somewhere subtle, a stack of unmarked cards on a side table, the glow of a TV playing playoffs on mute"
+     - **ANTI-CLONE (CRITICAL):** The examples below show the TARGET DENSITY and TYPE of objects -- they are NOT a checklist to copy. Do NOT reproduce the same objects every generation (the recurring failure is "posters of the same bands + an unmade bed + a laptop on the floor" appearing in every underground cover). Each generation MUST invent a FRESH, DIFFERENT set of culturally specific objects, drawn from the AUTHORITATIVE sub-location given in the user prompt -- populate THAT scene, do not drift back to a bedroom.
+     - ✓ Right DENSITY for an underground interior (illustration only -- pick DIFFERENT specific items every time): peeling posters/flyers, tangled cables, takeout containers, burned CD-Rs with marker scribbles, a sticker-covered mirror, cheap LED strips. Vary which artists/bands/objects appear -- never repeat the same set twice.
+     - ✓ Right DENSITY for a trap luxury interior (illustration only -- pick DIFFERENT specific items every time): dark amber liquor on marble, a champagne bottle held by the neck, layered gold chains on a table, unmarked cards, a muted TV glow. Vary the specific objects per generation.
      - ❌ FORBIDDEN GENERIC: "empty energy drink cans on the floor near the baseboard, a small bluetooth speaker, a dead succulent in a cracked ceramic pot, charger cables, Blu-Tack ghosts on walls". These objects could belong to ANY young person -- they don't signal the artist's cultural world. Avoid abstract or generic decoration.
    - Do NOT use OR-lists in the setting -- focus on ONE specific scene, but pack it with culturally specific objects.
    - When the universe has city_anchor, include it inline naturally (skyline visible, neighborhood named, etc.)
@@ -108,7 +109,7 @@ ANTI-BIAS:
 - Default ethnicity diversity for crews (mix of skin tones, never all-white, never all-one-tone)
 
 ================================================================================
-CAMERA DNA INTEGRITY
+INPUT INTEGRITY -- PASTE FIXED TEXT, OBEY CHOSEN VARIATION
 ================================================================================
 
 When the user prompt provides CAMERA DNA, paste it LITERALLY at the very start of your output. Do NOT rewrite it, do NOT shorten it, do NOT switch adjectives. The adjectives ("very subtle", "mild", "light", "gentle" OR "Heavy", "blocky pixelation", "vertical glitch line") are calibrated -- changing them breaks the visual output.
@@ -116,6 +117,12 @@ When the user prompt provides CAMERA DNA, paste it LITERALLY at the very start o
 When the user prompt provides GUARD-RAIL, paste it LITERALLY before the COLOR PALETTE block. Includes the mood-specific closer at the end.
 
 When the user prompt provides SHOT ON CLOSER, paste it LITERALLY at the start of element #12.
+
+When the user prompt marks the SUB-LOCATION as AUTHORITATIVE, you MUST build element 7 around that EXACT setting. Do NOT swap it for a bedroom or any other "default" scene, even if another setting feels more typical for the artist/genre/mood. The setting was chosen deliberately to vary the output across generations -- overriding it re-clones the covers.
+
+When the user prompt provides a CHOSEN POSE, the subject MUST be in that pose in element 4 -- do NOT default to a seated, mid-thought pose. If the pose does not physically fit the sub-location, ADAPT it to the scene while preserving its spirit (e.g. "leaning against a doorframe" becomes "leaning against the car door" inside a vehicle). The face stays obscured per the element-4 rule regardless of pose. When the pose block says there is NO human subject, ignore pose entirely and compose around the setting and its objects.
+
+When the user prompt provides a CHOSEN FRAMING, reflect that exact crop/angle in the composition -- do NOT default to a frontal eye-level medium shot unless that is the chosen framing.
 
 ================================================================================
 OPENAI MODERATION GUARDRAILS (gpt-image-2 specific)

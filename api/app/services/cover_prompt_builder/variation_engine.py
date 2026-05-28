@@ -16,7 +16,11 @@ import logging
 import random
 from typing import Optional
 
-from app.services.cover_prompt_builder.prompt_skeleton import _is_underground
+from app.services.cover_prompt_builder.prompt_skeleton import (
+    FRAMING_POOL,
+    POSE_POOL,
+    _is_underground,
+)
 from app.services.cover_prompt_builder.types import CoverBrief
 
 logger = logging.getLogger(__name__)
@@ -74,6 +78,22 @@ def fetch_recent_seeds(
     return matched
 
 
+def _available_after_recent(
+    pool: list[str], recent_seeds: list[dict], key: str
+) -> list[str]:
+    """Remove do `pool` os itens ja usados nas `recent_seeds` (campo `key`).
+
+    Se a filtragem esvaziar o pool (tudo foi usado recentemente), devolve o
+    pool inteiro -- melhor repetir que travar. Anti-repeticao degrada com
+    gracia em pools pequenos.
+    """
+    if not recent_seeds:
+        return pool
+    recently_used = {s.get(key) for s in recent_seeds if s.get(key)}
+    available = [item for item in pool if item not in recently_used]
+    return available or pool
+
+
 def sample_for_brief(
     brief: CoverBrief,
     universe: dict,
@@ -83,17 +103,26 @@ def sample_for_brief(
 ) -> dict:
     """Sorteia variation_seeds pro brief.
 
+    Sorteia 3 eixos visuais: sub_location (do universo do artista), framing
+    (pool fixo, sempre) e pose (pool fixo, apenas quando ha figura humana).
+    O Python sorteia; o Claude apenas expande/integra a escolha -- isso
+    garante variacao REAL entre cliques (determinismo via seed), ao contrario
+    de deixar o Claude "escolher" (chamadas independentes convergem pro mesmo).
+
     Args:
         brief: CoverBrief tipado.
         universe: dict retornado por `artist_universe.get_universe()`.
-        force_variation: se True, exclui sub_locations das ultimas 3-5 capas.
+        force_variation: se True, exclui sub_location/pose/framing das
+            ultimas N capas (anti-repeticao).
         recent_seeds: lista das ultimas N variation_seeds (de fetch_recent_seeds).
-        seed: opcional, pra sorteio deterministico (uteis em testes).
+        seed: opcional, pra sorteio deterministico (util em testes).
 
     Returns:
         Dict que sera persistido em `cover_library.variation_seeds` JSONB:
         {
             "sub_location_chosen": str | None,
+            "pose_chosen": str | None,        # None quando sem_pessoa
+            "framing_chosen": str,
             "lighting_setup_slug": str,
             "underground_camera": bool,
             "mood_used": str,
@@ -101,31 +130,31 @@ def sample_for_brief(
         }
     """
     rng = random.Random(seed)
-    sub_locations: list[str] = list(universe.get("sub_locations") or [])
+    # Anti-repeticao so vale no botao "Gerar variacao" (force_variation).
+    recent = recent_seeds if (force_variation and recent_seeds) else None
 
-    # Anti-repeticao: filtra sub_locations das ultimas N capas
-    if force_variation and recent_seeds:
-        recently_used = {
-            s.get("sub_location_chosen")
-            for s in recent_seeds
-            if s.get("sub_location_chosen")
-        }
-        available = [loc for loc in sub_locations if loc not in recently_used]
-        # Fallback: se TUDO foi recentemente usado, libera o pool inteiro
-        # (melhor repetir que travar)
-        if available:
-            sub_locations = available
-        else:
-            logger.info(
-                "variation_engine: todas as %d sub_locations foram usadas "
-                "recentemente, liberando pool completo (force_variation degrada)",
-                len(sub_locations),
-            )
-
+    # Sub-location: sorteia do universo do artista (vazio = fallback no prompt).
+    sub_locations = _available_after_recent(
+        list(universe.get("sub_locations") or []), recent, "sub_location_chosen"
+    )
     chosen_sub_location = rng.choice(sub_locations) if sub_locations else None
+
+    # Framing: sempre se aplica (com ou sem pessoa).
+    framing_pool = _available_after_recent(FRAMING_POOL, recent, "framing_chosen")
+    chosen_framing = rng.choice(framing_pool)
+
+    # Pose: apenas quando ha figura humana na capa.
+    tem_pessoa = brief.quem_aparece != "sem_pessoa"
+    if tem_pessoa:
+        pose_pool = _available_after_recent(POSE_POOL, recent, "pose_chosen")
+        chosen_pose = rng.choice(pose_pool)
+    else:
+        chosen_pose = None
 
     return {
         "sub_location_chosen": chosen_sub_location,
+        "pose_chosen": chosen_pose,
+        "framing_chosen": chosen_framing,
         "lighting_setup_slug": brief.atmosfera_luz,
         "underground_camera": _is_underground(brief),
         "mood_used": brief.mood,
