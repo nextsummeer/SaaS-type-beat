@@ -35,6 +35,8 @@ interface Props {
   onChange: (next: CoverFilters) => void
   /** Versao compacta -- usada em modais menores (CoverPickerExpanded). */
   compact?: boolean
+  /** Conteudo alinhado a direita na linha dos dropdowns (ex: botao Selecionar). */
+  trailing?: React.ReactNode
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -74,6 +76,7 @@ export function CoverFilterBar({
   filters,
   onChange,
   compact = false,
+  trailing,
 }: Props) {
   const uniqueArtists = useMemo(() => {
     const set = new Set<string>()
@@ -168,25 +171,30 @@ export function CoverFilterBar({
                   : '90 dias'
           }
         />
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={handleClear}
-            className="ml-auto font-mono uppercase transition-colors"
-            style={{
-              fontSize: compact ? 9.5 : 10,
-              letterSpacing: '0.18em',
-              color: 'var(--purple-soft)',
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.color = 'var(--purple-light)')
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.color = 'var(--purple-soft)')
-            }
-          >
-            Limpar
-          </button>
+        {(hasActiveFilters || trailing) && (
+          <div className="ml-auto flex items-center gap-3">
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="font-mono uppercase transition-colors"
+                style={{
+                  fontSize: compact ? 9.5 : 10,
+                  letterSpacing: '0.18em',
+                  color: 'var(--purple-soft)',
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.color = 'var(--purple-light)')
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.color = 'var(--purple-soft)')
+                }
+              >
+                Limpar
+              </button>
+            )}
+            {trailing}
+          </div>
         )}
       </div>
     </div>

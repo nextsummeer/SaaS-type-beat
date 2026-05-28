@@ -588,62 +588,67 @@ export default function CapasPage() {
         </header>
 
         <section className="rise rise-2">
-          {/* Linha unificada: filtros (artista/status/rating/data) a esquerda
-            * + botao Selecionar a direita. Removeu o SectionLabel "02 / Capas
-            * geradas" pra reduzir ruido visual -- gerou linha extra desnecessaria.
-            * Botao Selecionar agora se alinha com os filtros no mesmo eixo. */}
-          {(readyCovers.length >= 2 || covers.filter((c) => c.status === 'ready').length > 0) && (
-            <div className="mb-5 flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                {readyCovers.length >= 2 && (
+          {/* Botao Selecionar vai DENTRO da linha de dropdowns (status/rating
+            * /data) do CoverFilterBar, alinhado a direita. Tira a linha extra
+            * de cima e reduz ruido visual -- pedido do Gustavo 2026-05-27. */}
+          {(() => {
+            const temReady = covers.filter((c) => c.status === 'ready').length > 0
+            if (!temReady) return null
+            const botaoSelecionar = (
+              <button
+                type="button"
+                onClick={
+                  selectionMode ? handleCancelSelection : handleEnterSelectionMode
+                }
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono uppercase transition-colors"
+                style={{
+                  fontSize: 10.5,
+                  letterSpacing: '0.18em',
+                  color: 'var(--text-primary)',
+                  border: '1px solid',
+                  borderColor: selectionMode
+                    ? 'var(--border-purple)'
+                    : 'var(--border-medium, var(--border-subtle))',
+                  background: selectionMode
+                    ? 'rgba(199,181,255,0.08)'
+                    : 'rgba(255,255,255,0.03)',
+                }}
+                onMouseEnter={(e) => {
+                  if (!selectionMode) {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                    e.currentTarget.style.borderColor = 'var(--border-purple)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!selectionMode) {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                    e.currentTarget.style.borderColor = 'var(--border-medium, var(--border-subtle))'
+                  }
+                }}
+              >
+                {selectionMode ? 'Cancelar' : 'Selecionar'}
+              </button>
+            )
+            // Com >= 2 capas: filtros visiveis, botao vai DENTRO da linha de
+            // dropdowns (trailing). Com 1 capa: sem filtros, botao sozinho
+            // numa linha alinhado a direita.
+            if (readyCovers.length >= 2) {
+              return (
+                <div className="mb-5">
                   <CoverFilterBar
                     covers={readyCovers}
                     filters={filters}
                     onChange={(next) => {
                       setFilters(next)
-                      // Reseta paginacao quando filtro muda
                       setVisibleCount(GRID_PAGE_SIZE)
                     }}
+                    trailing={botaoSelecionar}
                   />
-                )}
-              </div>
-              {covers.filter((c) => c.status === 'ready').length > 0 && (
-                <button
-                  type="button"
-                  onClick={
-                    selectionMode ? handleCancelSelection : handleEnterSelectionMode
-                  }
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono uppercase transition-colors"
-                  style={{
-                    fontSize: 10.5,
-                    letterSpacing: '0.18em',
-                    color: 'var(--text-primary)',
-                    border: '1px solid',
-                    borderColor: selectionMode
-                      ? 'var(--border-purple)'
-                      : 'var(--border-medium, var(--border-subtle))',
-                    background: selectionMode
-                      ? 'rgba(199,181,255,0.08)'
-                      : 'rgba(255,255,255,0.03)',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!selectionMode) {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
-                      e.currentTarget.style.borderColor = 'var(--border-purple)'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!selectionMode) {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
-                      e.currentTarget.style.borderColor = 'var(--border-medium, var(--border-subtle))'
-                    }
-                  }}
-                >
-                  {selectionMode ? 'Cancelar' : 'Selecionar'}
-                </button>
-              )}
-            </div>
-          )}
+                </div>
+              )
+            }
+            return <div className="mb-5 flex justify-end">{botaoSelecionar}</div>
+          })()}
 
           <CapasGrid
             covers={visibleCovers}
