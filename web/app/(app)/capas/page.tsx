@@ -711,78 +711,10 @@ export default function CapasPage() {
 
         {space === 'enviadas' && (
           <section className="rise rise-2">
-            <SectionLabel
-              num="01"
-              label="Banco de capas enviadas"
-              action={
-                <div className="flex items-center gap-2">
-                  {manualLimit && (
-                    <span
-                      className="font-mono tabular hidden sm:inline-flex items-center"
-                      style={{
-                        fontSize: 10.5,
-                        color: 'var(--text-muted)',
-                        letterSpacing: '0.16em',
-                      }}
-                    >
-                      {manualLimit.used}/{manualLimit.limit}
-                    </span>
-                  )}
-                  {manualCovers.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={
-                        selectionMode ? handleCancelSelection : handleEnterSelectionMode
-                      }
-                      className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono uppercase transition-colors"
-                      style={{
-                        fontSize: 10.5,
-                        letterSpacing: '0.18em',
-                        color: 'var(--text-primary)',
-                        border: '1px solid',
-                        borderColor: selectionMode
-                          ? 'var(--border-purple)'
-                          : 'var(--border-medium, var(--border-subtle))',
-                        background: selectionMode
-                          ? 'rgba(199,181,255,0.08)'
-                          : 'rgba(255,255,255,0.03)',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!selectionMode) {
-                          e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
-                          e.currentTarget.style.borderColor = 'var(--border-purple)'
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!selectionMode) {
-                          e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
-                          e.currentTarget.style.borderColor = 'var(--border-medium, var(--border-subtle))'
-                        }
-                      }}
-                    >
-                      {selectionMode ? 'Cancelar' : 'Selecionar'}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setManualUploadOpen(true)}
-                    disabled={
-                      !!manualLimit && manualLimit.remaining <= 0
-                    }
-                    className="btn-primary"
-                    title={
-                      manualLimit && manualLimit.remaining <= 0
-                        ? `Limite atingido (${manualLimit.used}/${manualLimit.limit})`
-                        : undefined
-                    }
-                  >
-                    <UploadIcon size={13} strokeWidth={2.2} />
-                    Upload manual
-                  </button>
-                </div>
-              }
-            />
-
+            {/* SectionLabel removido (mesma logica da aba Geradas). Quota +
+              * Selecionar + Upload manual descem pra linha dos filtros
+              * (trailing do ManualFilterBar). No empty state, EmptyManuais
+              * tem botao proprio de upload. */}
             {manualCovers.length === 0 ? (
               <EmptyManuais
                 limit={manualLimit?.limit ?? 0}
@@ -790,7 +722,7 @@ export default function CapasPage() {
               />
             ) : (
               <>
-                {/* Filtros simples: Usada/Nao usada + Data */}
+                {/* Filtros simples: Usada/Nao usada + Data + acoes (trailing) */}
                 <ManualFilterBar
                   totalCount={manualCovers.length}
                   filteredCount={filteredManual.length}
@@ -798,6 +730,69 @@ export default function CapasPage() {
                   dateOrder={manualDateOrder}
                   onUsageChange={setManualUsageFilter}
                   onDateOrderChange={setManualDateOrder}
+                  trailing={
+                    <>
+                      {manualLimit && (
+                        <span
+                          className="font-mono tabular hidden sm:inline-flex items-center"
+                          style={{
+                            fontSize: 10.5,
+                            color: 'var(--text-muted)',
+                            letterSpacing: '0.16em',
+                          }}
+                        >
+                          {manualLimit.used}/{manualLimit.limit}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={
+                          selectionMode ? handleCancelSelection : handleEnterSelectionMode
+                        }
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono uppercase transition-colors"
+                        style={{
+                          fontSize: 10.5,
+                          letterSpacing: '0.18em',
+                          color: 'var(--text-primary)',
+                          border: '1px solid',
+                          borderColor: selectionMode
+                            ? 'var(--border-purple)'
+                            : 'var(--border-medium, var(--border-subtle))',
+                          background: selectionMode
+                            ? 'rgba(199,181,255,0.08)'
+                            : 'rgba(255,255,255,0.03)',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!selectionMode) {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                            e.currentTarget.style.borderColor = 'var(--border-purple)'
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!selectionMode) {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                            e.currentTarget.style.borderColor = 'var(--border-medium, var(--border-subtle))'
+                          }
+                        }}
+                      >
+                        {selectionMode ? 'Cancelar' : 'Selecionar'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setManualUploadOpen(true)}
+                        disabled={!!manualLimit && manualLimit.remaining <= 0}
+                        className="btn-primary"
+                        title={
+                          manualLimit && manualLimit.remaining <= 0
+                            ? `Limite atingido (${manualLimit.used}/${manualLimit.limit})`
+                            : undefined
+                        }
+                      >
+                        <UploadIcon size={13} strokeWidth={2.2} />
+                        Upload manual
+                      </button>
+                    </>
+                  }
                 />
 
                 <CapasGrid
@@ -1176,6 +1171,7 @@ function ManualFilterBar({
   dateOrder,
   onUsageChange,
   onDateOrderChange,
+  trailing,
 }: {
   totalCount: number
   filteredCount: number
@@ -1183,6 +1179,7 @@ function ManualFilterBar({
   dateOrder: ManualDateOrder
   onUsageChange: (next: ManualUsageFilter) => void
   onDateOrderChange: (next: ManualDateOrder) => void
+  trailing?: React.ReactNode
 }) {
   const showCount = filteredCount !== totalCount
   return (
@@ -1217,6 +1214,9 @@ function ManualFilterBar({
         >
           {filteredCount} de {totalCount}
         </span>
+      )}
+      {trailing && (
+        <div className="ml-auto flex items-center gap-2">{trailing}</div>
       )}
     </div>
   )
