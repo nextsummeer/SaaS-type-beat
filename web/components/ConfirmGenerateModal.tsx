@@ -126,7 +126,7 @@ export function ConfirmGenerateModal({
               className="font-display text-[20px] font-semibold leading-snug"
               style={{ color: 'var(--text-primary)', letterSpacing: '-0.018em' }}
             >
-              {lote === 1 ? 'Gerar 1 capa?' : 'Gerar 3 variações?'}
+              {lote === 1 ? 'Gerar 1 capa?' : 'Gerar 3 capas?'}
             </h3>
             <p
               className="mt-2 text-[13px] leading-relaxed"

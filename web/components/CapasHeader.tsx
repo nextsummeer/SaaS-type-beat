@@ -1,6 +1,6 @@
 'use client'
 
-import { Sparkles, AlertCircle, Shuffle } from 'lucide-react'
+import { Sparkles, AlertCircle } from 'lucide-react'
 import type { BriefPreset, CoverCreditsState } from '@/lib/api'
 import { BriefSelector } from './BriefSelector'
 
@@ -10,12 +10,7 @@ type Props = {
   credits: CoverCreditsState | null
   loading: boolean
   onOpenBriefManager: () => void
-  /**
-   * intent='new' = capa nova do zero (sortei do brief).
-   * intent='variation' = mesma chamada tecnica, mas signaling
-   * UX de 'tentar outra leitura do mesmo brief'.
-   */
-  onGenerate: (lote: 1 | 3, intent?: 'new' | 'variation') => void
+  onGenerate: (lote: 1 | 3) => void
 }
 
 const TIER_LABELS: Record<string, string> = {
@@ -43,7 +38,9 @@ function daysUntilReset(resetAt: string | null): number | null {
  * Header da aba /capas.
  * Esquerda: BriefSelector (dropdown com nomes dos presets + ações).
  * Direita: créditos restantes + barra fina.
- * Abaixo: botões "Gerar 1 capa" / "Gerar 3 variações".
+ * Abaixo: rótulo "gerar do brief X" + botões "Gerar 1 capa" (primário) e
+ * "Gerar 3 capas" (secundário). Hierarquia visual deixa claro que não fazem
+ * a mesma coisa — só muda a quantidade. T4.42.
  */
 export function CapasHeader({
   presets,
@@ -53,7 +50,8 @@ export function CapasHeader({
   onOpenBriefManager,
   onGenerate,
 }: Props) {
-  const hasActive = !!activeBriefId && presets.some((p) => p.id === activeBriefId)
+  const activeBrief = presets.find((p) => p.id === activeBriefId) ?? null
+  const hasActive = !!activeBrief
   const canGenerateOne = (credits?.remaining ?? 0) >= 1 && hasActive
   const canGenerateThree = (credits?.remaining ?? 0) >= 3 && hasActive
   const daysLeft = daysUntilReset(credits?.reset_at ?? null)
@@ -109,48 +107,68 @@ export function CapasHeader({
         </div>
       </div>
 
-      {/* Linha 2: botões de geração */}
-      <div className="flex flex-wrap items-center gap-3">
-        <GenerateButton
-          label="Gerar 1 capa"
-          credits={1}
-          enabled={canGenerateOne && !loading}
-          tooltip={
-            !hasActive
-              ? 'Selecione ou crie um brief primeiro'
-              : !canGenerateOne
-              ? 'Sem créditos suficientes'
-              : undefined
-          }
-          onClick={() => onGenerate(1, 'new')}
-        />
-        <GenerateButton
-          label="Gerar variação"
-          credits={1}
-          enabled={canGenerateOne && !loading}
-          icon="shuffle"
-          tooltip={
-            !hasActive
-              ? 'Selecione ou crie um brief primeiro'
-              : !canGenerateOne
-              ? 'Sem créditos suficientes'
-              : 'Mesmo brief, outra leitura'
-          }
-          onClick={() => onGenerate(1, 'variation')}
-        />
-        <GenerateButton
-          label="Gerar 3 variações"
-          credits={3}
-          enabled={canGenerateThree && !loading}
-          tooltip={
-            !hasActive
-              ? 'Selecione ou crie um brief primeiro'
-              : !canGenerateThree
-              ? 'Sem créditos suficientes (precisa 3)'
-              : undefined
-          }
-          onClick={() => onGenerate(3, 'new')}
-        />
+      {/* Linha 2: rótulo do brief de origem + botões de geração */}
+      <div className="space-y-3.5">
+        {/* Deixa explícito DE QUAL brief a geração vai sair (resolve a dúvida
+            quando o produtor troca de brief sem gerar). */}
+        {hasActive && (
+          <div className="flex items-baseline gap-2.5">
+            <span
+              className="font-mono uppercase"
+              style={{
+                fontSize: 10,
+                fontWeight: 500,
+                letterSpacing: '0.22em',
+                color: 'var(--text-subtle)',
+              }}
+            >
+              Gerar do brief
+            </span>
+            <span
+              className="min-w-0 truncate"
+              style={{
+                fontSize: 13,
+                fontWeight: 500,
+                color: 'var(--text-primary)',
+                letterSpacing: '-0.01em',
+              }}
+              title={activeBrief?.name}
+            >
+              {activeBrief?.name}
+            </span>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-3">
+          <GenerateButton
+            variant="primary"
+            label="Gerar 1 capa"
+            credits={1}
+            enabled={canGenerateOne && !loading}
+            tooltip={
+              !hasActive
+                ? 'Selecione ou crie um brief primeiro'
+                : !canGenerateOne
+                ? 'Sem créditos suficientes'
+                : undefined
+            }
+            onClick={() => onGenerate(1)}
+          />
+          <GenerateButton
+            variant="secondary"
+            label="Gerar 3 capas"
+            credits={3}
+            enabled={canGenerateThree && !loading}
+            tooltip={
+              !hasActive
+                ? 'Selecione ou crie um brief primeiro'
+                : !canGenerateThree
+                ? 'Sem créditos suficientes (precisa 3)'
+                : undefined
+            }
+            onClick={() => onGenerate(3)}
+          />
+        </div>
       </div>
     </div>
   )
@@ -285,37 +303,42 @@ function GenerateButton({
   enabled,
   tooltip,
   onClick,
-  icon = 'sparkles',
+  variant,
 }: {
   label: string
   credits: number
   enabled: boolean
   tooltip?: string
   onClick: () => void
-  /** 'sparkles' (default, capa nova) | 'shuffle' (variação do brief atual) */
-  icon?: 'sparkles' | 'shuffle'
+  /** 'primary' = ação principal (roxo cheio) | 'secondary' = outline discreto */
+  variant: 'primary' | 'secondary'
 }) {
-  const Icon = icon === 'shuffle' ? Shuffle : Sparkles
+  const isPrimary = variant === 'primary'
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={!enabled}
       title={tooltip}
-      className="btn-primary group disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:transform-none disabled:hover:shadow-none"
+      className={`${
+        isPrimary ? 'btn-primary' : 'btn-ghost'
+      } group disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:transform-none disabled:hover:shadow-none`}
       style={{ paddingLeft: 16, paddingRight: 18 }}
     >
-      <Icon size={13} strokeWidth={2.2} />
+      {/* Ícone só no primário — reforça que ele é a ação principal */}
+      {isPrimary && <Sparkles size={13} strokeWidth={2.2} />}
       {label}
       <span
         className="font-mono tabular"
         style={{
           fontSize: 10.5,
           letterSpacing: '0.08em',
-          color: 'rgba(255,255,255,0.78)',
+          color: isPrimary ? 'rgba(255,255,255,0.78)' : 'var(--text-subtle)',
           marginLeft: 2,
           paddingLeft: 8,
-          borderLeft: '1px solid rgba(255,255,255,0.22)',
+          borderLeft: isPrimary
+            ? '1px solid rgba(255,255,255,0.22)'
+            : '1px solid var(--border-subtle)',
         }}
       >
         {credits} {credits === 1 ? 'CRÉDITO' : 'CRÉDITOS'}

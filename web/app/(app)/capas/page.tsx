@@ -89,10 +89,6 @@ export default function CapasPage() {
   const [wizardEditingId, setWizardEditingId] = useState<string | null>(null)
   const [manageOpen, setManageOpen] = useState(false)
   const [confirmLote, setConfirmLote] = useState<1 | 3 | null>(null)
-  // 'new' = capa nova do zero | 'variation' = outra leitura do mesmo brief.
-  // Tecnicamente identicos (mesmo brief, novo sorteio de variation_seeds).
-  // Diferenca e apenas signaling UX pro produtor.
-  const [confirmIntent, setConfirmIntent] = useState<'new' | 'variation'>('new')
   /** Capa pendente de confirmacao de delete (modal ConfirmDialog) */
   const [confirmDiscard, setConfirmDiscard] = useState<CoverLibraryItem | null>(null)
   const [discardLoading, setDiscardLoading] = useState(false)
@@ -232,15 +228,13 @@ export default function CapasPage() {
     async (
       brief: CoverBrief,
       lote: 1 | 3,
-      intent: 'new' | 'variation' = 'new',
       presetId: string | null = null,
     ) => {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
       if (!token) return
 
-      // Log local de signaling -- futuro: plugar em analytics real
-      console.log(`[covers] generate intent=${intent} lote=${lote}`)
+      console.log(`[covers] generate lote=${lote}`)
 
       // OTIMISMO: mostra skeleton "Gerando" IMEDIATAMENTE (antes do Realtime/fetch)
       setOptimisticPending((prev) => prev + lote)
@@ -257,6 +251,10 @@ export default function CapasPage() {
             lote,
             save_as_default: false,
             brief_preset_id: presetId,
+            // Anti-repeticao sempre ligado: cada capa nova tende a diferir das
+            // ultimas do mesmo brief/artista. Era o que o botao "variacao"
+            // prometia mas nunca enviava. T4.42.
+            force_variation: true,
           }),
         })
         if (!res.ok) {
@@ -275,21 +273,19 @@ export default function CapasPage() {
     [supabase, loadData],
   )
 
-  const handleGenerate = (lote: 1 | 3, intent: 'new' | 'variation' = 'new') => {
+  const handleGenerate = (lote: 1 | 3) => {
     if (!activeBrief) return
-    setConfirmIntent(intent)
     setConfirmLote(lote)
   }
 
   const confirmGenerateAction = useCallback(() => {
     if (!confirmLote || !activeBrief) return
     const lote = confirmLote
-    const intent = confirmIntent
     const briefSnapshot = activeBrief.brief
     const presetId = activeBrief.id
     setConfirmLote(null)
-    void triggerGenerate(briefSnapshot, lote, intent, presetId)
-  }, [confirmLote, confirmIntent, activeBrief, triggerGenerate])
+    void triggerGenerate(briefSnapshot, lote, presetId)
+  }, [confirmLote, activeBrief, triggerGenerate])
 
   // ─────────────────────────────────────────────────────────────────
   // BRIEFS (CRUD)
@@ -349,7 +345,7 @@ export default function CapasPage() {
       await loadData()
 
       if (action === 'save_and_generate') {
-        await triggerGenerate(savedPreset.brief, 1, 'new', savedPreset.id)
+        await triggerGenerate(savedPreset.brief, 1, savedPreset.id)
       }
     },
     [supabase, loadData, triggerGenerate, wizardEditingId],
