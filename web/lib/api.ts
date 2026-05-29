@@ -473,6 +473,12 @@ export interface CoverLibraryItem {
   image_url: string | null
   storage_path: string | null
   brief_used: CoverBrief | null
+  /** Link pro brief_preset que originou a capa (T4.41). null = capa antiga,
+   *  manual, ou preset deletado. */
+  brief_preset_id: string | null
+  /** Snapshot do nome do preset na geracao. Fallback quando o preset foi
+   *  deletado (frontend prefere o nome ao vivo enquanto o preset existir). */
+  brief_preset_name: string | null
   source: 'ai_generated' | 'manual_upload'
   used_in_beats_count: number
   /** Rating do produtor 1-5 (null = nao avaliado). Migration 020. */

@@ -17,6 +17,9 @@ import type { CoverLibraryItem } from '@/lib/api'
 interface Props {
   open: boolean
   cover: CoverLibraryItem | null
+  /** Nome do brief preset que originou a capa (T4.41). Resolvido no caller:
+   *  ao vivo enquanto o preset existir, snapshot salvo se foi deletado. */
+  briefName?: string | null
   /** Numero da capa no grid (1-based pra display "#01"). */
   index: number | null
   onClose: () => void
@@ -40,6 +43,7 @@ interface Props {
 export function CapaModal({
   open,
   cover,
+  briefName,
   index,
   onClose,
   onDownload,
@@ -239,10 +243,24 @@ export function CapaModal({
           {/* SCROLLABLE BODY */}
           <div className="flex-1 overflow-y-auto px-5 py-5">
             {/* Brief usado */}
-            {brief && (
+            {(brief || briefName) && (
               <section className="mb-6">
                 <SectionLabel num="01" label="Brief usado" />
-                <BriefDetails brief={brief} />
+                {briefName && (
+                  <p
+                    className="mb-3 truncate"
+                    style={{
+                      color: 'var(--text-primary)',
+                      fontSize: 15,
+                      fontWeight: 500,
+                      letterSpacing: '-0.01em',
+                    }}
+                    title={briefName}
+                  >
+                    {briefName}
+                  </p>
+                )}
+                {brief && <BriefDetails brief={brief} />}
               </section>
             )}
 

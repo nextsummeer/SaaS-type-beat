@@ -56,6 +56,10 @@ class GenerateCoverRequest(BaseModel):
     # v3: True quando produtor clica "Gerar variacao" -- ativa anti-repeticao
     # no builder (query nas ultimas 5 capas do mesmo user+artista).
     force_variation: bool = False
+    # T4.41: id do brief_preset ativo que originou a geracao. O worker resolve
+    # o nome (com checagem de dono) e linka a capa pro preset, pra exibir o
+    # nome no modal e fazer rename propagar.
+    brief_preset_id: str | None = None
 
 
 def _authenticate(authorization: str):
@@ -84,8 +88,9 @@ def list_library(authorization: str = Header(...)):
     result = (
         client.table("cover_library")
         .select(
-            "id, image_url, storage_path, brief_used, source, "
-            "used_in_beats_count, rating, status, created_at"
+            "id, image_url, storage_path, brief_used, brief_preset_id, "
+            "brief_preset_name, source, used_in_beats_count, rating, "
+            "status, created_at"
         )
         .eq("user_id", str(user.id))
         .order("created_at", desc=True)
@@ -241,6 +246,7 @@ def generate(body: GenerateCoverRequest, authorization: str = Header(...)):
         brief=brief_dict,
         lote=body.lote,
         force_variation=body.force_variation,
+        brief_preset_id=body.brief_preset_id,
     )
 
     # Se nada gerou e o motivo foi falta de creditos, devolve 402

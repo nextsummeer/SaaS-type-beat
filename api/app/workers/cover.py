@@ -141,6 +141,7 @@ def generate_covers(
     brief: dict,
     lote: int = 1,
     force_variation: bool = False,
+    brief_preset_id: str | None = None,
 ) -> dict:
     """Gera N capas via IA pro user. Cobra apenas pelo que entrega.
 
@@ -151,6 +152,10 @@ def generate_covers(
                secundarios + nota_livre). Caller (routes) ja chamou
                normalize_brief() pra converter v1 se necessario.
         lote: 1 ou 3.
+        brief_preset_id: id do brief_preset que originou a geracao (opcional).
+               Quando presente, o nome do preset e resolvido aqui (com checagem
+               de dono) e gravado como snapshot em cover_library pra exibicao no
+               modal. T4.41.
 
     Returns:
         {
@@ -171,6 +176,32 @@ def generate_covers(
         }
 
     client = get_admin_client()
+
+    # Resolve o nome do preset que originou a geracao (snapshot de fallback).
+    # Checa dono: so linka se o preset pertence ao mesmo user. T4.41.
+    brief_preset_name: str | None = None
+    if brief_preset_id:
+        try:
+            preset_resp = (
+                client.table("brief_presets")
+                .select("name, user_id")
+                .eq("id", brief_preset_id)
+                .maybe_single()
+                .execute()
+            )
+            preset_row = preset_resp.data if preset_resp else None
+            if preset_row and preset_row.get("user_id") == user_id:
+                brief_preset_name = preset_row.get("name")
+            else:
+                # preset inexistente ou de outro user: nao linka
+                logger.warning(
+                    "cover worker: brief_preset_id=%s nao pertence a user=%s -- ignorando link",
+                    brief_preset_id, user_id,
+                )
+                brief_preset_id = None
+        except Exception as exc:
+            logger.warning("cover worker: falha resolver brief_preset %s: %s", brief_preset_id, exc)
+            brief_preset_id = None
 
     # Onboarding free: primeira capa do user e gratuita
     profile_resp = (
@@ -206,7 +237,11 @@ def generate_covers(
         label = f"item {i+1}/{lote}"
 
         # a. INSERT pending — Realtime dispara skeleton no frontend
-        pending_id = _insert_pending(client, user_id, brief)
+        pending_id = _insert_pending(
+            client, user_id, brief,
+            brief_preset_id=brief_preset_id,
+            brief_preset_name=brief_preset_name,
+        )
         if not pending_id:
             errors.append(f"{label}: falha ao criar registro pending")
             continue
@@ -395,7 +430,13 @@ def generate_covers(
     }
 
 
-def _insert_pending(client, user_id: str, brief: dict) -> str | None:
+def _insert_pending(
+    client,
+    user_id: str,
+    brief: dict,
+    brief_preset_id: str | None = None,
+    brief_preset_name: str | None = None,
+) -> str | None:
     """Cria a row pending em cover_library e retorna o id."""
     try:
         resp = client.table("cover_library").insert({
@@ -404,6 +445,8 @@ def _insert_pending(client, user_id: str, brief: dict) -> str | None:
             "storage_path": None,
             "image_hash": None,
             "brief_used": brief,
+            "brief_preset_id": brief_preset_id,
+            "brief_preset_name": brief_preset_name,
             "prompt_final": None,
             "cost_usd": 0,
             "source": "ai_generated",

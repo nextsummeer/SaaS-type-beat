@@ -229,7 +229,12 @@ export default function CapasPage() {
   // GERAÇÃO
   // ─────────────────────────────────────────────────────────────────
   const triggerGenerate = useCallback(
-    async (brief: CoverBrief, lote: 1 | 3, intent: 'new' | 'variation' = 'new') => {
+    async (
+      brief: CoverBrief,
+      lote: 1 | 3,
+      intent: 'new' | 'variation' = 'new',
+      presetId: string | null = null,
+    ) => {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
       if (!token) return
@@ -247,7 +252,12 @@ export default function CapasPage() {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ brief, lote, save_as_default: false }),
+          body: JSON.stringify({
+            brief,
+            lote,
+            save_as_default: false,
+            brief_preset_id: presetId,
+          }),
         })
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))
@@ -276,8 +286,9 @@ export default function CapasPage() {
     const lote = confirmLote
     const intent = confirmIntent
     const briefSnapshot = activeBrief.brief
+    const presetId = activeBrief.id
     setConfirmLote(null)
-    void triggerGenerate(briefSnapshot, lote, intent)
+    void triggerGenerate(briefSnapshot, lote, intent, presetId)
   }, [confirmLote, confirmIntent, activeBrief, triggerGenerate])
 
   // ─────────────────────────────────────────────────────────────────
@@ -338,7 +349,7 @@ export default function CapasPage() {
       await loadData()
 
       if (action === 'save_and_generate') {
-        await triggerGenerate(savedPreset.brief, 1)
+        await triggerGenerate(savedPreset.brief, 1, 'new', savedPreset.id)
       }
     },
     [supabase, loadData, triggerGenerate, wizardEditingId],
@@ -548,6 +559,15 @@ export default function CapasPage() {
   const showGeradasEmpty = state.kind === 'ready' && space === 'geradas' && presets.length === 0
 
   const editingPreset = wizardEditingId ? presets.find((p) => p.id === wizardEditingId) ?? null : null
+
+  // Nome do brief pra exibir no modal da capa (T4.41): prefere o nome AO VIVO
+  // do preset (rename propaga); cai no snapshot salvo se o preset foi deletado.
+  const expandedBriefName: string | null = expandedCover
+    ? (expandedCover.brief_preset_id
+        ? presets.find((p) => p.id === expandedCover.brief_preset_id)?.name
+            ?? expandedCover.brief_preset_name
+        : null)
+    : null
 
   let pageContent: React.ReactNode
   if (state.kind === 'error') {
@@ -857,6 +877,7 @@ export default function CapasPage() {
       <CapaModal
         open={expandedCover !== null}
         cover={expandedCover}
+        briefName={expandedBriefName}
         index={expandedIndex}
         onClose={handleCloseExpanded}
         onDownload={handleDownload}
