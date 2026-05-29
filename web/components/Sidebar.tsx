@@ -14,6 +14,7 @@ import {
   Settings,
   Sparkles,
   ChevronRight,
+  Compass,
 } from 'lucide-react'
 
 type SubItem = {
@@ -51,6 +52,14 @@ const navPrincipal: NavItem[] = [
 const navSecundaria: NavItem[] = [
   { href: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
+
+// Itens dev-only: aparecem so quando NEXT_PUBLIC_DEV_TOOLS=true.
+// Em prod a env nao e setada -> sumem sem precisar deletar codigo.
+const navDev: NavItem[] = [
+  { href: '/onboarding', label: 'Onboarding', icon: Compass, exact: true },
+]
+
+const devToolsEnabled = process.env.NEXT_PUBLIC_DEV_TOOLS === 'true'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -242,6 +251,29 @@ export function Sidebar() {
           <NavLink key={item.href} item={item} />
         ))}
       </nav>
+
+      {devToolsEnabled && (
+        <>
+          <div className="mx-5 my-5 h-px" style={{ background: 'var(--border-subtle)' }} />
+          <div className="px-5 pb-2">
+            <span
+              className="font-mono uppercase"
+              style={{
+                fontSize: 9.5,
+                letterSpacing: '0.22em',
+                color: 'var(--text-subtle)',
+              }}
+            >
+              Dev
+            </span>
+          </div>
+          <nav className="flex flex-col gap-0.5 px-3">
+            {navDev.map((item) => (
+              <NavLink key={item.href} item={item} />
+            ))}
+          </nav>
+        </>
+      )}
 
       <div className="flex-1" />
 
