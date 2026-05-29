@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { questions, type Question } from './questions'
 import { CountUp } from './CountUp'
+import { CoverStep, type CoverPhase } from './CoverStep'
 
 /**
  * Minutos medios pra fazer 1 upload manual no YouTube de um type beat:
@@ -31,15 +32,44 @@ export function OnboardingWizard() {
   const [stepIndex, setStepIndex] = useState(0)
   const [answers, setAnswers] = useState<Answers>({})
 
-  const totalQuestions = questions.length
-  const totalSteps = totalQuestions + 1 // perguntas + tela de resultado
+  // Estado da etapa de capa -- persiste entre back/forward
+  const [coverPhase, setCoverPhase] = useState<CoverPhase>('picking')
+  const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null)
 
-  const isResultsStep = stepIndex === totalQuestions
-  const currentQuestion = !isResultsStep ? questions[stepIndex] : null
-  const currentSelection = currentQuestion ? answers[currentQuestion.id] ?? [] : []
+  const totalQuestions = questions.length
+  // Sequencia: 5 perguntas + tela resultado + etapa de capa
+  const RESULTS_INDEX = totalQuestions
+  const COVER_INDEX = totalQuestions + 1
+  const totalSteps = totalQuestions + 2
+
+  const isResultsStep = stepIndex === RESULTS_INDEX
+  const isCoverStep = stepIndex === COVER_INDEX
+  const currentQuestion =
+    !isResultsStep && !isCoverStep ? questions[stepIndex] : null
+  const currentSelection = currentQuestion
+    ? (answers[currentQuestion.id] ?? [])
+    : []
 
   const progress = ((stepIndex + 1) / totalSteps) * 100
-  const canContinue = isResultsStep ? true : currentSelection.length > 0
+
+  const canContinue = (() => {
+    if (currentQuestion) return currentSelection.length > 0
+    if (isResultsStep) return true
+    if (isCoverStep) return coverPhase === 'done'
+    return false
+  })()
+
+  const canGoBack =
+    stepIndex > 0 && !(isCoverStep && coverPhase === 'generating')
+
+  const isLastStep = isCoverStep && coverPhase === 'done'
+
+  // Label do botao primario muda por etapa pra dar peso emocional na transicao
+  const primaryLabel = isResultsStep
+    ? 'Vamos lá'
+    : isLastStep
+      ? 'Finalizar'
+      : 'Continuar'
 
   function selectOption(optionId: string) {
     if (!currentQuestion) return
@@ -169,15 +199,22 @@ export function OnboardingWizard() {
 
       {/* Main */}
       <main className="relative z-10 flex flex-1 items-center justify-center px-6 py-10 sm:px-10 sm:py-14">
-        <div key={stepIndex} className="mx-auto w-full max-w-3xl">
-          {currentQuestion ? (
+        <div key={`${stepIndex}-${coverPhase}`} className="mx-auto w-full max-w-3xl">
+          {currentQuestion && (
             <QuestionView
               question={currentQuestion}
               selected={currentSelection}
               onSelect={selectOption}
             />
-          ) : (
-            <ResultsView stats={stats} />
+          )}
+          {isResultsStep && <ResultsView stats={stats} />}
+          {isCoverStep && (
+            <CoverStep
+              phase={coverPhase}
+              setPhase={setCoverPhase}
+              selectedArtistId={selectedArtistId}
+              setSelectedArtistId={setSelectedArtistId}
+            />
           )}
         </div>
       </main>
@@ -188,20 +225,20 @@ export function OnboardingWizard() {
           <button
             type="button"
             onClick={goBack}
-            disabled={stepIndex === 0}
+            disabled={!canGoBack}
             className="btn-ghost"
             style={{
-              opacity: stepIndex === 0 ? 0.3 : 1,
-              pointerEvents: stepIndex === 0 ? 'none' : 'auto',
+              opacity: canGoBack ? 1 : 0.3,
+              pointerEvents: canGoBack ? 'auto' : 'none',
             }}
           >
             <ArrowLeft size={14} strokeWidth={1.8} />
             Voltar
           </button>
 
-          {isResultsStep ? (
+          {isLastStep ? (
             <Link href="/dashboard" className="btn-primary">
-              Vamos lá
+              {primaryLabel}
               <ArrowRight size={14} strokeWidth={2} />
             </Link>
           ) : (
@@ -215,7 +252,7 @@ export function OnboardingWizard() {
                 pointerEvents: canContinue ? 'auto' : 'none',
               }}
             >
-              Continuar
+              {primaryLabel}
               <ArrowRight size={14} strokeWidth={2} />
             </button>
           )}
