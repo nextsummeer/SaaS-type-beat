@@ -139,7 +139,8 @@ export function CapasHeader({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Grid de 2 colunas iguais -> os dois botoes ficam do MESMO tamanho */}
+        <div className="grid grid-cols-2 gap-3" style={{ maxWidth: 460 }}>
           <GenerateButton
             variant="primary"
             label="Gerar 1 capa"
@@ -314,6 +315,7 @@ function GenerateButton({
   variant: 'primary' | 'secondary'
 }) {
   const isPrimary = variant === 'primary'
+  const neonHover = !isPrimary && enabled
   return (
     <button
       type="button"
@@ -322,8 +324,30 @@ function GenerateButton({
       title={tooltip}
       className={`${
         isPrimary ? 'btn-primary' : 'btn-ghost'
-      } group disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:transform-none disabled:hover:shadow-none`}
-      style={{ paddingLeft: 16, paddingRight: 18 }}
+      } w-full group disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:transform-none disabled:hover:shadow-none`}
+      style={{
+        height: 46,
+        // Transicao do glow só no secundário (o primário já anima pela classe)
+        transition: isPrimary
+          ? undefined
+          : 'background 0.18s, border-color 0.18s, color 0.18s, box-shadow 0.18s',
+      }}
+      onMouseEnter={
+        neonHover
+          ? (e) => {
+              e.currentTarget.style.borderColor = 'var(--border-purple)'
+              e.currentTarget.style.boxShadow = 'var(--glow-hover)'
+            }
+          : undefined
+      }
+      onMouseLeave={
+        neonHover
+          ? (e) => {
+              e.currentTarget.style.borderColor = ''
+              e.currentTarget.style.boxShadow = ''
+            }
+          : undefined
+      }
     >
       {/* Ícone só no primário — reforça que ele é a ação principal */}
       {isPrimary && <Sparkles size={13} strokeWidth={2.2} />}
