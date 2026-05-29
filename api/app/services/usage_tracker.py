@@ -21,7 +21,10 @@ PRICING: dict[str, dict[str, float]] = {
     "gemini_2_5_flash": {"input": 0.30, "output": 2.50},
     "youtube_upload": {"flat_usd": 0.0},     # quota free, sem custo monetario
     "youtube_data_api": {"flat_usd": 0.0},   # videos.list 1 unit/chunk, sem custo monetario
-    "fal_gpt_image_2": {"flat_usd": 0.0083},  # gpt-image-2 quality=low 1024x1024 (validado 2026-05-21)
+    # fal_service.py calcula o custo REAL pelos tokens da resposta e passa via
+    # cost_usd (override). Este flat_usd so e usado se algum caller chamar sem
+    # cost_usd -- mantido como fallback grosseiro. T4.43.
+    "fal_gpt_image_2": {"flat_usd": 0.0111},
 }
 
 

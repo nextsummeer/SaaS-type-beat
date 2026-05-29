@@ -22,10 +22,50 @@ logger = logging.getLogger(__name__)
 FAL_KEY = os.getenv("FAL_KEY")
 FAL_MODEL_ID = "openai/gpt-image-2"
 
-# Custo confirmado em testes 2026-05-21 (1024x1024). Em 512x512 o custo
-# real do fal.ai e' menor (~$0.003-0.005); este valor e' usado apenas
-# pra tracking interno do usage_tracker e nao afeta cobranca real.
-FAL_COST_USD = 0.0083
+# Precos do gpt-image-2 na fal.ai, em USD por TOKEN (doc fal, 2026-05).
+# O custo real de cada geracao = soma dos tokens da resposta * preco. Antes
+# usavamos um valor fixo ($0.0083) que subestimava o real (~$0.011) -- agora
+# calculamos pelo bloco `usage` que a fal devolve. T4.43.
+FAL_PRICE_PER_TOKEN = {
+    "text_input": 5.0 / 1_000_000,
+    "text_output": 10.0 / 1_000_000,
+    "image_input": 8.0 / 1_000_000,
+    "image_output": 30.0 / 1_000_000,
+}
+
+# Fallback caso a resposta venha sem `usage` (nao deveria, mas defensivo).
+# Aproxima o que o dashboard da fal mostra pra 1 capa quality=low.
+FAL_COST_USD_FALLBACK = 0.0111
+
+
+def _cost_from_usage(usage: dict | None) -> float | None:
+    """Custo real em USD a partir do bloco `usage` da resposta da fal.
+
+    Estrutura esperada (doc fal gpt-image-2):
+        {
+          "input_tokens": int,
+          "input_tokens_details":  {"text_tokens": int, "image_tokens": int},
+          "output_tokens": int,
+          "output_tokens_details": {"text_tokens": int, "image_tokens": int},
+          "total_tokens": int,
+        }
+
+    Retorna None se `usage` ausente/malformado (caller usa o fallback).
+    """
+    if not isinstance(usage, dict):
+        return None
+    inp = usage.get("input_tokens_details") or {}
+    out = usage.get("output_tokens_details") or {}
+    try:
+        cost = (
+            (inp.get("text_tokens") or 0) * FAL_PRICE_PER_TOKEN["text_input"]
+            + (inp.get("image_tokens") or 0) * FAL_PRICE_PER_TOKEN["image_input"]
+            + (out.get("text_tokens") or 0) * FAL_PRICE_PER_TOKEN["text_output"]
+            + (out.get("image_tokens") or 0) * FAL_PRICE_PER_TOKEN["image_output"]
+        )
+    except (TypeError, ValueError):
+        return None
+    return round(cost, 6)
 
 
 def generate_cover(
@@ -86,20 +126,35 @@ def generate_cover(
             logger.error("fal_service: imagem sem url. images[0]=%s", first)
             return None
 
-        logger.info("fal_service: capa gerada em %dms", latency_ms)
+        # Custo REAL pelos tokens da resposta (T4.43). Fallback se vier sem usage.
+        usage = result.get("usage") if isinstance(result, dict) else None
+        real_cost = _cost_from_usage(usage)
+        if real_cost is None:
+            logger.warning(
+                "fal_service: resposta sem `usage` utilizavel -- usando fallback "
+                "de custo ($%.4f). result keys=%s",
+                FAL_COST_USD_FALLBACK,
+                list(result.keys()) if isinstance(result, dict) else type(result),
+            )
+        cost_usd = real_cost if real_cost is not None else FAL_COST_USD_FALLBACK
+
+        logger.info("fal_service: capa gerada em %dms, custo=$%.6f", latency_ms, cost_usd)
 
         track(
             user_id=user_id,
             feature="fal_gpt_image_2",
+            tokens_in=usage.get("input_tokens") if isinstance(usage, dict) else None,
+            tokens_out=usage.get("output_tokens") if isinstance(usage, dict) else None,
             duration_ms=latency_ms,
             beat_id=beat_id,
-            cost_usd=FAL_COST_USD,
+            cost_usd=cost_usd,
+            metadata={"usage": usage} if usage else None,
         )
 
         return {
             "ok": True,
             "url": url,
-            "cost_usd": FAL_COST_USD,
+            "cost_usd": cost_usd,
             "latency_ms": latency_ms,
         }
 
