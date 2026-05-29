@@ -139,8 +139,16 @@ export function CapasHeader({
           </div>
         )}
 
-        {/* Grid de 2 colunas iguais -> os dois botoes ficam do MESMO tamanho */}
-        <div className="grid grid-cols-2 gap-3" style={{ maxWidth: 460 }}>
+        {/* Grid de 2 colunas iguais -> os dois botoes ficam do MESMO tamanho.
+            minmax(0,1fr) forca largura igual ignorando o conteudo (senao a
+            coluna do primario fica maior por causa do icone). */}
+        <div
+          className="grid gap-3"
+          style={{
+            maxWidth: 460,
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+          }}
+        >
           <GenerateButton
             variant="primary"
             label="Gerar 1 capa"
