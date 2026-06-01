@@ -273,9 +273,10 @@ function CoverGenerating({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="flex flex-col items-center gap-10 py-6">
-      {/* Orb: mesmo padrao de /beats/[id] e /capas (PendingCard).
-       * Halos roxo+magenta + 2 aneis orbitais + orb principal morphing
-       * + reflexo + wave-bars dentro. */}
+      {/* Orb: mesmo padrao do PendingCard de /capas (que aparece quando uma
+       * capa esta sendo gerada). 1 anel orbital, halos roxo+magenta, orb
+       * principal morphing com reflexo. SEM wave-bars dentro -- esse e o
+       * detalhe que separa o orb de "gerando capa" do orb de /beats/[id]. */}
       <div className="rise rise-1 relative flex h-80 w-80 items-center justify-center">
         {/* Halo externo roxo */}
         <div
@@ -299,19 +300,7 @@ function CoverGenerating({ onDone }: { onDone: () => void }) {
             animationDelay: '-1.2s',
           }}
         />
-        {/* Anel orbital interno */}
-        <span
-          aria-hidden
-          className="absolute"
-          style={{
-            width: '76%',
-            height: '76%',
-            borderRadius: '50%',
-            border: '1px dashed rgba(199, 181, 255, 0.22)',
-            animation: 'rotate-slow 14s linear infinite',
-          }}
-        />
-        {/* Anel orbital externo (reverso) */}
+        {/* Anel orbital unico (dashed lavender, rotate-slow) */}
         <span
           aria-hidden
           className="absolute"
@@ -319,11 +308,11 @@ function CoverGenerating({ onDone }: { onDone: () => void }) {
             width: '92%',
             height: '92%',
             borderRadius: '50%',
-            border: '1px dashed rgba(247, 137, 203, 0.14)',
-            animation: 'rotate-slow-reverse 22s linear infinite',
+            border: '1px dashed rgba(199, 181, 255, 0.28)',
+            animation: 'rotate-slow 14s linear infinite',
           }}
         />
-        {/* Orb principal */}
+        {/* Orb principal -- sem wave-bars dentro */}
         <div
           className="relative h-52 w-52 animate-orb-morph"
           style={{
@@ -333,7 +322,7 @@ function CoverGenerating({ onDone }: { onDone: () => void }) {
               '0 0 90px rgba(65,0,255,0.55), 0 0 140px rgba(255,26,190,0.30), inset 0 0 50px rgba(255,255,255,0.18), inset -24px -36px 70px rgba(0,0,0,0.34)',
           }}
         >
-          {/* Reflexo branco */}
+          {/* Reflexo branco -- unico detalhe dentro do orb */}
           <span
             aria-hidden
             className="absolute"
@@ -347,19 +336,6 @@ function CoverGenerating({ onDone }: { onDone: () => void }) {
               filter: 'blur(10px)',
             }}
           />
-          {/* Wave-bars no centro */}
-          <div
-            className="absolute inset-0 flex items-center justify-center"
-            style={{ color: '#fff', mixBlendMode: 'overlay' }}
-          >
-            <div className="wave-bars" style={{ transform: 'scale(1.9)' }}>
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-            </div>
-          </div>
         </div>
       </div>
 
