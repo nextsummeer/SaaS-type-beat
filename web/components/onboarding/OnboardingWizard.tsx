@@ -7,7 +7,7 @@ import { questions, type Question } from './questions'
 import { CountUp } from './CountUp'
 import { CoverStep, type CoverPhase } from './CoverStep'
 import { YouTubeStep, type YoutubePhase } from './YouTubeStep'
-import { PlanRevealStep } from './PlanRevealStep'
+import { PlanRevealStep, type PlanPhase } from './PlanRevealStep'
 
 /**
  * Minutos medios pra fazer 1 upload manual no YouTube de um type beat:
@@ -41,6 +41,9 @@ export function OnboardingWizard() {
   // Estado da etapa de youtube -- persiste entre back/forward
   const [youtubePhase, setYoutubePhase] = useState<YoutubePhase>('idle')
 
+  // Estado da etapa do plano -- mostra orb gerando antes da revelacao das metas
+  const [planPhase, setPlanPhase] = useState<PlanPhase>('generating')
+
   const totalQuestions = questions.length
   // Sequencia: 5 perguntas + tela resultado + etapa de capa + etapa de youtube + revelacao do plano
   const RESULTS_INDEX = totalQuestions
@@ -69,17 +72,19 @@ export function OnboardingWizard() {
     if (isCoverStep) return coverPhase === 'done'
     if (isYoutubeStep)
       return youtubePhase === 'connected' || youtubePhase === 'skipped'
-    if (isPlanStep) return true
+    if (isPlanStep) return planPhase === 'done'
     return false
   })()
 
   const canGoBack =
     stepIndex > 0 &&
     !(isCoverStep && coverPhase === 'generating') &&
-    !(isYoutubeStep && youtubePhase === 'connecting')
+    !(isYoutubeStep && youtubePhase === 'connecting') &&
+    !(isPlanStep && planPhase === 'generating')
 
   // Plan step e o ultimo do wizard -- footer mostra "Finalizar" e linka pra /dashboard
-  const isLastStep = isPlanStep
+  // mas SO depois que a "geracao" do plano (mock visual com orb) termina.
+  const isLastStep = isPlanStep && planPhase === 'done'
 
   // Label do botao primario muda por etapa pra dar peso emocional na transicao
   const primaryLabel = isResultsStep
@@ -217,7 +222,7 @@ export function OnboardingWizard() {
       {/* Main */}
       <main className="relative z-10 flex flex-1 items-center justify-center px-6 py-10 sm:px-10 sm:py-14">
         <div
-          key={`${stepIndex}-${coverPhase}-${youtubePhase}`}
+          key={`${stepIndex}-${coverPhase}-${youtubePhase}-${planPhase}`}
           className="mx-auto w-full max-w-3xl"
         >
           {currentQuestion && (
@@ -239,7 +244,13 @@ export function OnboardingWizard() {
           {isYoutubeStep && (
             <YouTubeStep phase={youtubePhase} setPhase={setYoutubePhase} />
           )}
-          {isPlanStep && <PlanRevealStep answers={answers} />}
+          {isPlanStep && (
+            <PlanRevealStep
+              answers={answers}
+              phase={planPhase}
+              setPhase={setPlanPhase}
+            />
+          )}
         </div>
       </main>
 
