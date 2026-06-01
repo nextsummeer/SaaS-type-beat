@@ -7,6 +7,7 @@ import { questions, type Question } from './questions'
 import { CountUp } from './CountUp'
 import { CoverStep, type CoverPhase } from './CoverStep'
 import { YouTubeStep, type YoutubePhase } from './YouTubeStep'
+import { PlanRevealStep } from './PlanRevealStep'
 
 /**
  * Minutos medios pra fazer 1 upload manual no YouTube de um type beat:
@@ -41,17 +42,19 @@ export function OnboardingWizard() {
   const [youtubePhase, setYoutubePhase] = useState<YoutubePhase>('idle')
 
   const totalQuestions = questions.length
-  // Sequencia: 5 perguntas + tela resultado + etapa de capa + etapa de youtube
+  // Sequencia: 5 perguntas + tela resultado + etapa de capa + etapa de youtube + revelacao do plano
   const RESULTS_INDEX = totalQuestions
   const COVER_INDEX = totalQuestions + 1
   const YOUTUBE_INDEX = totalQuestions + 2
-  const totalSteps = totalQuestions + 3
+  const PLAN_INDEX = totalQuestions + 3
+  const totalSteps = totalQuestions + 4
 
   const isResultsStep = stepIndex === RESULTS_INDEX
   const isCoverStep = stepIndex === COVER_INDEX
   const isYoutubeStep = stepIndex === YOUTUBE_INDEX
+  const isPlanStep = stepIndex === PLAN_INDEX
   const currentQuestion =
-    !isResultsStep && !isCoverStep && !isYoutubeStep
+    !isResultsStep && !isCoverStep && !isYoutubeStep && !isPlanStep
       ? questions[stepIndex]
       : null
   const currentSelection = currentQuestion
@@ -66,6 +69,7 @@ export function OnboardingWizard() {
     if (isCoverStep) return coverPhase === 'done'
     if (isYoutubeStep)
       return youtubePhase === 'connected' || youtubePhase === 'skipped'
+    if (isPlanStep) return true
     return false
   })()
 
@@ -74,9 +78,8 @@ export function OnboardingWizard() {
     !(isCoverStep && coverPhase === 'generating') &&
     !(isYoutubeStep && youtubePhase === 'connecting')
 
-  const isLastStep =
-    isYoutubeStep &&
-    (youtubePhase === 'connected' || youtubePhase === 'skipped')
+  // Plan step e o ultimo do wizard -- footer mostra "Finalizar" e linka pra /dashboard
+  const isLastStep = isPlanStep
 
   // Label do botao primario muda por etapa pra dar peso emocional na transicao
   const primaryLabel = isResultsStep
@@ -236,6 +239,7 @@ export function OnboardingWizard() {
           {isYoutubeStep && (
             <YouTubeStep phase={youtubePhase} setPhase={setYoutubePhase} />
           )}
+          {isPlanStep && <PlanRevealStep answers={answers} />}
         </div>
       </main>
 

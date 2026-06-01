@@ -8,6 +8,7 @@ import {
 import { DashboardGreeting } from '@/components/DashboardGreeting'
 import { DashboardStats } from '@/components/DashboardStats'
 import { ProximasPublicacoesWidget } from '@/components/agenda/ProximasPublicacoesWidget'
+import { ActionPlanCard } from '@/components/dashboard/ActionPlanCard'
 
 /** Constelação neural pulsante — IA conectando ideias.
    Pontos posicionados organicamente, linhas entre pares próximos,
@@ -207,6 +208,11 @@ export default async function DashboardPage() {
         <SectionLabel num="02" label="Agenda" />
         <ProximasPublicacoesWidget />
       </section>
+
+      {/* PLANO DE AÇÃO — só aparece se o produtor fez onboarding (le localStorage).
+        Card tem header proprio (Sparkles + "SUA TRILHA" sem numero) pra nao quebrar a numeracao
+        das outras secoes. T8.5 vai trazer persistencia em DB + pagina /plano + sidebar nav. */}
+      <ActionPlanCard />
 
       {/* AÇÃO PRINCIPAL — upload */}
       <section className="rise rise-4">
