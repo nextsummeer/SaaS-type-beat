@@ -1,16 +1,42 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Sparkles } from 'lucide-react'
+import Link from 'next/link'
+import {
+  Upload,
+  TrendingUp,
+  ShoppingBag,
+  Sparkles,
+  Coins,
+  ChevronRight,
+} from 'lucide-react'
 import { loadPlan, type StoredPlan } from '@/lib/actionPlanStorage'
-import { categoryLabel } from '@/lib/actionPlan'
+import type { Meta, MetaCategory } from '@/lib/actionPlan'
+
+const META_ICONS: Record<MetaCategory, typeof Upload> = {
+  volume: Upload,
+  crescimento: TrendingUp,
+  vendas: Coins,
+  loja: ShoppingBag,
+  qualidade: Sparkles,
+}
+
+const META_LABELS: Record<MetaCategory, string> = {
+  volume: 'VOLUME',
+  crescimento: 'CRESCIMENTO',
+  vendas: 'VENDAS',
+  loja: 'LOJA',
+  qualidade: 'QUALIDADE',
+}
 
 /**
- * Card "Sua trilha" no dashboard. Le do localStorage (T8.4 prototype).
- * Em T8.5 isso le do Supabase com estado de marcacao por tarefa.
+ * Card de metas no dashboard. Le do localStorage (T8.4 prototype).
+ * Returns null se o produtor ainda nao fez onboarding -- o dashboard
+ * naturalmente esconde a secao toda.
  *
- * Retorna null se nao tem plano salvo (produtor que ainda nao fez onboarding).
- * O dashboard usa esse "null" pra esconder a secao toda.
+ * As metas sao o nivel de alto contraste pro produtor saber o que quer
+ * atingir nos primeiros 30 dias. O conteudo detalhado (tarefas, dicas,
+ * eventualmente guias) vive em /plano.
  */
 export function ActionPlanCard() {
   const [plan, setPlan] = useState<StoredPlan | null>(null)
@@ -22,16 +48,13 @@ export function ActionPlanCard() {
   }, [])
 
   if (!mounted) return null
-  if (!plan || plan.tasks.length === 0) return null
+  if (!plan || plan.metas.length === 0) return null
 
-  const total = plan.tasks.length
-  const completed = 0 // T8.5 vai trazer estado real de tarefa concluida
-  const percent = total > 0 ? (completed / total) * 100 : 0
-  const next = plan.tasks.slice(0, 3)
+  const total = plan.metas.length
 
   return (
     <section className="rise rise-3">
-      {/* Header sem numero -- "SUA TRILHA" e secao especial, nao mais uma do sistema */}
+      {/* Header sem numero -- secao especial, nao do sistema */}
       <div className="mb-5 flex items-center gap-3">
         <Sparkles
           size={12}
@@ -47,7 +70,7 @@ export function ActionPlanCard() {
             color: 'var(--text-primary)',
           }}
         >
-          Sua trilha
+          Suas metas
         </span>
         <span aria-hidden className="hairline flex-1" />
         <span
@@ -58,12 +81,12 @@ export function ActionPlanCard() {
             color: 'var(--text-subtle)',
           }}
         >
-          {String(completed).padStart(2, '0')} / {String(total).padStart(2, '0')}
+          {String(total).padStart(2, '0')}
         </span>
       </div>
 
       <div
-        className="relative overflow-hidden rounded-2xl p-7"
+        className="relative overflow-hidden rounded-2xl p-6"
         style={{
           background: 'var(--bg-surface)',
           border: '1px solid var(--border-purple)',
@@ -72,128 +95,125 @@ export function ActionPlanCard() {
         {/* Glow magenta sutil */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-32 -top-32 h-80 w-80 rounded-full"
+          className="pointer-events-none absolute -right-32 -top-32 h-72 w-72 rounded-full"
           style={{
             background:
-              'radial-gradient(circle, rgba(255,26,190,0.12), transparent 65%)',
+              'radial-gradient(circle, rgba(255,26,190,0.10), transparent 65%)',
           }}
         />
 
-        <div className="relative flex flex-col gap-6">
-          {/* Heading + progresso */}
-          <div className="flex flex-col gap-3">
+        <div className="relative flex flex-col gap-5">
+          {/* Heading */}
+          <div className="flex items-baseline justify-between gap-3">
             <p
-              className="font-display text-[20px] font-semibold leading-tight"
+              className="font-display text-[18px] font-semibold leading-tight"
               style={{
                 color: 'var(--text-primary)',
                 letterSpacing: '-0.018em',
               }}
             >
-              Próximas tarefas
+              Próximos 30 dias
             </p>
-            <div
-              className="relative h-[2px] overflow-hidden rounded-full"
-              style={{ background: 'rgba(255,255,255,0.06)' }}
-            >
-              <div
-                className="absolute inset-y-0 left-0"
-                style={{
-                  width: `${percent}%`,
-                  background: 'var(--gradient-primary)',
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Lista de proximas tarefas */}
-          <div className="flex flex-col">
-            {next.map((t, i) => (
-              <div
-                key={t.id}
-                className="flex items-start gap-4 py-3"
-                style={{ borderTop: '1px solid var(--border-subtle)' }}
-              >
-                <span
-                  className="font-mono tabular pt-0.5"
-                  style={{
-                    fontSize: 10,
-                    letterSpacing: '0.22em',
-                    color: 'var(--text-subtle)',
-                    minWidth: 24,
-                  }}
-                >
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <div className="flex flex-1 flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="font-display text-[14px] font-semibold leading-tight"
-                      style={{
-                        color: 'var(--text-primary)',
-                        letterSpacing: '-0.015em',
-                      }}
-                    >
-                      {t.title}
-                    </span>
-                    <span
-                      className="font-mono uppercase"
-                      style={{
-                        fontSize: 9,
-                        letterSpacing: '0.18em',
-                        color: 'var(--text-subtle)',
-                      }}
-                    >
-                      · {categoryLabel(t.category)}
-                    </span>
-                  </div>
-                  <span
-                    className="text-[12px] leading-snug"
-                    style={{ color: 'var(--text-muted)' }}
-                  >
-                    {t.description}
-                  </span>
-                </div>
-                <span
-                  className="font-mono uppercase pt-0.5"
-                  style={{
-                    fontSize: 9,
-                    letterSpacing: '0.18em',
-                    color: 'var(--text-subtle)',
-                    minWidth: 18,
-                    textAlign: 'right',
-                  }}
-                >
-                  {t.effort}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Footer: total + nota de progresso real chegando */}
-          <div className="flex items-center justify-between gap-4 pt-1">
             <span
               className="text-[12px]"
               style={{ color: 'var(--text-muted)' }}
             >
-              Total de{' '}
-              <span style={{ color: 'var(--text-secondary)' }}>
-                {total} tarefas
-              </span>{' '}
-              na sua trilha
+              {total} {total === 1 ? 'meta' : 'metas'}
             </span>
+          </div>
+
+          {/* Lista de metas */}
+          <div className="flex flex-col gap-2">
+            {plan.metas.map((m, i) => (
+              <MetaRow key={m.id} meta={m} index={i} />
+            ))}
+          </div>
+
+          {/* CTA pro /plano */}
+          <div
+            className="flex items-center justify-between gap-4 pt-2"
+            style={{ borderTop: '1px solid var(--border-subtle)' }}
+          >
             <span
-              className="font-mono uppercase"
-              style={{
-                fontSize: 9.5,
-                letterSpacing: '0.22em',
-                color: 'var(--text-subtle)',
-              }}
+              className="text-[12px]"
+              style={{ color: 'var(--text-muted)' }}
             >
-              em breve · marcar concluído
+              Trilha completa + dicas estão em{' '}
+              <span style={{ color: 'var(--text-secondary)' }}>Plano</span>
             </span>
+            <Link
+              href="/plano"
+              className="group inline-flex items-center gap-1.5 text-[13px] font-medium transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Ver plano
+              <ChevronRight
+                size={14}
+                strokeWidth={2}
+                className="transition group-hover:translate-x-0.5"
+              />
+            </Link>
           </div>
         </div>
       </div>
     </section>
+  )
+}
+
+function MetaRow({ meta, index }: { meta: Meta; index: number }) {
+  const Icon = META_ICONS[meta.category]
+  return (
+    <div
+      className="flex items-start gap-3 py-2"
+      style={{ borderTop: index > 0 ? '1px solid var(--border-subtle)' : undefined }}
+    >
+      <span
+        className="font-mono tabular pt-1"
+        style={{
+          fontSize: 10,
+          letterSpacing: '0.22em',
+          color: 'var(--text-subtle)',
+          minWidth: 22,
+        }}
+      >
+        {String(index + 1).padStart(2, '0')}
+      </span>
+      <div
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md mt-0.5"
+        style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-subtle)',
+        }}
+      >
+        <Icon
+          size={13}
+          strokeWidth={1.8}
+          style={{ color: 'var(--text-secondary)' }}
+        />
+      </div>
+      <div className="flex flex-1 flex-col gap-0.5">
+        <div className="flex items-center gap-2">
+          <span
+            className="font-mono uppercase"
+            style={{
+              fontSize: 9,
+              letterSpacing: '0.22em',
+              color: 'var(--text-subtle)',
+            }}
+          >
+            {META_LABELS[meta.category]}
+          </span>
+        </div>
+        <span
+          className="font-display text-[13.5px] font-semibold leading-tight"
+          style={{
+            color: 'var(--text-primary)',
+            letterSpacing: '-0.015em',
+          }}
+        >
+          {meta.title}
+        </span>
+      </div>
+    </div>
   )
 }

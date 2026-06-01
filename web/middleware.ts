@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Rotas protegidas: redireciona pra /login se não autenticado
-  const rotasProtegidas = ['/dashboard', '/upload', '/beats', '/configuracoes', '/onboarding']
+  const rotasProtegidas = ['/dashboard', '/upload', '/beats', '/configuracoes', '/onboarding', '/plano']
   const estaEmRotaProtegida = rotasProtegidas.some((rota) => pathname.startsWith(rota))
 
   if (estaEmRotaProtegida && !user) {

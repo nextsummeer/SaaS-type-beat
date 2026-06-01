@@ -15,6 +15,7 @@ import {
   Sparkles,
   ChevronRight,
   Compass,
+  Target,
 } from 'lucide-react'
 
 type SubItem = {
@@ -51,6 +52,12 @@ const navPrincipal: NavItem[] = [
 
 const navSecundaria: NavItem[] = [
   { href: '/configuracoes', label: 'Configurações', icon: Settings },
+]
+
+// Itens de aprender/trilha -- peso visual baixo de proposito.
+// Vivem abaixo da Conta porque sao "consultivos" -- nao operacao do dia-a-dia.
+const navAprender: NavItem[] = [
+  { href: '/plano', label: 'Plano', icon: Target, exact: true },
 ]
 
 // Itens dev-only: aparecem so quando NEXT_PUBLIC_DEV_TOOLS=true.
@@ -248,6 +255,27 @@ export function Sidebar() {
 
       <nav className="flex flex-col gap-0.5 px-3">
         {navSecundaria.map((item) => (
+          <NavLink key={item.href} item={item} />
+        ))}
+      </nav>
+
+      <div className="mx-5 my-5 h-px" style={{ background: 'var(--border-subtle)' }} />
+
+      <div className="px-5 pb-2">
+        <span
+          className="font-mono uppercase"
+          style={{
+            fontSize: 9.5,
+            letterSpacing: '0.22em',
+            color: 'var(--text-subtle)',
+          }}
+        >
+          Aprender
+        </span>
+      </div>
+
+      <nav className="flex flex-col gap-0.5 px-3">
+        {navAprender.map((item) => (
           <NavLink key={item.href} item={item} />
         ))}
       </nav>

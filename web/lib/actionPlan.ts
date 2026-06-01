@@ -20,6 +20,30 @@ export type Category =
   | 'vendas'
   | 'networking'
 
+export type MetaCategory =
+  | 'volume'
+  | 'crescimento'
+  | 'vendas'
+  | 'loja'
+  | 'qualidade'
+
+/**
+ * Meta = objetivo motivacional de alto nivel pra animar o produtor no onboarding
+ * (ex: "Postar 30 beats em 30 dias"). NAO e tarefa/dica -- e META.
+ * Tarefas detalhadas (ActionTask) vivem em outro lugar (pagina /plano).
+ */
+export type Meta = {
+  id: string
+  title: string
+  /** Linha curta de contexto opcional (ex: "Constancia > volume isolado") */
+  subtitle?: string
+  category: MetaCategory
+  /** Numero alvo (se aplicavel). Pra futuro tracking de progresso. */
+  target?: number
+  /** Periodo em dias da meta (default 30). */
+  periodDays?: number
+}
+
 export type TaskPriority = 'foundation' | 'core' | 'growth'
 
 export type TaskEffort = 'XS' | 'S' | 'M' | 'L'
@@ -232,6 +256,125 @@ const MASTER_TASKS: MasterTask[] = [
   },
 ]
 
+/* ───────────────────────── master metas ───────────────────────── */
+
+type MasterMeta = Meta & {
+  shouldInclude: (a: Answers) => boolean
+  /** Peso pra ordenacao -- metas com peso menor aparecem primeiro. */
+  weight: number
+}
+
+const MASTER_METAS: MasterMeta[] = [
+  // Volume -- baseado em frequencia
+  {
+    id: 'primeiro-beat',
+    title: 'Publicar seu primeiro beat no YouTube',
+    subtitle: 'O começo de tudo. Sem isso o algoritmo nem te conhece.',
+    category: 'volume',
+    target: 1,
+    weight: 0,
+    shouldInclude: (a) => has(a, 'frequencia', 'zero'),
+  },
+  {
+    id: 'volume-30',
+    title: 'Postar 30 beats nos próximos 30 dias',
+    subtitle: 'Um por dia. Constância é o que dispara o algoritmo.',
+    category: 'volume',
+    target: 30,
+    weight: 0,
+    shouldInclude: (a) => has(a, 'frequencia', 'um'),
+  },
+  {
+    id: 'volume-75',
+    title: 'Postar 75 beats nos próximos 30 dias',
+    subtitle: 'Ritmo de produtor sério. 2-3 por dia, todo dia.',
+    category: 'volume',
+    target: 75,
+    weight: 0,
+    shouldInclude: (a) => has(a, 'frequencia', 'doistres'),
+  },
+  {
+    id: 'volume-120',
+    title: 'Postar 120 beats nos próximos 30 dias',
+    subtitle: 'Modo máquina. Volume forte com BeatPost sem virar mecânico.',
+    category: 'volume',
+    target: 120,
+    weight: 0,
+    shouldInclude: (a) => has(a, 'frequencia', 'quatro'),
+  },
+
+  // Crescimento de canal
+  {
+    id: 'primeiros-100-inscritos',
+    title: 'Ganhar seus primeiros 100 inscritos',
+    subtitle: 'Primeiro milestone que prova que o canal saiu do zero.',
+    category: 'crescimento',
+    target: 100,
+    weight: 1,
+    shouldInclude: (a) => has(a, 'frequencia', 'zero'),
+  },
+  {
+    id: 'ctr-5',
+    title: 'Subir CTR médio dos vídeos pra 5%+',
+    subtitle: 'Thumb e título trabalhando — o algoritmo te empurra mais.',
+    category: 'crescimento',
+    weight: 1,
+    shouldInclude: (a) =>
+      has(a, 'objetivos', 'crescer-yt') && !has(a, 'frequencia', 'zero'),
+  },
+  {
+    id: 'views-2x',
+    title: 'Dobrar suas views médias por vídeo',
+    subtitle: 'Sinal forte de que o nicho ta encontrando você.',
+    category: 'crescimento',
+    weight: 1,
+    shouldInclude: (a) =>
+      has(a, 'objetivos', 'crescer-yt') && !has(a, 'frequencia', 'zero'),
+  },
+
+  // Vendas
+  {
+    id: 'primeiras-3-vendas',
+    title: 'Fazer suas 3 primeiras vendas',
+    subtitle: 'Quebra de gelo. Depois das primeiras, vem em série.',
+    category: 'vendas',
+    target: 3,
+    weight: 2,
+    shouldInclude: (a) =>
+      has(a, 'objetivos', 'vender') && has(a, 'loja', 'nao-vendo'),
+  },
+  {
+    id: 'vendas-dobrar',
+    title: 'Dobrar sua média mensal de vendas',
+    subtitle: 'Mesma audiência, conversão melhor. Vem do tráfego + funil.',
+    category: 'vendas',
+    weight: 2,
+    shouldInclude: (a) =>
+      has(a, 'objetivos', 'vender') && !has(a, 'loja', 'nao-vendo'),
+  },
+
+  // Loja
+  {
+    id: 'loja-lancada',
+    title: 'Lançar sua loja com 20+ beats à venda',
+    subtitle: 'Vitrine montada, preços definidos, link no perfil.',
+    category: 'loja',
+    target: 20,
+    weight: 3,
+    shouldInclude: (a) => has(a, 'loja', 'nao-vendo'),
+  },
+
+  // Qualidade
+  {
+    id: 'branding-consistente',
+    title: 'Ter visual consistente em todo beat que sair',
+    subtitle: 'Capa, layout, tag — produtor reconhecido em 2 segundos.',
+    category: 'qualidade',
+    weight: 4,
+    shouldInclude: (a) => has(a, 'objetivos', 'capas'),
+  },
+]
+
 /* ───────────────────────── builder ───────────────────────── */
 
 const PRIORITY_ORDER: TaskPriority[] = ['foundation', 'core', 'growth']
@@ -266,4 +409,16 @@ export function buildActionPlan(answers: Answers): ActionTask[] {
       const bIdx = PRIORITY_ORDER.indexOf(b.priority)
       return aIdx - bIdx
     })
+}
+
+/**
+ * Monta as METAS personalizadas pro produtor (objetivos motivacionais de alto nivel).
+ * Diferente das tarefas, metas sao curtas e numeradas pra animar o cara.
+ * Limita a 5 metas pra caber bem no card do onboarding.
+ */
+export function buildMetas(answers: Answers): Meta[] {
+  return MASTER_METAS.filter((m) => m.shouldInclude(answers))
+    .sort((a, b) => a.weight - b.weight)
+    .slice(0, 5)
+    .map(({ shouldInclude, weight, ...m }) => m)
 }

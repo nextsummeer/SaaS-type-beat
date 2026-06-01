@@ -5,18 +5,20 @@
  * Por enquanto o plano vive no browser do produtor.
  */
 
-import type { ActionTask } from './actionPlan'
+import type { ActionTask, Meta } from './actionPlan'
 
 const STORAGE_KEY = 'beatpost:action-plan:v1'
 
 export type StoredPlan = {
+  metas: Meta[]
   tasks: ActionTask[]
   createdAt: string
 }
 
-export function savePlan(tasks: ActionTask[]): void {
+export function savePlan(metas: Meta[], tasks: ActionTask[]): void {
   if (typeof window === 'undefined') return
   const plan: StoredPlan = {
+    metas,
     tasks,
     createdAt: new Date().toISOString(),
   }
@@ -32,9 +34,13 @@ export function loadPlan(): StoredPlan | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as StoredPlan
-    if (!parsed?.tasks || !Array.isArray(parsed.tasks)) return null
-    return parsed
+    const parsed = JSON.parse(raw) as Partial<StoredPlan>
+    // Backward compat: planos antigos so tinham `tasks`
+    return {
+      metas: Array.isArray(parsed.metas) ? parsed.metas : [],
+      tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
+      createdAt: parsed.createdAt ?? new Date().toISOString(),
+    }
   } catch {
     return null
   }
