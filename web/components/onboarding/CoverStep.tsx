@@ -273,25 +273,94 @@ function CoverGenerating({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="flex flex-col items-center gap-10 py-6">
-      {/* Orb morphing */}
-      <div className="rise rise-1 relative">
+      {/* Orb: mesmo padrao de /beats/[id] e /capas (PendingCard).
+       * Halos roxo+magenta + 2 aneis orbitais + orb principal morphing
+       * + reflexo + wave-bars dentro. */}
+      <div className="rise rise-1 relative flex h-80 w-80 items-center justify-center">
+        {/* Halo externo roxo */}
+        <div
+          aria-hidden
+          className="absolute inset-0 animate-pulse-slow"
+          style={{
+            background:
+              'radial-gradient(circle, rgba(65,0,255,0.48), transparent 62%)',
+            filter: 'blur(24px)',
+          }}
+        />
+        {/* Halo magenta deslocado */}
         <div
           aria-hidden
           className="absolute inset-0"
           style={{
-            background: 'var(--gradient-primary)',
-            filter: 'blur(46px)',
-            opacity: 0.55,
+            background:
+              'radial-gradient(circle at 68% 38%, rgba(255,26,190,0.42), transparent 58%)',
+            filter: 'blur(34px)',
+            animation: 'pulse-slow 3.4s ease-in-out infinite',
+            animationDelay: '-1.2s',
           }}
         />
-        <div
-          className="animate-orb-morph relative h-44 w-44"
+        {/* Anel orbital interno */}
+        <span
+          aria-hidden
+          className="absolute"
           style={{
-            background: 'var(--gradient-primary)',
-            boxShadow:
-              '0 0 60px rgba(255, 26, 190, 0.45), inset 0 1px 0 rgba(255,255,255,0.15)',
+            width: '76%',
+            height: '76%',
+            borderRadius: '50%',
+            border: '1px dashed rgba(199, 181, 255, 0.22)',
+            animation: 'rotate-slow 14s linear infinite',
           }}
         />
+        {/* Anel orbital externo (reverso) */}
+        <span
+          aria-hidden
+          className="absolute"
+          style={{
+            width: '92%',
+            height: '92%',
+            borderRadius: '50%',
+            border: '1px dashed rgba(247, 137, 203, 0.14)',
+            animation: 'rotate-slow-reverse 22s linear infinite',
+          }}
+        />
+        {/* Orb principal */}
+        <div
+          className="relative h-52 w-52 animate-orb-morph"
+          style={{
+            background:
+              'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.55) 0%, transparent 28%), linear-gradient(135deg, #4100FF 0%, #FF1ABE 100%)',
+            boxShadow:
+              '0 0 90px rgba(65,0,255,0.55), 0 0 140px rgba(255,26,190,0.30), inset 0 0 50px rgba(255,255,255,0.18), inset -24px -36px 70px rgba(0,0,0,0.34)',
+          }}
+        >
+          {/* Reflexo branco */}
+          <span
+            aria-hidden
+            className="absolute"
+            style={{
+              top: '20%',
+              left: '24%',
+              width: 26,
+              height: 26,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.70)',
+              filter: 'blur(10px)',
+            }}
+          />
+          {/* Wave-bars no centro */}
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ color: '#fff', mixBlendMode: 'overlay' }}
+          >
+            <div className="wave-bars" style={{ transform: 'scale(1.9)' }}>
+              <span />
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Estagio atual */}

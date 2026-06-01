@@ -449,16 +449,6 @@ export default function BeatPage() {
         )}
       </div>
 
-      <style jsx>{`
-        @keyframes rotate-slow {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-        @keyframes rotate-slow-reverse {
-          from { transform: rotate(360deg); }
-          to   { transform: rotate(0deg); }
-        }
-      `}</style>
     </div>
   )
 }

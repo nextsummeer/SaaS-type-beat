@@ -366,6 +366,19 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
   border-radius: 52% 48% 55% 45% / 50% 55% 45% 50%;
 }
 
+/* Aneis orbitais (rotacao lenta + reversa) usados pelo orb principal de
+ * /beats/[id] + PendingCard de /capas + CoverStep do onboarding.
+ * Antes vivia local em style jsx de /beats/[id]; promovido pra globals
+ * pra parar de quebrar silenciosamente nos outros lugares. */
+@keyframes rotate-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes rotate-slow-reverse {
+  from { transform: rotate(360deg); }
+  to   { transform: rotate(0deg); }
+}
+
 /* ─── Stagger reveal ───────────────────────────────────────── */
 @keyframes rise {
   from { opacity: 0; transform: translateY(8px); }
