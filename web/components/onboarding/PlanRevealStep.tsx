@@ -43,20 +43,25 @@ const META_LABELS: Record<MetaCategory, string> = {
 }
 
 /**
- * Estagios do mock loading do plano. Total ~4.2s -- intencional:
+ * Estagios do mock loading do plano. Total ~10s -- intencional:
  *   1. Curto o bastante pra nao virar tedio
- *   2. Longo o bastante pra parecer que "algo de verdade ta acontecendo"
+ *   2. Longo o bastante pra dar TEMPO DE LER cada estagio e dar a sensacao
+ *      de "ta acontecendo coisa de verdade" (Gustavo 2026-06-01: 4s era
+ *      rapido demais, mal dava pra ler)
  *   3. Reusa o mesmo orb signature do resto da plataforma
  *
  * Como o plano e gerado por TEMPLATE (nao IA -- ver decisao em
  * `project_onboarding_e_plano_de_acao` na memoria), o tempo aqui e
  * proposital: dar peso ao momento emocional, nao processar de verdade.
+ *
+ * Distribuicao dos 10s: estagios do "meio" (calculando + montando) ficam
+ * com mais tempo porque sao o "core" da percepcao de trabalho.
  */
 const GENERATION_STAGES = [
-  { label: 'Lendo suas respostas', duration: 900 },
-  { label: 'Calculando suas metas', duration: 1100 },
-  { label: 'Montando sua trilha', duration: 1300 },
-  { label: 'Finalizando', duration: 900 },
+  { label: 'Lendo suas respostas', duration: 2000 },
+  { label: 'Calculando suas metas', duration: 2800 },
+  { label: 'Montando sua trilha', duration: 3500 },
+  { label: 'Finalizando', duration: 1700 },
 ]
 
 export function PlanRevealStep({ answers, phase, setPhase }: Props) {
