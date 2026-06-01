@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { questions, type Question } from './questions'
 import { CountUp } from './CountUp'
 import { CoverStep, type CoverPhase } from './CoverStep'
+import { YouTubeStep, type YoutubePhase } from './YouTubeStep'
 
 /**
  * Minutos medios pra fazer 1 upload manual no YouTube de um type beat:
@@ -36,16 +37,23 @@ export function OnboardingWizard() {
   const [coverPhase, setCoverPhase] = useState<CoverPhase>('picking')
   const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null)
 
+  // Estado da etapa de youtube -- persiste entre back/forward
+  const [youtubePhase, setYoutubePhase] = useState<YoutubePhase>('idle')
+
   const totalQuestions = questions.length
-  // Sequencia: 5 perguntas + tela resultado + etapa de capa
+  // Sequencia: 5 perguntas + tela resultado + etapa de capa + etapa de youtube
   const RESULTS_INDEX = totalQuestions
   const COVER_INDEX = totalQuestions + 1
-  const totalSteps = totalQuestions + 2
+  const YOUTUBE_INDEX = totalQuestions + 2
+  const totalSteps = totalQuestions + 3
 
   const isResultsStep = stepIndex === RESULTS_INDEX
   const isCoverStep = stepIndex === COVER_INDEX
+  const isYoutubeStep = stepIndex === YOUTUBE_INDEX
   const currentQuestion =
-    !isResultsStep && !isCoverStep ? questions[stepIndex] : null
+    !isResultsStep && !isCoverStep && !isYoutubeStep
+      ? questions[stepIndex]
+      : null
   const currentSelection = currentQuestion
     ? (answers[currentQuestion.id] ?? [])
     : []
@@ -56,13 +64,19 @@ export function OnboardingWizard() {
     if (currentQuestion) return currentSelection.length > 0
     if (isResultsStep) return true
     if (isCoverStep) return coverPhase === 'done'
+    if (isYoutubeStep)
+      return youtubePhase === 'connected' || youtubePhase === 'skipped'
     return false
   })()
 
   const canGoBack =
-    stepIndex > 0 && !(isCoverStep && coverPhase === 'generating')
+    stepIndex > 0 &&
+    !(isCoverStep && coverPhase === 'generating') &&
+    !(isYoutubeStep && youtubePhase === 'connecting')
 
-  const isLastStep = isCoverStep && coverPhase === 'done'
+  const isLastStep =
+    isYoutubeStep &&
+    (youtubePhase === 'connected' || youtubePhase === 'skipped')
 
   // Label do botao primario muda por etapa pra dar peso emocional na transicao
   const primaryLabel = isResultsStep
@@ -199,7 +213,10 @@ export function OnboardingWizard() {
 
       {/* Main */}
       <main className="relative z-10 flex flex-1 items-center justify-center px-6 py-10 sm:px-10 sm:py-14">
-        <div key={`${stepIndex}-${coverPhase}`} className="mx-auto w-full max-w-3xl">
+        <div
+          key={`${stepIndex}-${coverPhase}-${youtubePhase}`}
+          className="mx-auto w-full max-w-3xl"
+        >
           {currentQuestion && (
             <QuestionView
               question={currentQuestion}
@@ -215,6 +232,9 @@ export function OnboardingWizard() {
               selectedArtistId={selectedArtistId}
               setSelectedArtistId={setSelectedArtistId}
             />
+          )}
+          {isYoutubeStep && (
+            <YouTubeStep phase={youtubePhase} setPhase={setYoutubePhase} />
           )}
         </div>
       </main>
