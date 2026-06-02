@@ -27,13 +27,28 @@ PRICING: dict[str, dict[str, float]] = {
     "fal_gpt_image_2": {"flat_usd": 0.0111},
 }
 
+# Multiplicadores do prompt caching da Anthropic (ephemeral, TTL 5min):
+# gravar tokens no cache custa 1.25x o preco de input; ler do cache custa 0.1x.
+# Aplicados sobre o `input` do modelo. So afetam features com tokens de cache
+# (hoje so o Claude da capa via cover_prompt_builder). T4.45.
+CACHE_WRITE_MULT = 1.25
+CACHE_READ_MULT = 0.10
+
 
 def _calculate_cost(
     feature: str,
     tokens_in: int | None,
     tokens_out: int | None,
+    cache_read: int | None = None,
+    cache_write: int | None = None,
 ) -> float:
-    """Calcula cost_usd com base no PRICING. Retorna 0.0 se feature desconhecida."""
+    """Calcula cost_usd com base no PRICING. Retorna 0.0 se feature desconhecida.
+
+    Quando ha prompt caching (Claude), `tokens_in` ja vem SEM os tokens de cache
+    -- a Anthropic devolve `cache_read_input_tokens`/`cache_creation_input_tokens`
+    em campos separados. Por isso somamos os tres baldes de input sem dupla
+    contagem: input normal + cache write (1.25x) + cache read (0.1x). T4.45.
+    """
     pricing = PRICING.get(feature)
     if not pricing:
         logger.warning("usage_tracker: feature '%s' sem precificacao", feature)
@@ -45,9 +60,11 @@ def _calculate_cost(
     input_price = pricing.get("input", 0.0)
     output_price = pricing.get("output", 0.0)
     cost = (
-        (tokens_in or 0) * input_price / 1_000_000
-        + (tokens_out or 0) * output_price / 1_000_000
-    )
+        (tokens_in or 0) * input_price
+        + (cache_write or 0) * input_price * CACHE_WRITE_MULT
+        + (cache_read or 0) * input_price * CACHE_READ_MULT
+        + (tokens_out or 0) * output_price
+    ) / 1_000_000
     return round(cost, 6)
 
 
@@ -59,6 +76,8 @@ def track(
     duration_ms: int | None = None,
     beat_id: str | None = None,
     cost_usd: float | None = None,
+    cache_read_tokens: int | None = None,
+    cache_write_tokens: int | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> None:
     """Registra uma chamada paga em `api_usage`.
@@ -70,13 +89,22 @@ def track(
         duration_ms: tempo da chamada em ms (opcional).
         beat_id: beat associado (opcional, ajuda a agregar custo por upload).
         cost_usd: override manual (usar quando a API ja devolve o preco pronto).
+        cache_read_tokens / cache_write_tokens: tokens de prompt caching (Claude).
+            Entram no cost_usd com os multiplicadores corretos (read 0.1x, write
+            1.25x). Sem isso o custo de quem usa cache fica subestimado. T4.45.
         metadata: dict extra que vai pra coluna jsonb.
     """
     if not user_id:
         logger.warning("usage_tracker: chamada sem user_id (feature=%s) — pulando", feature)
         return
 
-    final_cost = cost_usd if cost_usd is not None else _calculate_cost(feature, tokens_in, tokens_out)
+    final_cost = (
+        cost_usd
+        if cost_usd is not None
+        else _calculate_cost(
+            feature, tokens_in, tokens_out, cache_read_tokens, cache_write_tokens
+        )
+    )
 
     row = {
         "user_id": user_id,

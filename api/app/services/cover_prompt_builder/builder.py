@@ -198,6 +198,8 @@ def build_cover_prompt(
         feature="claude_sonnet_4_6",
         tokens_in=tokens_in,
         tokens_out=tokens_out,
+        cache_read_tokens=cache_read,
+        cache_write_tokens=cache_write,
         duration_ms=duration_ms,
         metadata={
             "purpose": "cover_prompt_builder_v3",
