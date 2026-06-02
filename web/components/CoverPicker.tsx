@@ -20,6 +20,7 @@ import {
   type CoverLibraryItem,
 } from '@/lib/api'
 import { CoverPickerExpanded } from './CoverPickerExpanded'
+import { InlineCoverGenerator } from './InlineCoverGenerator'
 
 type Tab = 'library' | 'manual'
 
@@ -90,6 +91,8 @@ export function CoverPicker({
   const [confirmReuseId, setConfirmReuseId] = useState<string | null>(null)
   // Modal expansivel pra ver TODA a biblioteca com filtros
   const [showExpanded, setShowExpanded] = useState(false)
+  // Modal de geracao de capa por IA inline no /upload (T4.44)
+  const [showGenerator, setShowGenerator] = useState(false)
 
   // Carrega a biblioteca ao montar
   useEffect(() => {
@@ -239,6 +242,29 @@ export function CoverPicker({
     onPickLibrary(cover.id)
   }
 
+  // Capa recem-gerada pela IA (ja status='ready'). Recarrega a biblioteca pra
+  // mostra-la, seleciona-a no form e abre a aba Biblioteca > IA. T4.44.
+  async function handleAIGenerated(coverId: string) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (token) {
+        const items = await fetchCovers(token)
+        const readyOnly = items.filter(
+          (it) => !!it.image_url && it.status !== 'pending' && it.status !== 'failed',
+        )
+        setLibrary(readyOnly)
+      }
+    } catch (err) {
+      console.error('[CoverPicker] erro ao recarregar pos-geracao:', err)
+    }
+    onPickFile(null)
+    onPickLibrary(coverId)
+    setTab('library')
+    setLibrarySource('ai_generated')
+    setShowGenerator(false)
+  }
+
   // Contadores totais por origem -- subiu pro CoverPicker pra renderizar
   // o sub-filtro ao lado das tabs principais (otimizando o espaco
   // horizontal -- antes os 2 switches ficavam empilhados a esquerda).
@@ -273,16 +299,40 @@ export function CoverPicker({
           />
         </div>
 
-        {tab === 'library' && (
-          <LibrarySourceSwitch
-            librarySource={librarySource}
-            onChange={setLibrarySource}
-            totalAll={library.length}
-            totalAI={totalAI}
-            totalManual={totalManual}
+        <div className="flex items-center gap-2 flex-wrap">
+          {tab === 'library' && (
+            <LibrarySourceSwitch
+              librarySource={librarySource}
+              onChange={setLibrarySource}
+              totalAll={library.length}
+              totalAI={totalAI}
+              totalManual={totalManual}
+              disabled={disabled}
+            />
+          )}
+          <button
+            type="button"
+            onClick={() => setShowGenerator(true)}
             disabled={disabled}
-          />
-        )}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 font-mono uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            style={{
+              fontSize: 10.5,
+              letterSpacing: '0.18em',
+              color: 'var(--purple-light)',
+              border: '1px solid var(--border-purple)',
+              background: 'rgba(199,181,255,0.06)',
+            }}
+            onMouseEnter={(e) => {
+              if (!disabled) e.currentTarget.style.background = 'rgba(199,181,255,0.12)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(199,181,255,0.06)'
+            }}
+          >
+            <Sparkles size={12} strokeWidth={2.2} />
+            Gerar capa com IA
+          </button>
+        </div>
       </div>
 
       {/* Conteudo da tab ativa */}
@@ -298,6 +348,7 @@ export function CoverPicker({
           onPick={handlePickLibraryCover}
           onCancelConfirm={() => setConfirmReuseId(null)}
           onSeeMore={() => setShowExpanded(true)}
+          onGenerateAI={() => setShowGenerator(true)}
         />
       ) : (
         <ManualTab
@@ -350,6 +401,13 @@ export function CoverPicker({
         selectedCoverId={selectedCoverId}
         onSelect={(cover) => handlePickLibraryCover(cover)}
         onClose={() => setShowExpanded(false)}
+      />
+
+      {/* Geracao de capa por IA inline (T4.44) */}
+      <InlineCoverGenerator
+        open={showGenerator}
+        onClose={() => setShowGenerator(false)}
+        onGenerated={handleAIGenerated}
       />
     </div>
   )
@@ -421,6 +479,7 @@ function LibraryTab({
   onPick,
   onCancelConfirm,
   onSeeMore,
+  onGenerateAI,
 }: {
   library: CoverLibraryItem[]
   librarySource: LibrarySource
@@ -432,6 +491,7 @@ function LibraryTab({
   onPick: (cover: CoverLibraryItem) => void
   onCancelConfirm: () => void
   onSeeMore: () => void
+  onGenerateAI: () => void
 }) {
   if (loading) {
     return (
@@ -478,16 +538,24 @@ function LibraryTab({
             Você ainda não tem capas na biblioteca
           </p>
           <p className="mt-1 text-[12px]" style={{ color: 'var(--text-muted)' }}>
-            Gere capas com IA na aba dedicada.
+            Gere uma agora com IA, sem sair daqui.
           </p>
         </div>
-        <Link
-          href="/capas"
-          className="btn-ghost"
-          style={{ fontSize: 12, padding: '6px 12px' }}
+        <button
+          type="button"
+          onClick={onGenerateAI}
+          className="btn-primary"
+          style={{ fontSize: 12, padding: '8px 14px' }}
         >
           <Sparkles size={12} strokeWidth={2.2} />
-          Ir pra Capas
+          Gerar capa com IA
+        </button>
+        <Link
+          href="/capas"
+          className="text-[11px] underline"
+          style={{ color: 'var(--text-subtle)', textUnderlineOffset: 2 }}
+        >
+          ou ver na aba Capas
         </Link>
       </div>
     )

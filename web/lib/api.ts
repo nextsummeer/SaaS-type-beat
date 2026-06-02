@@ -523,6 +523,47 @@ export async function fetchCoverCredits(token: string): Promise<CoverCreditsStat
   return res.json()
 }
 
+/** Retorno do POST /covers/generate (geracao sincrona — espera a capa ficar pronta). */
+export interface GenerateCoverResult {
+  ok: boolean
+  /** IDs das capas com status='ready' (cover_library.id). */
+  generated_ids: string[]
+  credits_consumed: number
+  credits_remaining: number
+  errors: string[]
+}
+
+/**
+ * Gera capa(s) via IA a partir de um brief. SINCRONO: a resposta so volta
+ * depois que o worker termina (~30s por capa). Consome credito do tier.
+ * force_variation sempre ligado (anti-repeticao). Reusado pela /capas e
+ * pelo InlineCoverGenerator do /upload (T4.44).
+ */
+export async function generateCover(
+  token: string,
+  payload: { brief: CoverBrief; lote?: 1 | 3; briefPresetId?: string | null },
+): Promise<GenerateCoverResult> {
+  const res = await fetch(`${API_URL}/covers/generate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      brief: payload.brief,
+      lote: payload.lote ?? 1,
+      save_as_default: false,
+      brief_preset_id: payload.briefPresetId ?? null,
+      force_variation: true,
+    }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? `Erro ${res.status} ao gerar capa`)
+  }
+  return res.json()
+}
+
 /** Avalia uma capa com 1-5 estrelas. `rating=null` remove a avaliacao. */
 export async function rateCover(
   token: string,
