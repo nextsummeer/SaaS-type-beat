@@ -70,6 +70,52 @@ def _prepare_canvas(cover_path: str) -> str:
         return out.name
 
 
+def transcode_to_mp3(input_path: str, output_path: str) -> None:
+    """
+    Converte um arquivo de audio (ex: WAV) em MP3 320kbps CBR.
+
+    SEM loudnorm/compressor/limitador — preserva a master do produtor,
+    so muda o codec/container (T2.15 / decisao "audio nao e normalizado").
+    -vn descarta capa embutida ou qualquer stream de video.
+    libmp3lame -b:a 320k entrega qualidade de "MP3 normal".
+    Sample rate original e preservado (nao forca 44.1/48k).
+    """
+    if not os.path.exists(input_path):
+        raise FileNotFoundError(f"Arquivo de entrada nao existe: {input_path}")
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+
+    ffmpeg_bin = _ffmpeg_binary()
+    cmd = [
+        ffmpeg_bin, "-y",
+        "-i", input_path,
+        "-vn",
+        "-c:a", "libmp3lame",
+        "-b:a", "320k",
+        output_path,
+    ]
+
+    logger.info("ffmpeg: transcode->mp3 cmd=%s", " ".join(cmd))
+    try:
+        subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=FFMPEG_TIMEOUT_SECONDS,
+        )
+    except subprocess.CalledProcessError as exc:
+        stderr_tail = (exc.stderr or "")[-8000:]
+        logger.error("ffmpeg transcode falhou (rc=%s) stderr=\n%s", exc.returncode, stderr_tail)
+        raise RuntimeError(f"ffmpeg rc={exc.returncode}: {stderr_tail[-1500:]}") from exc
+    except subprocess.TimeoutExpired as exc:
+        logger.error("ffmpeg transcode timeout apos %ss", FFMPEG_TIMEOUT_SECONDS)
+        raise RuntimeError(f"ffmpeg timeout apos {FFMPEG_TIMEOUT_SECONDS}s") from exc
+
+    size_mb = os.path.getsize(output_path) / (1024 * 1024)
+    logger.info("ffmpeg: MP3 320k gerado %.1fMB path=%s", size_mb, output_path)
+
+
 def audio_to_mp4(mp3_path: str, cover_path: str, output_path: str) -> None:
     """
     Gera MP4 com capa estatica + audio.

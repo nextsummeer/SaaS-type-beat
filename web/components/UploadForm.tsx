@@ -109,9 +109,14 @@ export function UploadForm() {
     const arquivo = e.dataTransfer.files?.[0]
     if (!arquivo) return
     const nomeLower = arquivo.name.toLowerCase()
-    const ehMp3 = arquivo.type === 'audio/mpeg' || nomeLower.endsWith('.mp3')
-    if (!ehMp3) {
-      exibirAviso('Só MP3 por enquanto — converta o arquivo antes de soltar.')
+    const ehAceito =
+      arquivo.type === 'audio/mpeg' ||
+      arquivo.type === 'audio/wav' ||
+      arquivo.type === 'audio/x-wav' ||
+      nomeLower.endsWith('.mp3') ||
+      nomeLower.endsWith('.wav')
+    if (!ehAceito) {
+      exibirAviso('Aceita MP3 ou WAV — converta o arquivo antes de soltar.')
       return
     }
     setAudioFile(arquivo)
@@ -152,7 +157,10 @@ export function UploadForm() {
       if (userError || !user) throw new Error('Usuário não autenticado')
 
       const beatId = crypto.randomUUID()
-      const audioPath = `${user.id}/${beatId}/original.mp3`
+      // WAV sobe como original.wav; o worker convert.py transcodifica pra
+      // MP3 320k no servidor e troca o audio_path (T2.15). MP3 sobe direto.
+      const ehWav = audioFile!.name.toLowerCase().endsWith('.wav')
+      const audioPath = `${user.id}/${beatId}/original.${ehWav ? 'wav' : 'mp3'}`
 
       const { data: signedData, error: signedError } = await supabase.storage
         .from('audios')
@@ -537,7 +545,7 @@ export function UploadForm() {
                   Solte o áudio aqui
                 </p>
                 <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                  Aceitando MP3
+                  Aceitando MP3 ou WAV
                 </p>
               </div>
             </>
@@ -556,10 +564,10 @@ export function UploadForm() {
               <UploadCloud className="h-8 w-8" style={{ color: 'var(--text-muted)' }} />
               <div className="flex flex-col gap-1">
                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  Arraste o MP3 aqui ou <span style={{ color: 'var(--text-primary)', textDecoration: 'underline', textUnderlineOffset: 2 }}>clique para escolher</span>
+                  Arraste o MP3 ou WAV aqui ou <span style={{ color: 'var(--text-primary)', textDecoration: 'underline', textUnderlineOffset: 2 }}>clique para escolher</span>
                 </p>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  Somente MP3 — com sua tag de produtor no áudio
+                  MP3 ou WAV — com sua tag de produtor no áudio (WAV vira MP3 320k)
                 </p>
               </div>
             </>
@@ -568,7 +576,7 @@ export function UploadForm() {
         <input
           ref={audioRef}
           type="file"
-          accept=".mp3,audio/mpeg"
+          accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav"
           className="hidden"
           onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
         />
